@@ -1,0 +1,66 @@
+import React from "react";
+import { Link, Route, Routes } from "react-router-dom";
+import AddProducts from "./addProducts";
+import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
+import EditProducts from "@/components/pages/admin/EditProducts";
+import { MdOutlineGridView, MdAddBox, MdEdit } from "react-icons/md";
+
+export default function Dashboard() {
+  return (
+    <div className="w-full h-screen flex">
+      {/* Sidebar */}
+      <div className="w-[260px] h-full bg-white text-gray-700 flex flex-col shadow-md border-r border-gray-200">
+        <div className="py-8 flex justify-center border-b border-gray-200">
+          <Link
+            to="/admin/dashboard"
+            className="text-3xl font-bold text-blue-600 tracking-wide"
+          >
+            Dashboard
+          </Link>
+        </div>
+
+        <nav className="flex flex-col gap-2 px-4 mt-6">
+          <Link
+            to="/admin/dashboard/adminviewproducts"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-lg font-medium hover:bg-blue-50 hover:text-blue-600 transition"
+          >
+            <MdOutlineGridView className="text-xl" /> View Products
+          </Link>
+
+          <Link
+            to="/admin/dashboard/products"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-lg font-medium hover:bg-blue-50 hover:text-blue-600 transition"
+          >
+            <MdAddBox className="text-xl" /> Add Product
+          </Link>
+
+          <Link
+            to="/admin/dashboard/editproducts"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-lg font-medium hover:bg-blue-50 hover:text-blue-600 transition"
+          >
+            <MdEdit className="text-xl" /> Edit Product
+          </Link>
+        </nav>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 bg-gray-100 p-10 overflow-y-auto">
+        <h1 className="text-3xl font-semibold text-gray-800 mb-6">
+          Welcome to your dashboard
+        </h1>
+
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+          <Routes>
+            {/* Removed recursive Dashboard route */}
+            <Route path="/products" element={<AddProducts />} />
+            <Route
+              path="/adminviewproducts"
+              element={<AdminAllProductView />}
+            />
+            <Route path="/editproducts" element={<EditProducts />} />
+          </Routes>
+        </div>
+      </div>
+    </div>
+  );
+}

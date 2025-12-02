@@ -1,0 +1,34 @@
+import React from "react";
+import Navbar from "../Navbar";
+import { Route, Routes } from "react-router-dom";
+import HomeContainer from "@/components/pages/HomeContainer";
+import Login from "./Login";
+import Dashboard from "@/components/pages/admin/dashboard";
+import NotFound from "@/components/pages/NotFound"; // create this component
+import Signup from "@/components/pages/singUp";
+import Productoverview from "./productoverview";
+
+export default function Homepage() {
+  return (
+    <div className="w-full h-screen flex flex-col">
+      <Navbar />
+
+      {/* Main content area */}
+      <div className="w-full h-[calc(100vh-100px)]">
+        <Routes>
+          <Route path="/" element={<HomeContainer />} />
+          <Route path="/about" element={<h1>About</h1>} />
+          <Route path="/contact" element={<h1>Contact</h1>} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/singup" element={<Signup />} />
+          <Route path="/admin/dashboard/*" element={<Dashboard />} />
+          <Route path="*" element={<NotFound />} /> {/* catch-all route */}
+          <Route
+            path="/productoverview/:productId"
+            element={<Productoverview />}
+          />
+        </Routes>
+      </div>
+    </div>
+  );
+}
