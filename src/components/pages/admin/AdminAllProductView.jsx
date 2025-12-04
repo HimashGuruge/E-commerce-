@@ -1,6 +1,7 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 
 export default function AdminAllProductView() {
   const [products, setProducts] = useState([]);
@@ -13,7 +14,7 @@ export default function AdminAllProductView() {
 
     const fetchProducts = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/products", {
+        const res = await axios.get("http://localhost:4000/api/products", {
           headers: { Authorization: "Bearer " + token },
         });
         setProducts(res.data);
@@ -26,6 +27,31 @@ export default function AdminAllProductView() {
 
     fetchProducts();
   }, [navigate, token, loading]);
+
+  const handleDelete = async (productId) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(`http://localhost:4000/api/products/${productId}`, {
+          headers: { Authorization: "Bearer " + token },
+        });
+        Swal.fire("Deleted!", "Product deleted successfully.", "success");
+        setLoading(true); // Trigger re-fetch
+      } catch (err) {
+        console.error(err);
+        Swal.fire("Error!", "Failed to delete product.", "error");
+      }
+    }
+  };
 
   if (loading)
     return <div className="text-center mt-10 text-gray-600">Loading...</div>;
@@ -88,27 +114,7 @@ export default function AdminAllProductView() {
                       Edit
                     </button>
                     <button
-                      onClick={() => {
-                        const confirmDelete = window.confirm(
-                          "Are you sure you want to delete this product?"
-                        );
-                        if (confirmDelete) {
-                          axios
-                            .delete(
-                              `http://localhost:3000/api/products/${prod.productId}`,
-                              {
-                                headers: {
-                                  Authorization: "Bearer " + token,
-                                },
-                              }
-                            )
-                            .then(() => {
-                              alert("Product deleted successfully.");
-                              setLoading(true);
-                            })
-                            .catch((err) => console.error(err));
-                        }
-                      }}
+                      onClick={() => handleDelete(prod.productId)}
                       className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
                     >
                       Delete

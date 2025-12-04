@@ -70,6 +70,13 @@ export default function Navbar() {
             Service
           </Link>
 
+          <Link
+            to="/viewcart"
+            className="text-gray-700 hover:text-blue-600 transition"
+          >
+            Cart
+          </Link>
+
           {/* Auth Section */}
           {user ? (
             <div className="flex items-center gap-4">

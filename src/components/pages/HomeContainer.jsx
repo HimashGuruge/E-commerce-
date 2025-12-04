@@ -11,7 +11,7 @@ export default function HomeContainer() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("http://localhost:3000/api/products");
+        const response = await axios.get("http://localhost:4000/api/products");
         setProducts(response.data);
       } catch (error) {
         console.error("Error fetching products:", error);
@@ -34,7 +34,7 @@ export default function HomeContainer() {
 
   return (
     <div>
-      <div className="bg-teal-900 min-h-screen p-8">
+      <div className=" min-h-screen p-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 justify-items-center">
           {products.map((product, index) => (
             <Card

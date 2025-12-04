@@ -3,6 +3,7 @@ import axios from "axios";
 import uploadMediaToSupabase from "@/components/utils/mediaUpload";
 import { useNavigate, useLocation } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import Swal from "sweetalert2";
 
 export default function EditProduct() {
   const navigate = useNavigate();
@@ -10,8 +11,6 @@ export default function EditProduct() {
   const token = localStorage.getItem("token");
 
   const existingProduct = location.state?.product || null;
-
-  console.log(existingProduct);
 
   const [images, setImages] = useState([]);
   const [formData, setFormData] = useState({
@@ -33,33 +32,49 @@ export default function EditProduct() {
 
   const handleUpload = async () => {
     try {
-      // Upload new images only if any are selected
       const uploadedImages = images.length
         ? await Promise.all(Array.from(images).map(uploadMediaToSupabase))
         : [];
 
-      // Clear previous images and only use the newly uploaded ones
       const payload = {
         ...formData,
         altNames: formData.altNames.split(",").map((n) => n.trim()),
-        images: uploadedImages, // <-- only new images
+        images: [...formData.images, ...uploadedImages],
       };
 
       if (existingProduct) {
         await axios.patch(
-          `http://localhost:3000/api/products/${formData.productId}`,
+          `http://localhost:4000/api/products/${formData.productId}`,
           payload,
           { headers: { Authorization: "Bearer " + token } }
         );
+      } else {
+        await axios.post(`http://localhost:4000/api/products`, payload, {
+          headers: { Authorization: "Bearer " + token },
+        });
       }
 
-      // Clear local images state after upload
       setImages([]);
-      setFormData({ ...formData, images: uploadedImages });
+      setFormData({ ...formData, images: payload.images });
 
-      navigate("/admin/dashboard/adminviewproducts");
+      // ✅ SweetAlert2 success alert
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Product saved successfully!",
+        confirmButtonColor: "#3085d6",
+      }).then(() => {
+        navigate("/admin/dashboard/adminviewproducts");
+      });
     } catch (err) {
       console.error("Save failed:", err.response?.data || err.message);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to save product. Try again.",
+        confirmButtonColor: "#d33",
+      });
     }
   };
 
@@ -70,7 +85,7 @@ export default function EditProduct() {
 
   return (
     <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded-md">
-      <h2 className="text-2xl font-bold mb-4">Edit Products</h2>
+      <h2 className="text-2xl font-bold mb-4">Edit Product</h2>
 
       <div className="space-y-4">
         <div>
@@ -128,7 +143,6 @@ export default function EditProduct() {
             onChange={(e) => setImages(e.target.files)}
             className="w-full border p-2 rounded bg-gray-50"
           />
-          {/* Preview existing images */}
           <div className="flex flex-wrap mt-2 gap-2">
             {formData.images.map((img, idx) => (
               <img
@@ -143,7 +157,7 @@ export default function EditProduct() {
 
         <button
           onClick={handleUpload}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors duration-300"
         >
           {existingProduct ? "Update Product" : "Upload & Save Product"}
         </button>

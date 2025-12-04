@@ -7,7 +7,8 @@ import Dashboard from "@/components/pages/admin/dashboard";
 import NotFound from "@/components/pages/NotFound"; // create this component
 import Signup from "@/components/pages/singUp";
 import Productoverview from "./productoverview";
-
+import ViewCartPage from "./viewCart";
+import ShipingPage from "@/components/pages/shipping";
 export default function Homepage() {
   return (
     <div className="w-full h-screen flex flex-col">
@@ -17,7 +18,10 @@ export default function Homepage() {
       <div className="w-full h-[calc(100vh-100px)]">
         <Routes>
           <Route path="/" element={<HomeContainer />} />
+          <Route path="/viewcart" element={<ViewCartPage />} />
           <Route path="/about" element={<h1>About</h1>} />
+           <Route path="/shipping" element={<ShipingPage/>} />
+
           <Route path="/contact" element={<h1>Contact</h1>} />
           <Route path="/login" element={<Login />} />
           <Route path="/singup" element={<Signup />} />

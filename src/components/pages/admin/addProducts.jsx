@@ -39,7 +39,7 @@ export default function AddProducts() {
       };
 
       const res = await axios.post(
-        "http://localhost:3000/api/products",
+        "http://localhost:4000/api/products",
         payload,
         {
           headers: { Authorization: "Bearer " + token },

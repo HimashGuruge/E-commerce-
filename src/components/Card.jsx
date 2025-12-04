@@ -3,21 +3,23 @@ import { Link } from "react-router-dom";
 
 export default function Card({
   productId,
-  lastPrices,
+  lastPrices, // now price
   images = [],
   productName,
-  price,
+  price, // old price
 }) {
   const firstImageUrl = images.length > 0 ? images[0] : null;
-  const isSale = lastPrices !== undefined && price < lastPrices;
 
-  const formattedLastPrice =
-    lastPrices !== undefined ? `LKR. ${lastPrices.toFixed(2)}` : null;
-  const formattedCurrentPrice =
-    price !== undefined ? `LKR. ${price.toFixed(2)}` : "N/A";
+  // Convert to numbers
+  const nowPriceNum = lastPrices ? Number(lastPrices) : null; // current price
+  const oldPriceNum = Number(price); // previous price
 
+  // Check if product is on sale
+  const isSale = oldPriceNum && oldPriceNum > nowPriceNum;
+
+  // Compute discount percentage
   const discountPercentage = isSale
-    ? Math.round(((lastPrices - price) / lastPrices) * 100)
+    ? Math.round(((oldPriceNum - nowPriceNum) / oldPriceNum) * 100)
     : 0;
 
   return (
@@ -47,24 +49,35 @@ export default function Card({
             {productName}
           </h3>
 
-          {isSale ? (
-            <div className="mb-2">
-              <p className="text-sm text-gray-500 line-through">
-                Was: {formattedLastPrice}
-              </p>
-              <p className="text-green-600 font-extrabold text-2xl">
-                {formattedCurrentPrice}
-              </p>
-              <p className="text-red-500 font-semibold text-xs">
-                You save {discountPercentage}%
-              </p>
-            </div>
-          ) : (
-            <p className="text-teal-700 font-extrabold text-2xl">
-              {formattedCurrentPrice}
-            </p>
-          )}
+          {/* Price Section */}
+          <div className="mt-2">
+            {isSale ? (
+              <div className="flex items-center space-x-2">
+                {/* Old Price */}
+                <span className="text-gray-400 line-through text-sm">
+                  Rs.{oldPriceNum}
+                </span>
 
+                {/* Current Price */}
+                <span className="text-lg font-bold text-green-600">
+                  Rs.{nowPriceNum}
+                </span>
+
+                {/* Discount Badge */}
+                {discountPercentage > 0 && (
+                  <span className="ml-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                    -{discountPercentage}%
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-lg font-bold text-gray-800">
+                Rs.{nowPriceNum}
+              </span>
+            )}
+          </div>
+
+          {/* Add to Cart Button */}
           <button className="mt-3 w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-2 rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-colors duration-300">
             Add to Cart
           </button>
