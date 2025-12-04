@@ -9,6 +9,9 @@ import Signup from "@/components/pages/singUp";
 import Productoverview from "./productoverview";
 import ViewCartPage from "./viewCart";
 import ShipingPage from "@/components/pages/shipping";
+import AboutPage from "@/components/pages/about.jsx";
+import ServicePage from "@/components/pages/service.jsx";
+import ChatBot from "@/components/aiChatBot.jsx";
 export default function Homepage() {
   return (
     <div className="w-full h-screen flex flex-col">
@@ -19,8 +22,10 @@ export default function Homepage() {
         <Routes>
           <Route path="/" element={<HomeContainer />} />
           <Route path="/viewcart" element={<ViewCartPage />} />
-          <Route path="/about" element={<h1>About</h1>} />
-           <Route path="/shipping" element={<ShipingPage/>} />
+          <Route path="/about" element={<AboutPage/>} />
+           <Route path="/shipping/" element={<ShipingPage/>} />
+
+            <Route path="/service" element={<ServicePage/>} />
 
           <Route path="/contact" element={<h1>Contact</h1>} />
           <Route path="/login" element={<Login />} />
@@ -33,6 +38,8 @@ export default function Homepage() {
           />
         </Routes>
       </div>
+
+      <ChatBot/>
     </div>
   );
 }

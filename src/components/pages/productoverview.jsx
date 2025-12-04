@@ -47,7 +47,7 @@ export default function ProductOverview() {
   const handleBuyNow = () => {
     if (data.stock <= 0) return;
 
-    navigate("/shipping", {
+    navigate(`/shipping/?productId=${data.productId}&productName=${data.productName}`, {
       state: {
         orderedItems: [
           {

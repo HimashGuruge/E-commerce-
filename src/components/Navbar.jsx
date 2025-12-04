@@ -35,6 +35,8 @@ export default function Navbar() {
     navigate("/login");
   };
 
+
+
   return (
     <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
       <div className="flex justify-between items-center">
@@ -69,13 +71,12 @@ export default function Navbar() {
           >
             Service
           </Link>
-
-          <Link
-            to="/viewcart"
-            className="text-gray-700 hover:text-blue-600 transition"
-          >
-            Cart
-          </Link>
+<Link
+  to={`/viewcart?userId=${user ? user.id : ""}`} // ✅ correct syntax
+  className="text-gray-700 hover:text-blue-600 transition"
+>
+  Cart
+</Link>
 
           {/* Auth Section */}
           {user ? (
