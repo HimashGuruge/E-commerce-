@@ -1,6 +1,6 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import ImageSlider from "@/components/imageSlider";
 import { addToCart } from "../utils/cart";
 
@@ -9,13 +9,12 @@ export default function ProductOverview() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:4000/api/products/${productId}`
-        );
+        const response = await axios.get(`http://localhost:4000/api/products/${productId}`);
         setProduct(response.data);
       } catch (err) {
         setError("Error fetching product");
@@ -42,11 +41,39 @@ export default function ProductOverview() {
       </div>
     );
 
-  // Safety: Extract inside after load
   const data = product.product;
 
+  // --- Buy Now Handler ---
+  const handleBuyNow = () => {
+    if (data.stock <= 0) return;
+
+    navigate("/shipping", {
+      state: {
+        orderedItems: [
+          {
+            productId: data.productId,
+            productName: data.productName,
+            price: data.price,
+            lastPrice: data.lastPrices,
+            qty: 1,
+          },
+        ],
+        total: data.lastPrices,
+        labeledTotal: data.price,
+        discount: data.price - data.lastPrices,
+        message: "Buying single product now",
+      },
+    });
+  };
+
+  // --- Add to Cart Handler ---
+  const handleAddToCart = () => {
+    if (data.stock <= 0) return;
+    addToCart(data.productId, 1);
+    alert("Product added to cart");
+  };
+
   return (
-    // Base layout (flex-col is the default, no sm: or md: needed)
     <div className="min-h-screen w-full bg-amber-50 flex flex-col lg:flex-row items-center justify-center py-6 px-4 sm:px-6 gap-6">
       {/* Left: Image Slider */}
       <div className="w-full lg:w-1/2 flex items-center justify-center">
@@ -113,17 +140,22 @@ export default function ProductOverview() {
           </div>
         </div>
 
-        {/* Add to Cart */}
-        <div className="mt-6 flex justify-center lg:justify-start">
+        {/* Add to Cart & Buy Now */}
+        <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
           <button
             className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 disabled:opacity-50"
-            onClick={() => {
-              addToCart(data.productId, 1);
-              alert("Product added to cart");
-            }}
+            onClick={handleAddToCart}
             disabled={data.stock <= 0}
           >
             Add to Cart
+          </button>
+
+          <button
+            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 disabled:opacity-50"
+            onClick={handleBuyNow}
+            disabled={data.stock <= 0}
+          >
+            Buy Now
           </button>
         </div>
       </div>
