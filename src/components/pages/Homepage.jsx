@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {jwtDecode} from "jwt-decode";
 import Navbar from "../Navbar";
 import { Route, Routes } from "react-router-dom";
 import HomeContainer from "@/components/pages/HomeContainer";
@@ -12,34 +11,40 @@ import ViewCartPage from "./viewCart";
 import ShipingPage from "@/components/pages/shipping";
 import AboutPage from "@/components/pages/about.jsx";
 import ServicePage from "@/components/pages/service.jsx";
-import AiChatBot from "../aiChatBot";
+import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
+import AiChatBot from "@/components/aiChatBot";
 
 export default function Homepage() {
-  const [user, setUser] = useState(null);
-
-  const authcheck = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setUser(null);
-      return;
-    }
-
-    try {
-      const decoded = jwtDecode(token);
-      setUser(decoded); // keep decoded object
-    } catch {
-      setUser(null);
-    }
-  };
+  const [load, setLoad] = useState(false);
+  const [user, setUser] = useState("customer");
 
   useEffect(() => {
-    authcheck();
+    const authcheck = () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setUser("customer");
+        return;
+      }
+
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded.role === "admin" ? "admin" : "customer");
+      } catch {
+        setUser("customer");
+      }
+    };
+
+    authcheck(); // first check
+    window.addEventListener("authChange", authcheck);
+
+    return () => window.removeEventListener("authChange", authcheck);
   }, []);
 
   return (
     <div className="w-full h-screen flex flex-col">
       <Navbar />
 
+      {/* Main content area */}
       <div className="w-full h-[calc(100vh-100px)]">
         <Routes>
           <Route path="/" element={<HomeContainer />} />
@@ -52,12 +57,15 @@ export default function Homepage() {
           <Route path="/singup" element={<Signup />} />
           <Route path="/admin/dashboard/*" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/productoverview/:productId" element={<Productoverview />} />
+          <Route
+            path="/productoverview/:productId"
+            element={<Productoverview />}
+          />
         </Routes>
       </div>
 
-      {/* Render chatbot only for customer */}
-      {user && user.role === "customer" && <AiChatBot />}
+      {/* Show chatbot only for customer */}
+      {user === "customer" && <AiChatBot />}
     </div>
   );
 }

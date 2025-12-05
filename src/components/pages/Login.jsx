@@ -24,9 +24,9 @@ export default function Login() {
 
       // Save token
       localStorage.setItem("token", response.data.token);
-
-      // (optional) trigger navbar update
       window.dispatchEvent(new Event("authChange"));
+
+
 
       // Navigate
       navigate("/admin/dashboard");
