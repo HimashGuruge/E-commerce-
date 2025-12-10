@@ -21,7 +21,7 @@ export default function Notification() {
     const fetchMessages = async () => {
       try {
         const res = await axios.get("http://localhost:4000/api/chat/admin/messages", {
-          headers: { Authorization: token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         // Based on your backend controller, data is in res.data.data
@@ -63,7 +63,7 @@ export default function Notification() {
         },
         { 
           headers: { 
-            Authorization: token,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           } 
         }

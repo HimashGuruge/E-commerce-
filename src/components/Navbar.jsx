@@ -1,24 +1,28 @@
 import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { HiMenu, HiX } from "react-icons/hi"; // ✅ hamburger & close icons
+import { HiMenu, HiX } from "react-icons/hi";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false); // ✅ mobile menu state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const authcheck = () => {
     const token = localStorage.getItem("token");
     if (!token) {
       setUser(null);
+      setIsAdmin(false);
       return;
     }
     try {
       const decoded = jwtDecode(token);
       setUser(decoded);
+      setIsAdmin(decoded.role === "admin"); // Check if user is admin
     } catch {
       setUser(null);
+      setIsAdmin(false);
     }
   };
 
@@ -31,11 +35,10 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     setUser(null);
+    setIsAdmin(false);
     window.dispatchEvent(new Event("authChange"));
     navigate("/login");
   };
-
-
 
   return (
     <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
@@ -71,12 +74,30 @@ export default function Navbar() {
           >
             Service
           </Link>
-<Link
-  to={`/viewcart?userId=${user ? user.id : ""}`} // ✅ correct syntax
-  className="text-gray-700 hover:text-blue-600 transition"
->
-  Cart
-</Link>
+
+          <Link
+            to={`/viewcart?userId=${user ? user.id : ""}`}
+            className="text-gray-700 hover:text-blue-600 transition"
+          >
+            Cart
+          </Link>
+
+          <Link
+            to={`/orders?userId=${user ? user.id : ""}`}
+            className="text-gray-700 hover:text-blue-600 transition"
+          >
+            Orders
+          </Link>
+
+          {/* Show Notification link only for admins */}
+          {isAdmin && (
+            <Link
+              to="/admin/dashboard"
+              className="text-gray-700 hover:text-blue-600 transition"
+            >
+              Admin Dashboard
+            </Link>
+          )}
 
           {/* Auth Section */}
           {user ? (
@@ -87,10 +108,10 @@ export default function Navbar() {
                 className="w-10 h-10 rounded-full object-cover border shadow-sm"
               />
               <Link
-                to="/admin/dashboard"
+                to={`/profile?userId=${user.id}`}
                 className="text-gray-700 hover:text-blue-600 font-medium transition"
               >
-                Dashboard
+                Profile
               </Link>
               <button
                 onClick={handleLogout}
@@ -141,11 +162,21 @@ export default function Navbar() {
           <Link to="/service" onClick={() => setMenuOpen(false)}>
             Service
           </Link>
+          <Link to="/viewcart" onClick={() => setMenuOpen(false)}>
+            Cart
+          </Link>
+
+          {/* Show Admin Dashboard link only for admins in mobile */}
+          {isAdmin && (
+            <Link to="/notification" onClick={() => setMenuOpen(false)}>
+              Admin Dashboard
+            </Link>
+          )}
 
           {user ? (
             <>
-              <Link to="/admin/dashboard" onClick={() => setMenuOpen(false)}>
-                Dashboard
+              <Link to="/profile" onClick={() => setMenuOpen(false)}>
+                Profile
               </Link>
               <button
                 onClick={() => {

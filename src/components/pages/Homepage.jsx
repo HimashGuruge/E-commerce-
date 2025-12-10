@@ -13,6 +13,9 @@ import AboutPage from "@/components/pages/about.jsx";
 import ServicePage from "@/components/pages/service.jsx";
 import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
 import AiChatBot from "@/components/aiChatBot";
+import PaymentPage from "@/components/pages/admin/payment";
+import OrderPage from "@/components/pages/orderpage.jsx";
+import ProfilePage from "@/components/pages/ProfilePage.jsx";
 
 export default function Homepage() {
   const [load, setLoad] = useState(false);
@@ -55,6 +58,13 @@ export default function Homepage() {
           <Route path="/contact" element={<h1>Contact</h1>} />
           <Route path="/login" element={<Login />} />
           <Route path="/singup" element={<Signup />} />
+           <Route path="/orders" element={< OrderPage/>} />
+             <Route path="/profile" element={< ProfilePage/>} />
+
+
+
+          <Route path="/payment" element={<PaymentPage />} />
+
           <Route path="/admin/dashboard/*" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
           <Route
