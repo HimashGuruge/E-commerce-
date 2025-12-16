@@ -3,27 +3,40 @@ import Card from "@/components/Card";
 import axios from "axios";
 import NewAdsTitles from "@/components/newadds";
 import Banners from "@/components/Banners";
+
 export default function HomeContainer() {
   const [allProducts, setAllProducts] = useState([]);
   const [displayedProducts, setDisplayedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(true); // Initial fetch loading state
+  const [loadingMore, setLoadingMore] = useState(false); // Infinite scroll/button loading state
+  const [error, setError] = useState(null); // <--- NEW: State to store fetch error
   const [visibleCount, setVisibleCount] = useState(8);
   const [hasMore, setHasMore] = useState(true);
   const observerTarget = useRef(null);
 
+  // --- 1. Initial Data Fetch ---
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
+      setError(null); // Clear previous errors
       try {
         const response = await axios.get("http://localhost:4000/api/products");
         if (Array.isArray(response.data)) {
-          setAllProducts(response.data);
-          setDisplayedProducts(response.data.slice(0, visibleCount));
-          setHasMore(response.data.length > visibleCount);
+          const products = response.data;
+          setAllProducts(products);
+          setDisplayedProducts(products.slice(0, visibleCount));
+          setHasMore(products.length > visibleCount);
+        } else {
+          setAllProducts([]);
+          setDisplayedProducts([]);
+          setHasMore(false);
+          // Optional: Set a specific error if data format is unexpected
+          // setError("Received data in an unexpected format.");
         }
-      } catch (error) {
-        console.error("Error fetching products:", error);
+      } catch (e) {
+        console.error("Error fetching products:", e);
+        // <--- UPDATED: Set the error state on failure
+        setError("Failed to fetch products. Please check the server connection (http://localhost:4000).");
       } finally {
         setLoading(false);
       }
@@ -32,6 +45,7 @@ export default function HomeContainer() {
     fetchProducts();
   }, []);
 
+  // --- 2. Load More Logic (No change needed here) ---
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
 
@@ -46,13 +60,14 @@ export default function HomeContainer() {
     }, 500);
   }, [allProducts, loadingMore, hasMore, visibleCount]);
 
-  // Intersection Observer for infinite scroll
+  // --- 3. Intersection Observer (No change needed here) ---
   useEffect(() => {
-    if (!hasMore || loading || loadingMore) return;
+    // Only observe if there is more data and no loading is currently active
+    if (!hasMore || loading || loadingMore || error) return; // <--- Check for error
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore) {
+        if (entries[0].isIntersecting) {
           loadMore();
         }
       },
@@ -69,35 +84,34 @@ export default function HomeContainer() {
         observer.unobserve(currentTarget);
       }
     };
-  }, [hasMore, loading, loadingMore, loadMore]);
+  }, [hasMore, loading, loadingMore, loadMore, error]); // <--- Added error dependency
 
-  // Window scroll listener (alternative method)
-  useEffect(() => {
-    if (!hasMore || loading || loadingMore) return;
-
-    const handleScroll = () => {
-      const scrollTop = document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight;
-
-      // Load more when 300px from bottom
-      if (scrollTop + clientHeight >= scrollHeight - 300) {
-        loadMore();
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, loading, loadingMore, loadMore]);
-
+  // --- 4. Initial Load Spinner UI ---
+  // A. Show spinner while fetching
   if (loading && displayedProducts.length === 0) {
     return (
       <div className="min-h-screen p-8 flex justify-center items-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+        <span className="ml-3 text-teal-600">Fetching initial products...</span>
       </div>
     );
   }
 
+  // B. Show persistent error message if fetch failed
+  if (error) {
+    return (
+      <div className="min-h-screen p-8 flex flex-col justify-center items-center bg-red-50">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mb-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        </svg>
+        <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Data</h2>
+        <p className="text-red-600 text-center max-w-lg">{error}</p>
+        <p className="text-gray-500 text-sm mt-4">Check your console for more details on the fetch error.</p>
+      </div>
+    );
+  }
+
+  // --- 5. Main Render ---
   return (
     <div className="min-h-screen">
       <div className="">
@@ -133,6 +147,7 @@ export default function HomeContainer() {
           <Banners images={[]} />
         </div>
 
+        {/* Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {displayedProducts.map((product) => (
             <Card
@@ -146,7 +161,7 @@ export default function HomeContainer() {
           ))}
         </div>
 
-        {/* Loading indicator */}
+        {/* --- 6. Loading More Indicator UI --- */}
         {loadingMore && (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center">
@@ -157,9 +172,11 @@ export default function HomeContainer() {
         )}
 
         {/* Observer target for Intersection Observer */}
-        <div ref={observerTarget} className="h-10"></div>
+        {/* Only visible when there's a chance of loading more */}
+        {hasMore && <div ref={observerTarget} className="h-10"></div>}
 
-        {/* Show load more button as fallback */}
+
+        {/* --- 7. Fallback "Load More" Button UI --- */}
         {hasMore && !loadingMore && (
           <div className="text-center py-8">
             <div className="mb-4 text-gray-600 text-sm">
@@ -175,7 +192,7 @@ export default function HomeContainer() {
           </div>
         )}
 
-        {/* All loaded message */}
+        {/* --- 8. All Loaded Message UI --- */}
         {!hasMore && allProducts.length > 0 && (
           <div className="text-center py-8">
             <div className="inline-block px-6 py-3 bg-green-100 text-green-800 rounded-full">
