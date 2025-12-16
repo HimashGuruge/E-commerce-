@@ -1,0 +1,120 @@
+
+import React, { useEffect, useState, useRef } from "react";
+import axios from "axios";
+
+const token = localStorage.getItem("token");
+
+export default function AiChatbot() {
+  const [messages, setMessages] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const messagesEndRef = useRef(null);
+
+  // Fetch messages on mount
+  useEffect(() => {
+    axios
+      .get("http://localhost:4000/api/messages/getMessages", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        setMessages(res.data.messages);
+      })
+      .catch((err) => console.log(err));
+  }, []);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Send message
+  function sendHandle() {
+    if (!input) return;
+
+    // Show message immediately
+    const newMessage = {
+      sender: "user",
+      text: input,
+      _id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, newMessage]);
+    setInput("");
+
+    // Send to backend
+    axios
+      .post(
+        "http://localhost:4000/api/messages/sendMessages",
+        { input },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      .then((res) => console.log(res.data))
+      .catch((err) => console.log(err));
+  }
+
+  return (
+    <>
+      {/* Floating Button */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-5 right-5 w-14 h-14 rounded-full bg-blue-600 text-white text-xl shadow-lg hover:bg-blue-700"
+        >
+          🤖
+        </button>
+      )}
+
+      {/* Chat Widget */}
+      {open && (
+        <div className="fixed bottom-5 right-5 w-80 h-[420px] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
+            <span className="font-semibold">AI Chatbot</span>
+            <button onClick={() => setOpen(false)}>✕</button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 p-3 text-sm text-gray-700 overflow-y-auto">
+            {messages.map((message) => (
+              <div key={message._id} className="flex">
+                <div
+                  className={`
+          mb-2 p-2 rounded-lg max-w-[70%] break-words whitespace-pre-wrap
+          ${
+            message.sender === "user"
+              ? "bg-blue-100 ml-auto text-right"
+              : "bg-gray-200 mr-auto text-left"
+          }
+        `}
+                >
+                  {message.text}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+          {/* Input */}
+          <div className="p-3 border-t flex gap-2">
+            <input
+              onChange={(e) => setInput(e.target.value)}
+              value={input}
+              type="text"
+              placeholder="Type a message..."
+              className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none"
+              onKeyDown={(e) => e.key === "Enter" && sendHandle()}
+            />
+            <button
+              onClick={sendHandle}
+              className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

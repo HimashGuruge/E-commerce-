@@ -12,7 +12,6 @@ export default function HomeContainer() {
   const [hasMore, setHasMore] = useState(true);
   const observerTarget = useRef(null);
 
-
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
@@ -35,9 +34,9 @@ export default function HomeContainer() {
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
-    
+
     setLoadingMore(true);
-    
+
     setTimeout(() => {
       const newCount = visibleCount + 8;
       setVisibleCount(newCount);
@@ -57,7 +56,7 @@ export default function HomeContainer() {
           loadMore();
         }
       },
-      { threshold: 0.5, rootMargin: '100px' }
+      { threshold: 0.5, rootMargin: "100px" }
     );
 
     const currentTarget = observerTarget.current;
@@ -80,15 +79,15 @@ export default function HomeContainer() {
       const scrollTop = document.documentElement.scrollTop;
       const scrollHeight = document.documentElement.scrollHeight;
       const clientHeight = document.documentElement.clientHeight;
-      
+
       // Load more when 300px from bottom
       if (scrollTop + clientHeight >= scrollHeight - 300) {
         loadMore();
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, loading, loadingMore, loadMore]);
 
   if (loading && displayedProducts.length === 0) {
@@ -101,51 +100,38 @@ export default function HomeContainer() {
 
   return (
     <div className="min-h-screen">
-
-      
-      
-        <div className="">
-
-
- <NewAdsTitles direction="left" speed={20}>
-  <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-    <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-    <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-
-
-
-</NewAdsTitles>
-
-
-
-
-
-
-
-          
-        </div>
+      <div className="">
+        <NewAdsTitles direction="left" speed={100}>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+        </NewAdsTitles>
+      </div>
       <div className="p-4 md:p-8">
-
-{/*banners casorle here */}
+        {/*banners casorle here */}
 
         <div className="mt-2">
           <Banners images={[]} />
         </div>
-
-
-
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {displayedProducts.map((product) => (
@@ -183,7 +169,8 @@ export default function HomeContainer() {
               onClick={loadMore}
               className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
             >
-              Load More ({allProducts.length - displayedProducts.length} remaining)
+              Load More ({allProducts.length - displayedProducts.length}{" "}
+              remaining)
             </button>
           </div>
         )}

@@ -1,110 +1,110 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function Marquee({
-  children,
+export default function Marquee({ 
+  children, 
   direction = 'left',
-  speed = 20, // lower = faster
+  speed = 50,
   pauseOnHover = true,
   gradient = true,
   className = ''
 }) {
   const [isPaused, setIsPaused] = useState(false);
   const marqueeRef = useRef(null);
-  const [contentWidth, setContentWidth] = useState(0);
 
-  // Measure content width dynamically
-  useEffect(() => {
-    if (marqueeRef.current) {
-      setContentWidth(marqueeRef.current.scrollWidth);
+  // Get keyframes based on direction
+  const getKeyframes = () => {
+    if (direction === 'right') {
+      return `
+        @keyframes marquee {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `;
+    } else {
+      return `
+        @keyframes marquee {
+          0% {
+            transform: translateX(100%);
+          }
+          100% {
+            transform: translateX(-100%);
+          }
+        }
+      `;
     }
-  }, [children]);
+  };
+
+  const containerStyle = {
+    position: 'relative',
+    overflow: 'hidden',
+    width: '100%',
+  };
+
+  const innerStyle = {
+    display: 'flex',
+    width: 'max-content',
+    whiteSpace: 'nowrap',
+    animation: `marquee ${speed}s linear infinite`,
+    animationPlayState: isPaused ? 'paused' : 'running',
+  };
+
+  const contentStyle = {
+    flexShrink: 0,
+    display: 'flex',
+  };
+
+  const gradientStyle = {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '100px',
+    pointerEvents: 'none',
+    zIndex: 2,
+  };
+
+  const gradientLeftStyle = {
+    ...gradientStyle,
+    left: 0,
+    background: 'linear-gradient(to right, white, transparent)',
+  };
+
+  const gradientRightStyle = {
+    ...gradientStyle,
+    right: 0,
+    background: 'linear-gradient(to left, white, transparent)',
+  };
 
   return (
-    <div
-      className={`marquee-container ${className}`}
+    <div 
+      className={className}
+      style={containerStyle}
       onMouseEnter={() => pauseOnHover && setIsPaused(true)}
       onMouseLeave={() => pauseOnHover && setIsPaused(false)}
     >
-      <div
-        className={`marquee-inner ${isPaused ? 'paused' : ''}`}
-        style={{
-          animation: `marquee ${speed}s linear infinite`,
-          animationDirection: direction === 'right' ? 'reverse' : 'normal'
-        }}
+      <style>{getKeyframes()}</style>
+      
+      <div 
+        style={innerStyle}
         ref={marqueeRef}
       >
-        <div className="marquee-content">
+        <div style={contentStyle}>
           {children}
         </div>
-        <div className="marquee-content" aria-hidden="true">
+        <div style={contentStyle} aria-hidden="true">
           {children}
         </div>
       </div>
-
+      
       {gradient && (
         <>
-          <div className="gradient-left"></div>
-          <div className="gradient-right"></div>
+          <div style={gradientLeftStyle}></div>
+          <div style={gradientRightStyle}></div>
         </>
       )}
-
-      <style jsx>{`
-        .marquee-container {
-          position: relative;
-          overflow: hidden;
-          width: 100%;
-        }
-
-        .marquee-inner {
-          display: flex;
-          width: max-content;
-        }
-
-        .marquee-inner.paused {
-          animation-play-state: paused;
-        }
-
-        .marquee-content {
-          flex-shrink: 0;
-          display: flex;
-        }
-
-        @keyframes marquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-
-        .gradient-left,
-        .gradient-right {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 100px;
-          pointer-events: none;
-          z-index: 2;
-        }
-
-        .gradient-left {
-          left: 0;
-          background: linear-gradient(to right, #fff, transparent);
-        }
-
-        .gradient-right {
-          right: 0;
-          background: linear-gradient(to left, #fff, transparent);
-        }
-
-        @media (max-width: 768px) {
-          .gradient-left,
-          .gradient-right {
-            width: 50px;
-          }
-        }
-      `}</style>
     </div>
   );
 }
