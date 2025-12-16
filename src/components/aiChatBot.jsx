@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 export default function AiChatbot() {
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -9,14 +10,16 @@ export default function AiChatbot() {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [aiTypingMessage, setAiTypingMessage] = useState(""); // Real-time typing
   const [showNotification, setShowNotification] = useState(false);
   const [adminMessageCount, setAdminMessageCount] = useState(0);
+
   const messagesEndRef = useRef(null);
   const recognition = useRef(null);
   const inputRef = useRef(null);
   const notificationSoundRef = useRef(null);
 
-  // Initialize notification sound
+  // Notification sound
   useEffect(() => {
     notificationSoundRef.current = new Audio(
       "https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"
@@ -24,51 +27,33 @@ export default function AiChatbot() {
     notificationSoundRef.current.volume = 0.3;
   }, []);
 
-  // Fetch messages and check for admin messages
+  // Fetch messages
   const fetchMessages = async () => {
     const currentToken = localStorage.getItem("token");
-    if (!currentToken) {
-      setMessages([]);
-      return;
-    }
+    if (!currentToken) return setMessages([]);
+
     try {
       const res = await axios.get("http://localhost:4000/api/messages/getMessages", {
         headers: { Authorization: `Bearer ${currentToken}` },
       });
       const fetchedMessages = res.data.messages || [];
       setMessages(fetchedMessages);
-      
-      // Check for admin messages (messages sent by admin)
-      const hasAdminMessage = fetchedMessages.some(msg => 
-        msg.text && msg.text.includes("admin:") || msg.text.includes("Admin:")
+
+      const hasAdminMessage = fetchedMessages.some(
+        msg => msg.text && (msg.text.includes("admin:") || msg.text.includes("Admin:"))
       );
-      
-      if (hasAdminMessage && !open) {
-        triggerAdminNotification();
-      }
+
+      if (hasAdminMessage && !open) triggerAdminNotification();
     } catch (err) {
       console.error("Error fetching messages:", err);
     }
   };
 
-  // Listen for auth changes
+  // Auth change listeners
   useEffect(() => {
-    const handleAuthChange = () => {
-      setToken(localStorage.getItem("token"));
-      fetchMessages();
-    };
-    
-    const handleLogout = () => {
-      setMessages([]);
-      setToken(null);
-    };
-
-    // Listen for admin messages (you can trigger this from backend)
-    const handleAdminMessage = (event) => {
-      if (event.detail && event.detail.adminMessage) {
-        triggerAdminNotification();
-      }
-    };
+    const handleAuthChange = () => { setToken(localStorage.getItem("token")); fetchMessages(); };
+    const handleLogout = () => { setMessages([]); setToken(null); };
+    const handleAdminMessage = (event) => { if (event.detail?.adminMessage) triggerAdminNotification(); };
 
     window.addEventListener("authChange", handleAuthChange);
     window.addEventListener("logout", handleLogout);
@@ -83,7 +68,7 @@ export default function AiChatbot() {
     };
   }, [open]);
 
-  // Setup speech recognition
+  // Speech recognition
   useEffect(() => {
     if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -98,7 +83,6 @@ export default function AiChatbot() {
         stopSpeaking();
         sendHandle(transcript, true);
       };
-
       recognition.current.onend = () => setListening(false);
     }
   }, []);
@@ -106,75 +90,64 @@ export default function AiChatbot() {
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, aiTypingMessage]);
 
-  // Focus input when chat opens
+  // Focus input
   useEffect(() => {
-    if (open && inputRef.current) {
-      setTimeout(() => inputRef.current.focus(), 100);
-    }
+    if (open && inputRef.current) setTimeout(() => inputRef.current.focus(), 100);
   }, [open]);
 
-  // Trigger admin notification
+  // Notifications
   const triggerAdminNotification = () => {
     setAdminMessageCount(prev => prev + 1);
     setShowNotification(true);
-    
-    // Play notification sound
-    if (notificationSoundRef.current) {
-      notificationSoundRef.current.play().catch(e => console.log("Sound play error:", e));
-    }
-    
-    // Auto-hide notification after 5 seconds
-    setTimeout(() => {
-      setShowNotification(false);
-    }, 5000);
+    notificationSoundRef.current?.play().catch(() => {});
+    setTimeout(() => setShowNotification(false), 5000);
   };
-
-  // Close notification
-  const closeNotification = () => {
-    setShowNotification(false);
-    setAdminMessageCount(0);
-  };
+  const closeNotification = () => { setShowNotification(false); setAdminMessageCount(0); };
 
   // Voice controls
   const handleVoice = () => {
     if (!recognition.current) return;
-    if (listening) {
-      recognition.current.stop();
-      setListening(false);
-    } else {
-      recognition.current.start();
-      setListening(true);
-      stopSpeaking();
-    }
+    if (listening) recognition.current.stop();
+    else { recognition.current.start(); stopSpeaking(); }
+    setListening(!listening);
   };
 
   const speakText = (text) => {
     if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
     setSpeaking(true);
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = "en-US";
+
+    const setFemaleVoiceAndSpeak = () => {
+      const voices = speechSynthesis.getVoices();
+      const femaleVoice = voices.find(v => v.lang.startsWith("en") && /female|zira|aria|susan|woman/i.test(v.name)) || voices.find(v => v.lang.startsWith("en"));
+      if (femaleVoice) utter.voice = femaleVoice;
+      utter.rate = 1;
+      utter.pitch = 1.1;
+      utter.volume = 1;
+      speechSynthesis.speak(utter);
+    };
+
     utter.onend = () => setSpeaking(false);
-    speechSynthesis.speak(utter);
+    utter.onerror = () => setSpeaking(false);
+
+    if (speechSynthesis.getVoices().length === 0) speechSynthesis.onvoiceschanged = setFemaleVoiceAndSpeak;
+    else setFemaleVoiceAndSpeak();
   };
 
-  const stopSpeaking = () => {
-    if ("speechSynthesis" in window && speechSynthesis.speaking) {
-      speechSynthesis.cancel();
-      setSpeaking(false);
-    }
-  };
+  const stopSpeaking = () => { if ("speechSynthesis" in window && speechSynthesis.speaking) { speechSynthesis.cancel(); setSpeaking(false); } };
 
-  // Fetch AI reply
+  // AI reply
   const fetchAiReply = async (userText) => {
     try {
       setIsTyping(true);
-      const currentToken = localStorage.getItem("token");
       const res = await axios.post(
         "http://localhost:4000/api/simai/reply",
         { query: userText },
-        { headers: { Authorization: `Bearer ${currentToken}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
       setIsTyping(false);
       return res.data.reply || "No response from AI.";
@@ -185,77 +158,68 @@ export default function AiChatbot() {
     }
   };
 
+  // Type AI message in real-time
+  const typeAiMessage = (fullText) => {
+    setAiTypingMessage("");
+    let index = 0;
+    const interval = setInterval(() => {
+      setAiTypingMessage(prev => prev + fullText[index]);
+      index++;
+      if (index >= fullText.length) clearInterval(interval);
+    }, 30);
+  };
+
   // Send message
   const sendHandle = async (voiceInput = null, isVoice = false) => {
     const textToSend = voiceInput || input;
     if (!textToSend?.trim()) return;
 
-    const newMessage = {
-      sender: "user",
-      text: textToSend,
-      _id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, newMessage]);
-    setInput("");
+    const isAdmin = textToSend.toLowerCase().includes("@admin");
+    const textAfterAdmin = isAdmin ? textToSend.split("@admin")[1]?.trim() : null;
 
-    // Admin message handling (user sending to admin)
-    if (textToSend.toLowerCase().includes("@admin")) {
-      const textAfterAdmin = textToSend.split("@admin")[1]?.trim();
-      if (!textAfterAdmin) {
-        console.error("You must type a message after @admin");
-        alert("You must type a message after @admin");
-        return;
-      }
-
-      try {
-        const currentToken = localStorage.getItem("token");
-        await axios.post(
-          "http://localhost:4000/api/simai/admin/message",
-          { message: textToSend },
-          { headers: { Authorization: `Bearer ${currentToken}`, "Content-Type": "application/json" } }
-        );
-      } catch (err) {
-        console.error("Admin endpoint error:", err);
-      }
-
-      const adminMessageObj = {
-        sender: "ai",
-        text: "✅ Your message has been sent to the admin. They will respond shortly.",
-        _id: (Date.now() + 1).toString(),
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, adminMessageObj]);
-      if (isVoice) speakText(adminMessageObj.text);
+    if (isAdmin && !textAfterAdmin) {
+      const warningMessage = { sender: "ai", text: "⚠️ Please type a message after @admin.", _id: Date.now().toString(), timestamp: new Date().toISOString() };
+      setMessages(prev => [...prev, warningMessage]);
+      if (isVoice) speakText(warningMessage.text);
       return;
     }
 
-    // Normal AI message
-    try {
-      const currentToken = localStorage.getItem("token");
-      await axios.post(
-        "http://localhost:4000/api/messages/sendMessages",
-        { input: textToSend },
-        { headers: { Authorization: `Bearer ${currentToken}` } }
-      );
-    } catch (err) {
-      console.error("Error sending user message:", err);
+    const newMessage = { sender: "user", text: textToSend, _id: Date.now().toString(), timestamp: new Date().toISOString() };
+    setMessages(prev => [...prev, newMessage]);
+    setInput("");
+
+    if (isAdmin) {
+      try {
+        await axios.post(
+          "http://localhost:4000/api/simai/admin/message",
+          { message: textToSend },
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Content-Type": "application/json" } }
+        );
+      } catch (err) { console.error("Admin endpoint error:", err); }
+
+      const adminConfirmMessage = { sender: "ai", text: "✅ Your message has been sent to the admin. They will respond shortly.", _id: (Date.now() + 1).toString(), timestamp: new Date().toISOString() };
+      setMessages(prev => [...prev, adminConfirmMessage]);
+      if (isVoice) speakText(adminConfirmMessage.text);
+      return;
     }
 
-    const aiText = await fetchAiReply(newMessage.text);
-    const aiMessage = {
-      sender: "ai",
-      text: aiText,
-      _id: (Date.now() + 2).toString(),
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, aiMessage]);
+    try { await axios.post("http://localhost:4000/api/messages/sendMessages", { input: textToSend }, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }); }
+    catch (err) { console.error("Error sending user message:", err); }
+
+    const aiText = await fetchAiReply(textToSend);
+    typeAiMessage(aiText);
     if (isVoice) speakText(aiText);
+
+    setTimeout(() => {
+      setMessages(prev => [...prev, { sender: "ai", text: aiText, _id: (Date.now() + 2).toString(), timestamp: new Date().toISOString() }]);
+      setAiTypingMessage("");
+    }, aiText.length * 30 + 50);
   };
 
+  // JSX rendering
   return (
     <>
-      {/* Admin Notification Alert */}
+      {/* Admin Notification */}
       {showNotification && !open && (
         <div className="fixed top-4 right-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-lg shadow-xl z-50 flex items-center gap-3 animate-slideIn">
           <div className="relative">
@@ -266,52 +230,23 @@ export default function AiChatbot() {
             <p className="font-medium">New message from admin!</p>
             <p className="text-sm opacity-90">Click the chat button to view</p>
           </div>
-          <button
-            onClick={closeNotification}
-            className="ml-2 p-1 hover:bg-white/20 rounded-full"
-          >
-            ✕
-          </button>
+          <button onClick={closeNotification} className="ml-2 p-1 hover:bg-white/20 rounded-full">✕</button>
         </div>
       )}
 
       {/* Floating Button */}
-      {!open && (<button
-  onClick={() => {
-    const currentToken = localStorage.getItem("token");
-    if (!currentToken) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          icon: "warning",
-          title: "Not Logged In",
-          text: "You need to log in to use the chatbot.",
-          showCancelButton: true,
-          confirmButtonText: "Go to Login",
-          cancelButtonText: "Cancel",
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "/login";
-          }
-        });
-      } else {
-        alert("Please login to use the chatbot");
-      }
-      return;
-    }
-    setOpen(true);
-    closeNotification(); // Close notification when opening chat
-  }}
-  className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 flex items-center justify-center z-40"
->
-  <div className="relative">
-    <span className="text-2xl">🤖</span>
-    {adminMessageCount > 0 && (
-      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
-        {adminMessageCount > 9 ? '9+' : adminMessageCount}
-      </span>
-    )}
-  </div>
-</button>)}
+      {!open && (
+        <button onClick={() => { const currentToken = localStorage.getItem("token"); if (!currentToken) { Swal.fire({ icon: "warning", title: "Not Logged In", text: "You need to log in to use the chatbot.", showCancelButton: true, confirmButtonText: "Go to Login", cancelButtonText: "Cancel", }).then((result) => { if (result.isConfirmed) window.location.href = "/login"; }); return; } setOpen(true); closeNotification(); }} className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 flex items-center justify-center z-40">
+          <div className="relative">
+            <span className="text-2xl">🤖</span>
+            {adminMessageCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
+                {adminMessageCount > 9 ? '9+' : adminMessageCount}
+              </span>
+            )}
+          </div>
+        </button>
+      )}
 
       {/* Chat Widget */}
       {open && (
@@ -320,12 +255,8 @@ export default function AiChatbot() {
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-5 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-lg">🤖</span>
-                </div>
-                {speaking && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
-                )}
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><span className="text-lg">🤖</span></div>
+                {speaking && <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>}
               </div>
               <div>
                 <h3 className="font-bold text-lg">AI Assistant</h3>
@@ -337,53 +268,31 @@ export default function AiChatbot() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={stopSpeaking}
-                disabled={!speaking}
-                className={`p-2 rounded-lg ${speaking ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-500 cursor-not-allowed'} transition-colors`}
-                title="Stop speaking"
-              >
-                <span className="text-sm">⏹</span>
-              </button>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
-                title="Close chat"
-              >
-                <span className="text-sm">✕</span>
-              </button>
+              <button onClick={stopSpeaking} disabled={!speaking} className={`p-2 rounded-lg ${speaking ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-500 cursor-not-allowed'} transition-colors`} title="Stop speaking"><span className="text-sm">⏹</span></button>
+              <button onClick={() => setOpen(false)} className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors" title="Close chat"><span className="text-sm">✕</span></button>
             </div>
           </div>
 
-          {/* Messages Container */}
+          {/* Messages */}
           <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
-            {messages.length === 0 ? (
+            {messages.length === 0 && !aiTypingMessage ? (
               <div className="h-full flex flex-col items-center justify-center text-gray-500 p-8">
                 <div className="text-4xl mb-4 opacity-50">👋</div>
                 <h3 className="text-lg font-semibold mb-2">Welcome to AI Assistant</h3>
-                <p className="text-center text-sm text-gray-600 mb-6">
-                  Start a conversation with me! I can help you with questions, explanations, and more.
-                </p>
-                <div className="text-xs text-gray-500">
-                  💡 Tip: Use <code className="bg-gray-200 px-2 py-1 rounded">@admin</code> to contact administrators
-                </div>
+                <p className="text-center text-sm text-gray-600 mb-6">Start a conversation with me! I can help you with questions, explanations, and more.</p>
+                <div className="text-xs text-gray-500">💡 Tip: Use <code className="bg-gray-200 px-2 py-1 rounded">@admin</code> to contact administrators</div>
               </div>
             ) : (
               <div className="space-y-3">
                 {messages.map((message) => (
-                  <div
-                    key={message._id}
-                    className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
-                        message.sender === "user"
-                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none"
-                          : message.text.includes("admin:") || message.text.includes("Admin:")
-                          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-bl-none border-l-4 border-yellow-400"
-                          : "bg-gradient-to-r from-gray-100 to-white border border-gray-200 rounded-bl-none"
-                      }`}
-                    >
+                  <div key={message._id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
+                      message.sender === "user"
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none"
+                        : message.text.includes("admin:") || message.text.includes("Admin:")
+                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-bl-none border-l-4 border-yellow-400"
+                        : "bg-gradient-to-r from-gray-100 to-white border border-gray-200 rounded-bl-none"
+                    }`}>
                       <div className="flex items-center gap-2 mb-1">
                         {message.text.includes("admin:") || message.text.includes("Admin:") ? (
                           <>
@@ -394,75 +303,48 @@ export default function AiChatbot() {
                           <span className="text-xs opacity-90">AI Assistant</span>
                         ) : null}
                       </div>
-                      <div className="whitespace-pre-wrap break-words text-sm">
-                        {message.text.replace("admin:", "").replace("Admin:", "").trim()}
-                      </div>
+                      <div className="whitespace-pre-wrap break-words text-sm">{message.text.replace("admin:", "").replace("Admin:", "").trim()}</div>
                       <div className={`text-xs mt-2 ${message.sender === "user" ? "text-blue-200" : "text-gray-300"}`}>
-                        {new Date(message.timestamp).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         {message.sender === "user" && message.text.includes("@admin") && (
-                          <span className="ml-2 px-2 py-0.5 bg-blue-700 rounded-full text-xs">
-                            To Admin
-                          </span>
+                          <span className="ml-2 px-2 py-0.5 bg-blue-700 rounded-full text-xs">To Admin</span>
                         )}
                       </div>
                     </div>
                   </div>
                 ))}
-                
+
+                {/* Real-time AI typing */}
+                {aiTypingMessage && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] rounded-2xl rounded-bl-none p-4 bg-gradient-to-r from-gray-100 to-white border border-gray-200 shadow-sm text-sm whitespace-pre-wrap break-words">{aiTypingMessage}</div>
+                  </div>
+                )}
+
                 {isTyping && (
                   <div className="flex justify-start">
                     <div className="max-w-[80%] rounded-2xl rounded-bl-none p-4 bg-gradient-to-r from-gray-100 to-white border border-gray-200 shadow-sm">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full" style={{animationDelay: '0.4s'}}></div>
                       </div>
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
             )}
           </div>
 
-          {/* Input Area */}
+          {/* Input */}
           <div className="p-4 border-t border-gray-200 bg-white">
             <div className="flex gap-2">
-              <button
-                onClick={handleVoice}
-                className={`p-2.5 rounded-full flex-shrink-0 transition-all ${
-                  listening 
-                    ? "animate-pulse bg-red-100 text-red-600 border-2 border-red-300" 
-                    : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                }`}
-                title={listening ? "Stop listening" : "Start voice input"}
-              >
-                {listening ? "⏹" : "🎤"}
-              </button>
-              
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                type="text"
-                placeholder="Type your message..."
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
-                onKeyDown={(e) => e.key === "Enter" && sendHandle()}
-              />
-              
-              <button
-                onClick={() => sendHandle()}
-                disabled={!input.trim() || isTyping}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium flex-shrink-0"
-              >
-                Send
-              </button>
+              <button onClick={handleVoice} className={`p-2.5 rounded-full flex-shrink-0 transition-all ${listening ? "animate-pulse bg-red-100 text-red-600 border-2 border-red-300" : "bg-gray-100 hover:bg-gray-200 text-gray-700"}`} title={listening ? "Stop listening" : "Start voice input"}>{listening ? "⏹" : "🎤"}</button>
+              <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} type="text" placeholder="Type your message..." className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" onKeyDown={(e) => e.key === "Enter" && sendHandle()}/>
+              <button onClick={() => sendHandle()} disabled={!input.trim() || isTyping} className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium flex-shrink-0">Send</button>
             </div>
-            
             <div className="mt-2 text-xs text-gray-500 flex justify-between px-1">
               <span>Press Enter to send</span>
               <span>Shift+Enter for new line</span>
@@ -471,24 +353,13 @@ export default function AiChatbot() {
         </div>
       )}
 
-      {/* Add animation styles */}
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-          .animate-slideIn {
-            animation: slideIn 0.3s ease-out;
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes slideIn {
+          0% { transform: translateX(100%); opacity: 0; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slideIn { animation: slideIn 0.5s ease-out forwards; }
+      `}</style>
     </>
   );
 }
