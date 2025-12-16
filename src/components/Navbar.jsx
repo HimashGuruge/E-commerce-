@@ -2,21 +2,25 @@ import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HiMenu, HiX } from "react-icons/hi";
+import { FiBell } from "react-icons/fi";
+import axios from "axios";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
-  // Check authentication
-  const authcheck = () => {
+  // 🔐 Auth check
+  const authCheck = () => {
     const token = localStorage.getItem("token");
     if (!token) {
       setUser(null);
       setIsAdmin(false);
       return;
     }
+
     try {
       const decoded = jwtDecode(token);
       setUser(decoded);
@@ -27,110 +31,170 @@ export default function Navbar() {
     }
   };
 
+  // 🔔 Fetch notifications (ADMIN ONLY)
+  const fetchNotifications = async () => {
+    if (!isAdmin) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await axios.get(
+        "http://localhost:4000/api/notifications",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      let totalUnread = 0;
+      if (res.data.adminMessages)
+        totalUnread += res.data.adminMessages.length;
+
+      setUnreadCount(totalUnread);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
   useEffect(() => {
-    authcheck();
-    window.addEventListener("authChange", authcheck);
-    return () => window.removeEventListener("authChange", authcheck);
+    authCheck();
+    window.addEventListener("authChange", authCheck);
+    return () => window.removeEventListener("authChange", authCheck);
   }, []);
 
-  // Logout handler dispatches events
+  useEffect(() => {
+    if (isAdmin) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
+
+  // 🚪 Logout
   const handleLogout = () => {
     localStorage.removeItem("token");
     setUser(null);
     setIsAdmin(false);
-
-    // Dispatch authChange and logout events
     window.dispatchEvent(new Event("authChange"));
-    window.dispatchEvent(new Event("logout"));
-
     navigate("/login");
   };
+
+  const userId = user?.id || "";
 
   return (
     <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
       <div className="flex justify-between items-center">
         {/* Brand */}
-        <Link
-          to="/"
-          className="text-xl font-bold text-gray-800 hover:text-blue-600 transition"
-        >
+        <Link to="/" className="text-xl font-bold text-gray-800">
           MyBrand
         </Link>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Menu */}
         <div className="hidden md:flex gap-6 items-center">
-          <Link to="/" className="text-gray-700 hover:text-blue-600 transition">Home</Link>
-          <Link to="/about" className="text-gray-700 hover:text-blue-600 transition">About</Link>
-          <Link to="/contact" className="text-gray-700 hover:text-blue-600 transition">Contact</Link>
-          <Link to="/service" className="text-gray-700 hover:text-blue-600 transition">Service</Link>
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
+          <Link to="/contact">Contact</Link>
+          <Link to="/service">Service</Link>
 
-          <Link to={`/viewcart?userId=${user ? user.id : ""}`} className="text-gray-700 hover:text-blue-600 transition">Cart</Link>
-          <Link to={`/orders?userId=${user ? user.id : ""}`} className="text-gray-700 hover:text-blue-600 transition">Orders</Link>
+          {user && (
+            <>
+              <Link to={`/viewcart?userId=${userId}`}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`}>Orders</Link>
+            </>
+          )}
 
+          {/* 🔔 ADMIN NOTIFICATION BELL ONLY */}
           {isAdmin && (
-            <Link to="/admin/dashboard" className="text-gray-700 hover:text-blue-600 transition">
-              Admin Dashboard
+            <Link
+              to="/admin/dashboard/notification"
+              className="relative"
+            >
+              <FiBell className="text-xl" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
           )}
 
+          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
+
           {user ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <img
                 src={user.profileImage || "/default-avatar.png"}
-                alt={user.name || "User profile"}
-                className="w-10 h-10 rounded-full object-cover border shadow-sm"
+                alt="profile"
+                className="w-9 h-9 rounded-full"
               />
-              <Link to={`/profile?userId=${user.id}`} className="text-gray-700 hover:text-blue-600 font-medium transition">
-                Profile
-              </Link>
+              <Link to={`/profile?userId=${userId}`}>Profile</Link>
               <button
                 onClick={handleLogout}
-                className="px-4 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+                className="bg-red-500 text-white px-3 py-1 rounded"
               >
                 Logout
               </button>
             </div>
           ) : (
-            <div className="flex gap-4">
-              <Link to="/login" className="text-gray-700 hover:text-blue-600 font-medium transition">Login</Link>
-              <Link to="/register" className="text-gray-700 hover:text-blue-600 font-medium transition">Register</Link>
-            </div>
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+            </>
           )}
         </div>
 
-        {/* Mobile Hamburger */}
-        <button className="md:hidden text-2xl text-gray-700" onClick={() => setMenuOpen(!menuOpen)}>
+        {/* Mobile Toggle */}
+        <button
+          className="md:hidden text-2xl"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
           {menuOpen ? <HiX /> : <HiMenu />}
         </button>
       </div>
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="md:hidden mt-4 flex flex-col gap-4 bg-white p-4 rounded shadow-md">
+        <div className="md:hidden mt-4 flex flex-col gap-4 bg-white p-4 rounded shadow">
           <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
           <Link to="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
           <Link to="/service" onClick={() => setMenuOpen(false)}>Service</Link>
-          <Link to={`/viewcart?userId=${user ? user.id : ""}`} onClick={() => setMenuOpen(false)}>Cart</Link>
+
+          {user && (
+            <>
+              <Link to={`/viewcart?userId=${userId}`}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`}>Orders</Link>
+            </>
+          )}
+
+          {/* 🔔 ADMIN ONLY (mobile) */}
+          {isAdmin && (
+            <Link
+              to="/admin/dashboard/notification"
+              onClick={() => setMenuOpen(false)}
+            >
+              Notifications ({unreadCount})
+            </Link>
+          )}
 
           {isAdmin && (
-            <Link to="/admin/dashboard" onClick={() => setMenuOpen(false)}>Admin Dashboard</Link>
+            <Link to="/admin/dashboard">Admin Dashboard</Link>
           )}
 
           {user ? (
             <>
-              <Link to={`/profile?userId=${user.id}`} onClick={() => setMenuOpen(false)}>Profile</Link>
+              <Link to={`/profile?userId=${userId}`}>Profile</Link>
               <button
-                onClick={() => { handleLogout(); setMenuOpen(false); }}
-                className="px-4 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-3 py-1 rounded"
               >
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" onClick={() => setMenuOpen(false)}>Login</Link>
-              <Link to="/register" onClick={() => setMenuOpen(false)}>Register</Link>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
             </>
           )}
         </div>

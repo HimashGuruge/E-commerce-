@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ImageSlider from "@/components/imageSlider";
 import { addToCart } from "../utils/cart";
-import { FiShoppingCart, FiPackage, FiTag, FiInfo, FiArrowLeft, FiStar, FiTruck, FiShield } from "react-icons/fi";
-import { MdLocalOffer, MdOutlineInventory2 } from "react-icons/md";
+import { FiShoppingCart, FiTag, FiInfo, FiArrowLeft, FiTruck, FiShield } from "react-icons/fi";
+import { MdOutlineInventory2 } from "react-icons/md";
 import Swal from "sweetalert2";
 
 export default function ProductOverview() {
@@ -13,7 +13,6 @@ export default function ProductOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState([]);
   const [addingToCart, setAddingToCart] = useState(false);
   const navigate = useNavigate();
 
@@ -27,9 +26,6 @@ export default function ProductOverview() {
         
         if (response.data && response.data.product) {
           setProduct(response.data);
-          
-          // Fetch related products (same category)
-          fetchRelatedProducts(response.data.product.category, response.data.product.productId);
         } else {
           setError("Product data not found");
         }
@@ -43,21 +39,6 @@ export default function ProductOverview() {
 
     fetchProduct();
   }, [productId]);
-
-  const fetchRelatedProducts = async (category, currentProductId) => {
-    try {
-      const response = await axios.get(`http://localhost:4000/api/products/category/${category}`);
-      if (Array.isArray(response.data)) {
-        // Filter out current product and limit to 4 related products
-        const filtered = response.data
-          .filter(p => p.productId !== currentProductId)
-          .slice(0, 4);
-        setRelatedProducts(filtered);
-      }
-    } catch (err) {
-      console.error("Error fetching related products:", err);
-    }
-  };
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
@@ -223,41 +204,8 @@ export default function ProductOverview() {
                   <MdOutlineInventory2 className="text-purple-600" />
                   <span className="text-sm font-medium">In Stock: {data.stock}</span>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg">
-                  <FiPackage className="text-amber-600" />
-                  <span className="text-sm font-medium">Easy Returns</span>
-                </div>
               </div>
             </div>
-
-            {/* Related Products */}
-            {relatedProducts.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <FiStar className="text-amber-500" />
-                  Related Products
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {relatedProducts.map((related) => (
-                    <div 
-                      key={related.productId}
-                      className="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/productoverview/${related.productId}`)}
-                    >
-                      <img 
-                        src={related.images?.[0] || '/placeholder-image.jpg'} 
-                        alt={related.productName}
-                        className="w-full h-24 object-cover rounded mb-2"
-                      />
-                      <p className="text-sm font-medium text-gray-800 truncate">{related.productName}</p>
-                      <p className="text-green-600 font-bold text-sm">
-                        {formatPrice(related.lastPrices || related.price)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Column - Product Details */}
@@ -277,27 +225,12 @@ export default function ProductOverview() {
                 {data.productName}
               </h1>
 
-              {/* Alternate Names */}
-              {data.altNames && data.altNames.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-500 mb-1">Also known as:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.altNames.map((name, index) => (
-                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Price Section */}
               <div className="mb-6">
                 <div className="flex items-center gap-4 mb-2">
                   <span className="text-4xl font-bold text-green-600">
                     {formatPrice(data.lastPrices)}
                   </span>
-                  
                   {hasDiscount && (
                     <>
                       <span className="text-2xl text-gray-400 line-through">
@@ -309,15 +242,6 @@ export default function ProductOverview() {
                     </>
                   )}
                 </div>
-                
-                {/* Price per unit */}
-                <p className="text-sm text-gray-500">
-                  {quantity > 1 && (
-                    <>
-                      {formatPrice(data.lastPrices)} each • Total: {formatPrice(data.lastPrices * quantity)}
-                    </>
-                  )}
-                </p>
               </div>
 
               {/* Stock Status */}
