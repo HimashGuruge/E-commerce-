@@ -83,26 +83,27 @@ export default function Dashboard() {
     }
   };
 
-const fetchNotifications = useCallback(async () => {
-  if (!user || user.role !== "admin") return;
+  // Fetch unread notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user || user.role !== "admin") return;
 
-  const token = localStorage.getItem("token");
-  if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  try {
-    const res = await axios.get("http://localhost:4000/api/notifications", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      const res = await axios.get("http://localhost:4000/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    // Use `isRead` field from your AdminMessage model
-    const adminNotifications = res.data.adminMessages || [];
-    const totalUnread = adminNotifications.filter((n) => !n.isRead).length;
+      // Use 'isRead' instead of 'read'
+      const adminNotifications = res.data.adminMessages || [];
+      const totalUnread = adminNotifications.filter((n) => !n.isRead).length;
 
-    setUnreadCount(totalUnread);
-  } catch (err) {
-    console.error("Error fetching notifications:", err);
-  }
-}, [user]);
+      setUnreadCount(totalUnread);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  }, [user]);
 
   useEffect(() => {
     authcheck();
@@ -270,28 +271,25 @@ const fetchNotifications = useCallback(async () => {
             </Link>
 
             <Link
-  to="/admin/dashboard/notification"
-  className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-  onClick={() => {
-    setMobileOpen(false);
-    setUnreadCount(0); // reset unread badge on click
-  }}
->
-  <div className="text-red-600 relative">
-    <MdNotifications size={20} />
-    {unreadCount > 0 && (
-      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-        {unreadCount > 9 ? "9+" : unreadCount}
-      </span>
-    )}
-  </div>
-  <span>Notifications</span>
-  {unreadCount > 0 && (
-    <span className="ml-auto bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
-      {unreadCount} new
-    </span>
-  )}
-</Link>
+              to="/admin/dashboard/notification"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
+              onClick={() => setMobileOpen(false)}
+            >
+              <div className="text-red-600 relative">
+                <MdNotifications size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-auto bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
+                  {unreadCount} new
+                </span>
+              )}
+            </Link>
 
             {/* Analytics */}
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider my-4 px-2">
@@ -490,7 +488,12 @@ const fetchNotifications = useCallback(async () => {
 // Simple StatCard component for the overview page
 const StatCard = ({ icon, title, value, color }) => (
   <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 flex items-center space-x-4">
-    <div className={`p-3 rounded-full bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
+    <div
+      className={`p-3 rounded-full bg-opacity-10 ${color.replace(
+        "text-",
+        "bg-"
+      )}`}
+    >
       {React.cloneElement(icon, { className: color })}
     </div>
     <div>

@@ -2,14 +2,12 @@ import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HiMenu, HiX } from "react-icons/hi";
-import { FiBell } from "react-icons/fi";
-import axios from "axios";
+import NotificationsDropdown from "@/components/utils/NotificationsDropdown";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   // 🔐 Auth check
@@ -31,44 +29,11 @@ export default function Navbar() {
     }
   };
 
-  // 🔔 Fetch notifications (ADMIN ONLY)
-  const fetchNotifications = async () => {
-    if (!isAdmin) return;
-
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const res = await axios.get(
-        "http://localhost:4000/api/notifications",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      let totalUnread = 0;
-      if (res.data.adminMessages)
-        totalUnread += res.data.adminMessages.length;
-
-      setUnreadCount(totalUnread);
-    } catch (err) {
-      console.error("Error fetching notifications:", err);
-    }
-  };
-
   useEffect(() => {
     authCheck();
     window.addEventListener("authChange", authCheck);
     return () => window.removeEventListener("authChange", authCheck);
   }, []);
-
-  useEffect(() => {
-    if (isAdmin) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [isAdmin]);
 
   // 🚪 Logout
   const handleLogout = () => {
@@ -103,21 +68,8 @@ export default function Navbar() {
             </>
           )}
 
-          {/* 🔔 ADMIN NOTIFICATION BELL ONLY */}
-          {isAdmin && (
-            <Link
-              to="/admin/dashboard/notification"
-              className="relative"
-            >
-              <FiBell className="text-xl" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-          )}
-
+          {/* Admin notifications */}
+          {isAdmin && <NotificationsDropdown />}
           {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
 
           {user ? (
@@ -162,24 +114,17 @@ export default function Navbar() {
 
           {user && (
             <>
-              <Link to={`/viewcart?userId=${userId}`}>Cart</Link>
-              <Link to={`/orders?userId=${userId}`}>Orders</Link>
+              <Link to={`/viewcart?userId=${userId}`} onClick={() => setMenuOpen(false)}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`} onClick={() => setMenuOpen(false)}>Orders</Link>
             </>
           )}
 
-          {/* 🔔 ADMIN ONLY (mobile) */}
           {isAdmin && (
-            <Link
-              to="/admin/dashboard/notification"
-              onClick={() => setMenuOpen(false)}
-            >
-              Notifications ({unreadCount})
+            <Link to="/admin/dashboard/notification" onClick={() => setMenuOpen(false)}>
+              Notifications
             </Link>
           )}
-
-          {isAdmin && (
-            <Link to="/admin/dashboard">Admin Dashboard</Link>
-          )}
+          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
 
           {user ? (
             <>
