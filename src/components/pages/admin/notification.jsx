@@ -115,6 +115,10 @@ export default function Notification() {
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
+
+ 
+
+
     } catch (err) {
       console.error("Failed to mark as read", err);
     }

@@ -83,29 +83,26 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch unread notifications
-  // 🔔 Fetch notifications (ADMIN ONLY)
-  const fetchNotifications = useCallback(async () => {
-    // Only fetch if the user is verified and an admin
-    if (!user || user.role !== "admin") return;
+const fetchNotifications = useCallback(async () => {
+  if (!user || user.role !== "admin") return;
 
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-    try {
-      const res = await axios.get("http://localhost:4000/api/notifications", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  try {
+    const res = await axios.get("http://localhost:4000/api/notifications", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      // Assuming each notification has a `read` boolean field
-      const adminNotifications = res.data.adminMessages || [];
-      const totalUnread = adminNotifications.filter((n) => !n.read).length;
+    // Use `isRead` field from your AdminMessage model
+    const adminNotifications = res.data.adminMessages || [];
+    const totalUnread = adminNotifications.filter((n) => !n.isRead).length;
 
-      setUnreadCount(totalUnread);
-    } catch (err) {
-      console.error("Error fetching notifications:", err);
-    }
-  }, [user]); // Dependency on 'user' is key
+    setUnreadCount(totalUnread);
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
+  }
+}, [user]);
 
   useEffect(() => {
     authcheck();
@@ -273,25 +270,28 @@ export default function Dashboard() {
             </Link>
 
             <Link
-              to="/admin/dashboard/notification"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-              onClick={() => setMobileOpen(false)}
-            >
-              <div className="text-red-600 relative">
-                <MdNotifications size={20} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </div>
-              <span>Notifications</span>
-              {unreadCount > 0 && (
-                <span className="ml-auto bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
-                  {unreadCount} new
-                </span>
-              )}
-            </Link>
+  to="/admin/dashboard/notification"
+  className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
+  onClick={() => {
+    setMobileOpen(false);
+    setUnreadCount(0); // reset unread badge on click
+  }}
+>
+  <div className="text-red-600 relative">
+    <MdNotifications size={20} />
+    {unreadCount > 0 && (
+      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+        {unreadCount > 9 ? "9+" : unreadCount}
+      </span>
+    )}
+  </div>
+  <span>Notifications</span>
+  {unreadCount > 0 && (
+    <span className="ml-auto bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
+      {unreadCount} new
+    </span>
+  )}
+</Link>
 
             {/* Analytics */}
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider my-4 px-2">
