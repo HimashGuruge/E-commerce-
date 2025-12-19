@@ -33,7 +33,6 @@ export default function AiChatbot() {
       const fetchedMessages = res.data.messages || [];
       setMessages(fetchedMessages);
 
-      // trigger notification if last message is from admin
       const lastMsg = fetchedMessages.at(-1);
       if (lastMsg?.sender === "admin" && !open) {
         triggerAdminNotification();
@@ -264,15 +263,28 @@ export default function AiChatbot() {
     }, aiText.length * 30 + 50);
   };
 
-  /* 🧠 UI */
   return (
     <>
+      {/* Hidden audio element for notification sound (optional) */}
+      <audio ref={notificationSoundRef} src="/notification.mp3" preload="auto" />
+
+      {/* Notification Badge - Glassmorphism */}
       {showNotification && !open && (
-        <div className="fixed top-4 right-6 bg-purple-600 text-white px-4 py-3 rounded-lg shadow-xl z-50">
-          🔔 New message from admin
+        <div className="fixed top-4 right-6 z-50 animate-bounce">
+          <div className="relative">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white px-5 py-3 rounded-xl shadow-2xl backdrop-blur-md border border-white/20 flex items-center gap-2 font-medium">
+              🔔 New message from admin
+              {adminMessageCount > 1 && (
+                <span className="bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {adminMessageCount}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Floating AI Button - Glassmorphism Inspired */}
       {!open && (
         <button
           onClick={() => {
@@ -287,32 +299,41 @@ export default function AiChatbot() {
             setOpen(true);
             closeNotification();
           }}
-          className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-blue-600 text-white text-2xl shadow-xl"
+          className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-2xl shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center z-40 hover:scale-105 active:scale-95"
+          aria-label="Open AI Assistant"
         >
           🤖
         </button>
       )}
 
+      {/* Chat Window - Full Glass Effect */}
       {open && (
-        <div className="fixed bottom-6 right-6 w-96 h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col">
-          <div className="bg-blue-600 text-white px-5 py-4 flex justify-between">
-            <span>AI Assistant</span>
-            <button onClick={() => setOpen(false)}>✕</button>
+        <div className="fixed bottom-6 right-6 w-96 h-[550px] rounded-2xl overflow-hidden backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl flex flex-col z-40">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-4 flex justify-between items-center">
+            <span className="font-semibold">AI Assistant</span>
+            <button
+              onClick={() => setOpen(false)}
+              className="text-white hover:text-gray-200 text-xl w-7 h-7 flex items-center justify-center rounded-full hover:bg-black/10 transition"
+            >
+              ✕
+            </button>
           </div>
 
-          <div className="flex-1 p-4 overflow-y-auto">
+          {/* Messages Area */}
+          <div className="flex-1 p-4 overflow-y-auto bg-white/5 backdrop-blur-sm">
             {messages.map((m) => (
               <div
                 key={m._id}
-                className={`mb-2 flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
+                className={`mb-3 flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`px-4 py-2 rounded-lg text-sm ${
+                  className={`px-4 py-2.5 rounded-2xl max-w-[80%] text-sm font-medium ${
                     m.sender === "user"
-                      ? "bg-blue-600 text-white"
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-md"
                       : m.sender === "admin"
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-200"
+                      ? "bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white rounded-bl-md"
+                      : "bg-white/20 text-gray-800 backdrop-blur-sm border border-white/30 rounded-tl-md"
                   }`}
                 >
                   {m.text}
@@ -320,28 +341,77 @@ export default function AiChatbot() {
               </div>
             ))}
 
-            {aiTypingMessage && (
-              <div className="bg-gray-200 px-4 py-2 rounded-lg text-sm">{aiTypingMessage}</div>
-            )}
+            {/* Typing Indicator */}
+            {aiTypingMessage ? (
+              <div className="flex justify-start mb-3">
+                <div className="px-4 py-2.5 bg-white/20 text-gray-800 backdrop-blur-sm border border-white/30 rounded-2xl rounded-tl-md text-sm">
+                  {aiTypingMessage}
+                </div>
+              </div>
+            ) : isTyping ? (
+              <div className="flex justify-start mb-3">
+                <div className="px-4 py-2.5 bg-white/20 text-gray-500 backdrop-blur-sm border border-white/30 rounded-2xl rounded-tl-md">
+                  <div className="flex space-x-1">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 border-t flex gap-2">
-            <button onClick={handleVoice}>{listening ? "⏹" : "🎤"}</button>
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendHandle()}
-              className="flex-1 border rounded px-3 py-2"
-              placeholder="Type a message..."
-            />
-            <button onClick={() => sendHandle()} className="bg-blue-600 text-white px-4 rounded">
-              Send
-            </button>
+          {/* Input Area */}
+          <div className="p-4 border-t border-white/20 bg-white/5 backdrop-blur">
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={handleVoice}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                  listening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-white/20 hover:bg-white/30 text-gray-700"
+                }`}
+                aria-label={listening ? "Stop listening" : "Start voice input"}
+              >
+                {listening ? "⏹" : "🎤"}
+              </button>
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendHandle()}
+                className="flex-1 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+                placeholder="Type a message..."
+              />
+              <button
+                onClick={() => sendHandle()}
+                disabled={!input.trim()}
+                className={`px-4 py-2.5 rounded-xl font-medium transition ${
+                  input.trim()
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90"
+                    : "bg-gray-300/50 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                Send
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Custom Styles for Glass & Animation (in case Tailwind doesn't cover everything) */}
+      <style jsx>{`
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+          100% { transform: translateY(0px); }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+      `}</style>
     </>
   );
 }
