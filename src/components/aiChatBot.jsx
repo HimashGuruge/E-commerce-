@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { Send, Mic, MicOff, X, Volume2, VolumeX, Paperclip, Smile } from "lucide-react";
 
 export default function AiChatbot() {
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -18,6 +19,7 @@ export default function AiChatbot() {
   const recognition = useRef(null);
   const inputRef = useRef(null);
   const notificationSoundRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   /* 📥 Fetch messages */
   const fetchMessages = async () => {
@@ -96,12 +98,18 @@ export default function AiChatbot() {
     }
   }, [open]);
 
-  /* 🔔 Notifications */
+  /* 🔔 Enhanced Notifications */
   const triggerAdminNotification = () => {
     setAdminMessageCount((p) => p + 1);
     setShowNotification(true);
     notificationSoundRef.current?.play().catch(() => {});
-    setTimeout(() => setShowNotification(false), 5000);
+    
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+      if (showNotification) {
+        setShowNotification(false);
+      }
+    }, 8000);
   };
 
   const closeNotification = () => {
@@ -112,8 +120,9 @@ export default function AiChatbot() {
   /* 🎙 Voice controls */
   const handleVoice = () => {
     if (!recognition.current) return;
-    if (listening) recognition.current.stop();
-    else {
+    if (listening) {
+      recognition.current.stop();
+    } else {
       recognition.current.start();
       stopSpeaking();
     }
@@ -154,6 +163,17 @@ export default function AiChatbot() {
     if (speechSynthesis.speaking) {
       speechSynthesis.cancel();
       setSpeaking(false);
+    }
+  };
+
+  const toggleSpeech = () => {
+    if (speaking) {
+      stopSpeaking();
+    } else if (messages.length > 0) {
+      const lastAiMessage = [...messages].reverse().find(m => m.sender === 'ai');
+      if (lastAiMessage) {
+        speakText(lastAiMessage.text);
+      }
     }
   };
 
@@ -263,28 +283,54 @@ export default function AiChatbot() {
     }, aiText.length * 30 + 50);
   };
 
+  /* 💬 Quick suggestions */
+  const quickSuggestions = [
+    "Hello! 👋",
+    "How can you help me?",
+    "What can you do?",
+    "Tell me about features"
+  ];
+
+  const handleQuickSuggestion = (text) => {
+    setInput(text);
+  };
+
   return (
     <>
-      {/* Hidden audio element for notification sound (optional) */}
       <audio ref={notificationSoundRef} src="/notification.mp3" preload="auto" />
 
-      {/* Notification Badge - Glassmorphism */}
+      {/* Enhanced Notification */}
       {showNotification && !open && (
-        <div className="fixed top-4 right-6 z-50 animate-bounce">
-          <div className="relative">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white px-5 py-3 rounded-xl shadow-2xl backdrop-blur-md border border-white/20 flex items-center gap-2 font-medium">
-              🔔 New message from admin
-              {adminMessageCount > 1 && (
-                <span className="bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                  {adminMessageCount}
-                </span>
-              )}
+        <div className="fixed top-6 right-6 z-50 animate-fade-in">
+          <div className="relative group">
+            <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-lg border border-white/30 flex items-center gap-3 font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+              <div className="relative">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                  🔔
+                </div>
+                {adminMessageCount > 1 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-lg">
+                    {adminMessageCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">New message from admin</p>
+                <p className="text-white/80 text-sm">Click to open chat</p>
+              </div>
+              <button
+                onClick={closeNotification}
+                className="text-white/70 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full"
+              >
+                <X size={18} />
+              </button>
             </div>
+            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gradient-to-r from-purple-600 to-blue-600 rotate-45 rounded-sm"></div>
           </div>
         </div>
       )}
 
-      {/* Floating AI Button - Glassmorphism Inspired */}
+      {/* Enhanced Floating Button */}
       {!open && (
         <button
           onClick={() => {
@@ -293,123 +339,273 @@ export default function AiChatbot() {
                 icon: "warning",
                 title: "Not Logged In",
                 text: "Please log in first",
+                background: '#1f2937',
+                color: '#fff',
+                confirmButtonColor: '#3b82f6',
               });
               return;
             }
             setOpen(true);
             closeNotification();
           }}
-          className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-2xl shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center z-40 hover:scale-105 active:scale-95"
+          className="fixed bottom-8 right-8 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 flex flex-col items-center justify-center z-40 hover:scale-110 active:scale-95 group animate-float"
           aria-label="Open AI Assistant"
         >
-          🤖
+          <div className="relative">
+            <div className="text-3xl">🤖</div>
+            {showNotification && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping"></div>
+            )}
+          </div>
+          <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+            AI Assistant
+          </span>
         </button>
       )}
 
-      {/* Chat Window - Full Glass Effect */}
+      {/* Enhanced Chat Window */}
       {open && (
-        <div className="fixed bottom-6 right-6 w-96 h-[550px] rounded-2xl overflow-hidden backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl flex flex-col z-40">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-4 flex justify-between items-center">
-            <span className="font-semibold">AI Assistant</span>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-white hover:text-gray-200 text-xl w-7 h-7 flex items-center justify-center rounded-full hover:bg-black/10 transition"
-            >
-              ✕
-            </button>
+        <div 
+          ref={chatContainerRef}
+          className="fixed bottom-8 right-8 w-[420px] h-[600px] rounded-3xl overflow-hidden backdrop-blur-xl bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 border border-white/20 shadow-2xl flex flex-col z-40 transition-all duration-300"
+        >
+          {/* Enhanced Header */}
+          <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-5 flex justify-between items-center border-b border-white/20">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <div className="text-xl">🤖</div>
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">AI Assistant</h2>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-white/80">Online</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSpeech}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                title={speaking ? "Stop speech" : "Read last message"}
+              >
+                {speaking ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 p-4 overflow-y-auto bg-white/5 backdrop-blur-sm">
-            {messages.map((m) => (
-              <div
-                key={m._id}
-                className={`mb-3 flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
-              >
+          {/* Enhanced Messages Area */}
+          <div className="flex-1 p-5 overflow-y-auto bg-gradient-to-b from-transparent to-gray-900/50">
+            <div className="space-y-4">
+              {messages.map((m) => (
                 <div
-                  className={`px-4 py-2.5 rounded-2xl max-w-[80%] text-sm font-medium ${
-                    m.sender === "user"
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-md"
-                      : m.sender === "admin"
-                      ? "bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white rounded-bl-md"
-                      : "bg-white/20 text-gray-800 backdrop-blur-sm border border-white/30 rounded-tl-md"
-                  }`}
+                  key={m._id}
+                  className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"} animate-slide-in`}
                 >
-                  {m.text}
-                </div>
-              </div>
-            ))}
+                  <div className={`flex flex-col max-w-[85%] ${m.sender === "user" ? "items-end" : "items-start"}`}>
+                    {/* Sender Badge */}
+                    {m.sender !== "user" && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1 ${
+                          m.sender === "ai"
+                            ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                            : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        }`}>
+                          {m.sender === "ai" ? "🤖 AI Assistant" : "👨‍💼 Admin"}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )}
 
-            {/* Typing Indicator */}
-            {aiTypingMessage ? (
-              <div className="flex justify-start mb-3">
-                <div className="px-4 py-2.5 bg-white/20 text-gray-800 backdrop-blur-sm border border-white/30 rounded-2xl rounded-tl-md text-sm">
-                  {aiTypingMessage}
-                </div>
-              </div>
-            ) : isTyping ? (
-              <div className="flex justify-start mb-3">
-                <div className="px-4 py-2.5 bg-white/20 text-gray-500 backdrop-blur-sm border border-white/30 rounded-2xl rounded-tl-md">
-                  <div className="flex space-x-1">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                    {/* Message Bubble */}
+                    <div className={`relative px-5 py-3 rounded-2xl text-sm font-medium backdrop-blur-sm ${
+                      m.sender === "user"
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-none shadow-lg"
+                        : m.sender === "admin"
+                        ? "bg-gradient-to-r from-purple-500/20 to-fuchsia-600/20 text-white border border-purple-500/30 rounded-bl-none"
+                        : "bg-white/10 text-gray-200 border border-white/20 rounded-tl-none"
+                    }`}>
+                      {m.text}
+                      {/* Message tail */}
+                      <div className={`absolute top-0 w-3 h-3 ${
+                        m.sender === "user"
+                          ? "-right-3 bg-blue-500"
+                          : m.sender === "admin"
+                          ? "-left-3 bg-purple-500/20 border-l border-t border-purple-500/30"
+                          : "-left-3 bg-white/10 border-l border-t border-white/20"
+                      }`} style={{
+                        clipPath: m.sender === "user" 
+                          ? 'polygon(0 0, 100% 0, 0 100%)'
+                          : 'polygon(100% 0, 100% 100%, 0 0)'
+                      }}></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ))}
 
-            <div ref={messagesEndRef} />
+              {/* Enhanced Typing Indicator */}
+              {aiTypingMessage ? (
+                <div className="flex justify-start animate-slide-in">
+                  <div className="flex flex-col max-w-[85%]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1 bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        🤖 AI Assistant
+                      </span>
+                    </div>
+                    <div className="px-5 py-3 bg-white/10 text-gray-200 backdrop-blur-sm border border-white/20 rounded-2xl rounded-tl-none text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="flex space-x-1">
+                          <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+                          <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                          <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                        </div>
+                        <span className="text-blue-300">Typing...</span>
+                      </div>
+                      <div className="mt-2 text-gray-300">{aiTypingMessage}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : isTyping ? (
+                <div className="flex justify-start">
+                  <div className="px-5 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl rounded-tl-none">
+                    <div className="flex items-center gap-3">
+                      <div className="flex space-x-1">
+                        <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+                        <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                        <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                      </div>
+                      <span className="text-sm text-blue-300 font-medium">AI is thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Quick Suggestions */}
+              {messages.length === 0 && (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+                    <div className="text-2xl">✨</div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Welcome to AI Assistant!</h3>
+                  <p className="text-gray-400 text-sm mb-4">How can I help you today?</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {quickSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleQuickSuggestion(suggestion)}
+                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm text-gray-300 transition-all hover:scale-105"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
-          {/* Input Area */}
-          <div className="p-4 border-t border-white/20 bg-white/5 backdrop-blur">
-            <div className="flex gap-2 items-center">
+          {/* Enhanced Input Area */}
+          <div className="p-4 border-t border-white/10 bg-gradient-to-t from-gray-900 to-transparent">
+            <div className="flex gap-3 items-end">
               <button
                 onClick={handleVoice}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                   listening
-                    ? "bg-red-500 text-white animate-pulse"
-                    : "bg-white/20 hover:bg-white/30 text-gray-700"
+                    ? "bg-gradient-to-r from-red-500 to-pink-600 text-white animate-pulse shadow-lg"
+                    : "bg-white/10 hover:bg-white/20 text-gray-300 hover:scale-105"
                 }`}
                 aria-label={listening ? "Stop listening" : "Start voice input"}
               >
-                {listening ? "⏹" : "🎤"}
+                {listening ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendHandle()}
-                className="flex-1 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                placeholder="Type a message..."
-              />
+              
+              <div className="flex-1 relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <Smile size={20} className="text-gray-500" />
+                </div>
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendHandle()}
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-12 py-3.5 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent text-sm transition-all"
+                  placeholder="Type your message here..."
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Paperclip size={20} className="text-gray-500 hover:text-gray-400 cursor-pointer" />
+                </div>
+              </div>
+              
               <button
                 onClick={() => sendHandle()}
                 disabled={!input.trim()}
-                className={`px-4 py-2.5 rounded-xl font-medium transition ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                   input.trim()
-                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90"
-                    : "bg-gray-300/50 text-gray-500 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:scale-105"
+                    : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                Send
+                <Send size={20} />
               </button>
+            </div>
+            <div className="mt-3 text-xs text-gray-500 text-center">
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                Press Enter to send • Use @admin to contact support
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Custom Styles for Glass & Animation (in case Tailwind doesn't cover everything) */}
+      {/* Enhanced Custom Styles */}
       <style jsx>{`
         @keyframes float {
           0% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
+          50% { transform: translateY(-10px); }
           100% { transform: translateY(0px); }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .animate-float {
           animation: float 3s ease-in-out infinite;
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+          border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #2563eb, #7c3aed);
         }
       `}</style>
     </>
