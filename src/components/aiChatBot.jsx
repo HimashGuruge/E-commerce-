@@ -19,14 +19,6 @@ export default function AiChatbot() {
   const inputRef = useRef(null);
   const notificationSoundRef = useRef(null);
 
-  // /* 🔔 Notification sound */
-  // useEffect(() => {
-  //   notificationSoundRef.current = new Audio(
-  //     "https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"
-  //   );
-  //   notificationSoundRef.current.volume = 0.3;
-  // }, []);
-
   /* 📥 Fetch messages */
   const fetchMessages = async () => {
     const currentToken = localStorage.getItem("token");
@@ -38,10 +30,10 @@ export default function AiChatbot() {
         { headers: { Authorization: `Bearer ${currentToken}` } }
       );
 
-      const chat = res.data.chat;
-      const fetchedMessages = chat?.messages || [];
+      const fetchedMessages = res.data.messages || [];
       setMessages(fetchedMessages);
 
+      // trigger notification if last message is from admin
       const lastMsg = fetchedMessages.at(-1);
       if (lastMsg?.sender === "admin" && !open) {
         triggerAdminNotification();
@@ -75,11 +67,9 @@ export default function AiChatbot() {
 
   /* 🎤 Speech recognition */
   useEffect(() => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window))
-      return;
+    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) return;
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition.current = new SpeechRecognition();
     recognition.current.continuous = false;
     recognition.current.lang = "en-US";
@@ -148,9 +138,7 @@ export default function AiChatbot() {
       const voices = speechSynthesis.getVoices();
       const female =
         voices.find(
-          (v) =>
-            v.lang.startsWith("en") &&
-            /female|zira|aria|susan|woman/i.test(v.name)
+          (v) => v.lang.startsWith("en") && /female|zira|aria|susan|woman/i.test(v.name)
         ) || voices.find((v) => v.lang.startsWith("en"));
       if (female) utter.voice = female;
       speechSynthesis.speak(utter);
@@ -159,8 +147,7 @@ export default function AiChatbot() {
     utter.onend = () => setSpeaking(false);
     utter.onerror = () => setSpeaking(false);
 
-    if (speechSynthesis.getVoices().length === 0)
-      speechSynthesis.onvoiceschanged = setVoice;
+    if (speechSynthesis.getVoices().length === 0) speechSynthesis.onvoiceschanged = setVoice;
     else setVoice();
   };
 
@@ -176,7 +163,7 @@ export default function AiChatbot() {
     try {
       setIsTyping(true);
       const res = await axios.post(
-        "http://localhost:4000/api/simai/reply",
+        "http://localhost:4000/api/admin/reply",
         { query: userText },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -230,7 +217,7 @@ export default function AiChatbot() {
 
     if (isAdmin) {
       await axios.post(
-        "http://localhost:4000/api/simai/admin/message",
+        "http://localhost:4000/api/admin/message",
         { message: adminText },
         {
           headers: {
@@ -251,12 +238,14 @@ export default function AiChatbot() {
       return;
     }
 
+    // Send user message to backend
     await axios.post(
       "http://localhost:4000/api/messages/sendMessages",
       { text, sender: "user" },
       { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
     );
 
+    // Get AI reply
     const aiText = await fetchAiReply(text);
     typeAiMessage(aiText);
     if (isVoice) speakText(aiText);
@@ -315,9 +304,7 @@ export default function AiChatbot() {
             {messages.map((m) => (
               <div
                 key={m._id}
-                className={`mb-2 flex ${
-                  m.sender === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`mb-2 flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`px-4 py-2 rounded-lg text-sm ${
@@ -334,17 +321,13 @@ export default function AiChatbot() {
             ))}
 
             {aiTypingMessage && (
-              <div className="bg-gray-200 px-4 py-2 rounded-lg text-sm">
-                {aiTypingMessage}
-              </div>
+              <div className="bg-gray-200 px-4 py-2 rounded-lg text-sm">{aiTypingMessage}</div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           <div className="p-4 border-t flex gap-2">
-            <button onClick={handleVoice}>
-              {listening ? "⏹" : "🎤"}
-            </button>
+            <button onClick={handleVoice}>{listening ? "⏹" : "🎤"}</button>
             <input
               ref={inputRef}
               value={input}
@@ -353,10 +336,7 @@ export default function AiChatbot() {
               className="flex-1 border rounded px-3 py-2"
               placeholder="Type a message..."
             />
-            <button
-              onClick={() => sendHandle()}
-              className="bg-blue-600 text-white px-4 rounded"
-            >
+            <button onClick={() => sendHandle()} className="bg-blue-600 text-white px-4 rounded">
               Send
             </button>
           </div>
