@@ -47,6 +47,13 @@ export default function ProductOverview() {
     }
   };
 
+
+
+
+
+
+  
+
   const handleBuyNow = () => {
     if (!product?.product || product.product.stock <= 0) return;
 
@@ -82,6 +89,20 @@ export default function ProductOverview() {
       }
     });
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   const handleAddToCart = async () => {
     if (!product?.product || product.product.stock <= 0) return;

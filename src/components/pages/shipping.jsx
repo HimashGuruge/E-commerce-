@@ -86,6 +86,9 @@ export default function Shipping() {
     fetchAddresses();
   }, []);
 
+
+
+
   // ✅ FIX: Fetch user info with correct endpoint
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -440,7 +443,7 @@ export default function Shipping() {
         didOpen: () => Swal.showLoading() 
       });
       
-      navigate('/payment', {
+      navigate(`/payment/?username=${userInfo.name}/&productName=${encodeURIComponent(quoteData.orderedItems[0].productName)}`, {
         state: { 
           orderData: { 
             ...quoteData, 

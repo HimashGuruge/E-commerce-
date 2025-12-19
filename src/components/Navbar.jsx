@@ -2,7 +2,7 @@ import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HiMenu, HiX } from "react-icons/hi";
-import NotificationsDropdown from "@/components/utils/NotificationsDropdown";
+import NotificationsDropdown from "@/components/utils/notificationDrop";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);

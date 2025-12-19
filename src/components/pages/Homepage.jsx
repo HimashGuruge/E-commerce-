@@ -3,7 +3,7 @@ import Navbar from "../Navbar";
 import { Route, Routes } from "react-router-dom";
 import HomeContainer from "@/components/pages/HomeContainer";
 import Login from "./Login";
-import Dashboard from "@/components/pages/admin/dashboard";
+import Dashboard from "@/components/pages/admin/Dashboard/dashboard";
 import NotFound from "@/components/pages/NotFound";
 import Signup from "@/components/pages/singUp";
 import Productoverview from "./productoverview";
