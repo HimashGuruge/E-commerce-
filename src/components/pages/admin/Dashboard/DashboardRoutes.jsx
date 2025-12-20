@@ -4,7 +4,7 @@ import { Routes, Route } from "react-router-dom";
 import AddProducts from "../addProducts";
 import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
 import EditProducts from "@/components/pages/admin/EditProducts";
-import Notification from "@/components/pages/admin/Notification";
+import Notification from "../notification";
 import StatCard from "@/components/pages/admin/Dashboard/StatCard";
 import { FiPackage, FiUsers, FiDollarSign } from "react-icons/fi";
 import { MdShoppingCart } from "react-icons/md";
