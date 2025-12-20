@@ -182,7 +182,7 @@ export default function AiChatbot() {
     try {
       setIsTyping(true);
       const res = await axios.post(
-        import.meta.env.VITE_BACKEND_URL+"//api/admin/reply",
+        import.meta.env.VITE_BACKEND_URL+"/api/admin/reply",
         { query: userText },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
