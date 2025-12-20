@@ -182,7 +182,7 @@ export default function AiChatbot() {
     try {
       setIsTyping(true);
       const res = await axios.post(
-        "http://localhost:4000/api/admin/reply",
+        import.meta.env.VITE_BACKEND_URL+"/api/admin/reply",
         { query: userText },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -236,7 +236,7 @@ export default function AiChatbot() {
 
     if (isAdmin) {
       await axios.post(
-        "http://localhost:4000/api/admin/message",
+        import.meta.env.VITE_BACKEND_URL+"/api/admin/message",
         { message: adminText },
         {
           headers: {
