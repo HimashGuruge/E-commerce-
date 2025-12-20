@@ -1,7 +1,7 @@
 // DashboardRoutes.jsx
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import AddProducts from "@/components/pages/admin/AddProducts";
+import AddProducts from "../addProducts";
 import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
 import EditProducts from "@/components/pages/admin/EditProducts";
 import Notification from "@/components/pages/admin/Notification";
