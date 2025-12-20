@@ -2,10 +2,10 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import AddProducts from "../addProducts";
-import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
-import EditProducts from "@/components/pages/admin/EditProducts";
+import AdminAllProductView from "../AdminAllProductView";
+import EditProducts from "../EditProducts";
 import Notification from "../notification";
-import StatCard from "@/components/pages/admin/Dashboard/StatCard";
+import StatCard from "../Dashboard/StatCard";
 import { FiPackage, FiUsers, FiDollarSign } from "react-icons/fi";
 import { MdShoppingCart } from "react-icons/md";
 
