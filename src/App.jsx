@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
 
-import Uploadmedia from "@/components/utils/mediaUpload";
+
 
 function App() {
   const [count, setCount] = useState(0);
