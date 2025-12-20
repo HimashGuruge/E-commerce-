@@ -25,7 +25,7 @@ export default function Homepage() {
     const authcheck = () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        setUser("customer")
+        setUser("customer");
         return;
       }
 
