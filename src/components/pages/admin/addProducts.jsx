@@ -126,7 +126,7 @@ export default function AddProducts() {
 
       // Send to backend
       const res = await axios.post(
-        "http://localhost:4000/api/products",
+        import.meta.env.VITE_BACKEND_URL + "/api/products",
         payload,
         { 
           headers: { 

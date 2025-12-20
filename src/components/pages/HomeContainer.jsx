@@ -20,7 +20,7 @@ export default function HomeContainer() {
       setLoading(true);
       setError(null); // Clear previous errors
       try {
-        const response = await axios.get("http://localhost:4000/api/products");
+        const response = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products");
         if (Array.isArray(response.data)) {
           const products = response.data;
           setAllProducts(products);
@@ -36,7 +36,7 @@ export default function HomeContainer() {
       } catch (e) {
         console.error("Error fetching products:", e);
         // <--- UPDATED: Set the error state on failure
-        setError("Failed to fetch products. Please check the server connection (http://localhost:4000).");
+        setError("Failed to fetch products. Please check the server connection " +(import.meta.env.VITE_BACKEND_URL));
       } finally {
         setLoading(false);
       }

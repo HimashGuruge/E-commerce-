@@ -72,7 +72,7 @@ export default function EditProduct() {
           productData = location.state.product;
         } else if (id) {
           const response = await axios.get(
-            `http://localhost:4000/api/products/${id}`,
+            import.meta.env.VITE_BACKEND_URL+`/api/products/${id}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           productData = response.data;
@@ -253,7 +253,7 @@ export default function EditProduct() {
 
       // Update product
       await axios.patch(
-        `http://localhost:4000/api/products/${formData.productId}`,
+        import.meta.env.VITE_API_URL + `/api/products/${formData.productId}`,
         payload,
         { 
           headers: { 
@@ -668,7 +668,7 @@ export default function EditProduct() {
                             // Update only status
                             const statusOnlyPayload = { status: formData.status };
                             axios.patch(
-                              `http://localhost:4000/api/products/${formData.productId}`,
+                              import.meta.env.VITE_API_URL + `/api/products/${formData.productId}`,
                               statusOnlyPayload,
                               { 
                                 headers: { 

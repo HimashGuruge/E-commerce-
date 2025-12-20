@@ -29,7 +29,7 @@ export default function Notification() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+`/api/notifications/getNotifications`);
       setNotifications(res.data);
     } catch (err) {
       console.error(err);
@@ -38,7 +38,7 @@ export default function Notification() {
 
   const markAsRead = async (id) => {
     try {
-      await axios.post(`http://localhost:4000/api/notifications/markRead/${id}`);
+      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/markRead/${id}`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
@@ -70,7 +70,7 @@ export default function Notification() {
         if (reply) {
           try {
             // Replace with your API endpoint
-            await axios.post(`http://localhost:4000/api/notifications/reply/${notification.userId}`, {
+            await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/reply/${notification.userId}`, {
               message: reply,
             });
             Swal.fire("Sent!", "Your reply has been sent.", "success");

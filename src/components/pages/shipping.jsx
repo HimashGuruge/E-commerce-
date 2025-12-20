@@ -55,7 +55,7 @@ export default function Shipping() {
 
     const fetchAddresses = async () => {
       try {
-        const res = await axios.get('http://localhost:4000/api/addresses', {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/addresses', {
           headers: getAuthHeader()
         });
         
@@ -96,7 +96,7 @@ export default function Shipping() {
     
     const fetchUserInfo = async () => {
       try {
-        const res = await axios.get('http://localhost:4000/api/users/me', {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/users/me', {
           headers: getAuthHeader()
         });
         
@@ -150,7 +150,7 @@ export default function Shipping() {
         // Update existing address
         const addrId = addresses[editingAddressIndex].id;
         response = await axios.put(
-          `http://localhost:4000/api/addresses/${addrId}`,
+          import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addrId}`,
           addressForm,
           { headers: getAuthHeader() }
         );
@@ -176,7 +176,7 @@ export default function Shipping() {
       } else {
         // Add new address
         response = await axios.post(
-          'http://localhost:4000/api/addresses',
+          import.meta.env.VITE_BACKEND_URL+'/api/addresses',
           addressForm,
           { headers: getAuthHeader() }
         );
@@ -250,7 +250,7 @@ export default function Shipping() {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/addresses/${addressId}`, {
+        await axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addressId}`, {
           headers: getAuthHeader()
         });
 
@@ -303,7 +303,7 @@ export default function Shipping() {
     try {
       const addrId = addresses[index].id;
       const res = await axios.put(
-        `http://localhost:4000/api/addresses/${addrId}`,
+        import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addrId}`,
         { isDefault: true },
         { headers: getAuthHeader() }
       );
@@ -362,7 +362,7 @@ export default function Shipping() {
       try {
         setLoading(true);
         const res = await axios.put(
-          'http://localhost:4000/api/users/me',
+          import.meta.env.VITE_BACKEND_URL+'/api/users/me',
           formData,
           { headers: getAuthHeader() }
         );

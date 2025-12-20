@@ -47,7 +47,7 @@ export default function ProfilePage() {
         setLoading(true);
         
         // Fetch user profile
-        const userRes = await axios.get('http://localhost:4000/api/users/me', {
+        const userRes = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/users/me', {
           headers: getAuthHeader()
         });
 
@@ -65,7 +65,7 @@ export default function ProfilePage() {
 
         // Fetch user orders
         try {
-          const ordersRes = await axios.get('http://localhost:4000/api/orders/my-orders', {
+          const ordersRes = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', {
             headers: getAuthHeader()
           });
           
@@ -113,7 +113,7 @@ export default function ProfilePage() {
 
     try {
       setLoading(true);
-      const res = await axios.put('http://localhost:4000/api/users/me', editForm, {
+      const res = await axios.put(import.meta.env.VITE_BACKEND_URL+'/api/users/me', editForm, {
         headers: getAuthHeader()
       });
 

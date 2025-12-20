@@ -14,7 +14,7 @@ export default function NavbarNotification() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/notifications/getNotifications");
       setNotifications(res.data);
       setUnreadCount(res.data.filter(n => !n.isRead).length);
     } catch (err) {
@@ -24,7 +24,7 @@ export default function NavbarNotification() {
 
   const markAsRead = async (id) => {
     try {
-      await axios.post(`http://localhost:4000/api/notifications/markRead/${id}`);
+      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/markRead/${id}`);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
@@ -34,7 +34,7 @@ export default function NavbarNotification() {
 
   const replyNotification = async (id, reply) => {
     try {
-      await axios.post(`http://localhost:4000/api/notifications/reply/${id}`, { message: reply });
+      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/reply/${id}`, { message: reply });
       Swal.fire("Sent!", "Your reply has been sent.", "success");
       setSelectedMessage(null);
       setReplyText("");

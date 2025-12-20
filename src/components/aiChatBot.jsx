@@ -28,7 +28,7 @@ export default function AiChatbot() {
 
     try {
       const res = await axios.get(
-        "http://localhost:4000/api/messages/getMessages",
+        import.meta.env.VITE_API_URL + "/api/messages/getMessages",
         { headers: { Authorization: `Bearer ${currentToken}` } }
       );
 
@@ -182,7 +182,7 @@ export default function AiChatbot() {
     try {
       setIsTyping(true);
       const res = await axios.post(
-        "http://localhost:4000/api/admin/reply",
+        import.meta.env.VITE_BACKEND_URL+"//api/admin/reply",
         { query: userText },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -236,7 +236,7 @@ export default function AiChatbot() {
 
     if (isAdmin) {
       await axios.post(
-        "http://localhost:4000/api/admin/message",
+        import.meta.env.VITE_BACKEND_URL+"/api/admin/message",
         { message: adminText },
         {
           headers: {
@@ -259,7 +259,7 @@ export default function AiChatbot() {
 
     // Send user message to backend
     await axios.post(
-      "http://localhost:4000/api/messages/sendMessages",
+      import.meta.env.VITE_BACKEND_URL+"/api/messages/sendMessages",
       { text, sender: "user" },
       { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
     );

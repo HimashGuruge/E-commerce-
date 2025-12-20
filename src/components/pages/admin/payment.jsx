@@ -156,7 +156,7 @@ export default function Payment() {
   try {
     // Send order to backend
     const response = await axios.post(
-      'http://localhost:4000/api/orders/payment', // your backend route
+      import.meta.env.VITE_BACKEND_URL + '/api/orders/payment', // your backend route
       {
         ...orderData,
         paymentMethod,

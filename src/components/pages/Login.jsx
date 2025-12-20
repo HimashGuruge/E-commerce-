@@ -19,7 +19,7 @@ export default function Login() {
 
     try {
       const response = await axios.post(
-        "http://localhost:4000/api/users/login",
+        import.meta.env.VITE_BACKEND_URL + "/api/users/login",
         { email, password }
       );
 

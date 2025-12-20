@@ -43,7 +43,7 @@ export default function ViewCart() {
     const fetchQuote = async () => {
       setLoading(true);
       try {
-        const { data } = await axios.post("http://localhost:4000/api/orders/quote", { orderedItems: cart });
+        const { data } = await axios.post(import.meta.env.VITE_BACKEND_URL+"/api/orders/quote", { orderedItems: cart });
         setQuoteData(data);
       } catch (error) {
         console.error("Quote API Error:", error);

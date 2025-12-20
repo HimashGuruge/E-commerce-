@@ -22,7 +22,7 @@ export default function ProductOverview() {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get(`http://localhost:4000/api/products/${productId}`);
+        const response = await axios.get(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`);
         
         if (response.data && response.data.product) {
           setProduct(response.data);

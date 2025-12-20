@@ -26,7 +26,7 @@ export default function OrderPage() {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('http://localhost:4000/api/orders/my-orders', {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', {
           headers: getAuthHeader()
         });
 
@@ -111,7 +111,7 @@ export default function OrderPage() {
 
     try {
       setLoading(true);
-      const res = await axios.put(`http://localhost:4000/api/orders/${orderId}/cancel`, {}, {
+      const res = await axios.put(import.meta.env.VITE_BACKEND_URL+`/api/orders/${orderId}/cancel`, {}, {
         headers: getAuthHeader()
       });
 
@@ -151,7 +151,7 @@ export default function OrderPage() {
   const handleRefreshOrders = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:4000/api/orders/my-orders', { headers: getAuthHeader() });
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', { headers: getAuthHeader() });
       if (res.data.success) setOrders(res.data.orders || []);
     } catch (error) { console.error(error); } 
     finally { setLoading(false); }

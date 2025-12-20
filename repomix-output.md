@@ -35,6 +35,9 @@ The content is organized as follows:
 # Directory Structure
 ```
 .gitignore
+aiChatBot.jsx
+aichatbot.text
+all.md
 eslint.config.js
 index.html
 jsconfig.json
@@ -45,6 +48,7 @@ repomix.config.json
 src/App.css
 src/App.jsx
 src/assets/react.svg
+src/components/aiChatBot.jsx
 src/components/Banners.jsx
 src/components/Card.jsx
 src/components/imageSlider.jsx
@@ -53,26 +57,17 @@ src/components/newadds.jsx
 src/components/pages/about.jsx
 src/components/pages/admin/addProducts.jsx
 src/components/pages/admin/AdminAllProductView.jsx
-src/components/pages/admin/dashboard.jsx
+src/components/pages/admin/Dashboard/dashboard.jsx
+src/components/pages/admin/Dashboard/DashboardRoutes.jsx
+src/components/pages/admin/Dashboard/Footer.jsx
+src/components/pages/admin/Dashboard/Sidebar.jsx
+src/components/pages/admin/Dashboard/StatCard.jsx
+src/components/pages/admin/Dashboard/TopBar.jsx
 src/components/pages/admin/EditProducts.jsx
 src/components/pages/admin/notification.jsx
 src/components/pages/admin/payment.jsx
 src/components/pages/admin/repomix-output.md
 src/components/pages/admin/repomix.config.json
-src/components/pages/AiChatBot.jsx
-src/components/pages/AiChatBot/AlertService.jsx
-src/components/pages/AiChatBot/ChatHeader.jsx
-src/components/pages/AiChatBot/ChatHistory.jsx
-src/components/pages/AiChatBot/ChatInput.jsx
-src/components/pages/AiChatBot/ChatMessage.jsx
-src/components/pages/AiChatBot/constants.jsx
-src/components/pages/AiChatBot/FloatingButton.jsx
-src/components/pages/AiChatBot/repomix-output.xml
-src/components/pages/AiChatBot/simAIService.jsx
-src/components/pages/AiChatBot/storage.jsx
-src/components/pages/AiChatBot/TypingIndicator.jsx
-src/components/pages/AiChatBot/useChat.jsx
-src/components/pages/AiChatBot/useSimAIChat.jsx
 src/components/pages/HomeContainer.jsx
 src/components/pages/Homepage.jsx
 src/components/pages/Login.jsx
@@ -86,7 +81,7 @@ src/components/pages/singUp.jsx
 src/components/pages/viewCart.jsx
 src/components/utils/cart.jsx
 src/components/utils/mediaupload.jsx
-src/components/utils/swalHelpers.jsx
+src/components/utils/notificationDrop.jsx
 src/components/utils/voice.jsx
 src/index.css
 src/main.jsx
@@ -95,6 +90,1537 @@ vite.config.js
 ```
 
 # Files
+
+## File: aiChatBot.jsx
+````javascript
+import axios from "axios";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import Swal from "sweetalert2";
+
+export default function AiChatBot() {
+  const [messages, setMessages] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const token = localStorage.getItem("token");
+  const messagesEndRef = useRef(null);
+
+  // Show loading SweetAlert
+  const showLoadingAlert = (title, text) => {
+    return Swal.fire({
+      title: title || "Loading...",
+      text: text || "Please wait",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      willOpen: () => {
+        Swal.showLoading();
+      }
+    });
+  };
+
+  // Show success SweetAlert
+  const showSuccessAlert = (title, text) => {
+    return Swal.fire({
+      title: title || "Success!",
+      text: text || "Operation completed successfully",
+      icon: "success",
+      timer: 2000,
+      showConfirmButton: false
+    });
+  };
+
+  // Show error SweetAlert
+  const showErrorAlert = (title, text) => {
+    return Swal.fire({
+      title: title || "Error!",
+      text: text || "Something went wrong",
+      icon: "error",
+      confirmButtonText: "OK",
+      confirmButtonColor: "#d33",
+    });
+  };
+
+  // Show confirmation dialog
+  const showConfirmationDialog = async (title, text, confirmText = "Yes", cancelText = "No") => {
+    const result = await Swal.fire({
+      title: title || "Are you sure?",
+      text: text || "",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: confirmText,
+      cancelButtonText: cancelText
+    });
+    return result.isConfirmed;
+  };
+
+  // Load messages with SweetAlert loading
+  const loadMessages = useCallback(async () => {
+    if (loading) return;
+
+    const loadingAlert = showLoadingAlert("Loading Messages", "Fetching your chat history...");
+    
+    setLoading(true);
+    try {
+      const res = await axios.get("http://localhost:4000/api/chat/getMessagesbyid", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (res.data && res.data.messages) {
+        setMessages(res.data.messages);
+      } else if (res.data && res.data.data && Array.isArray(res.data.data)) {
+        setMessages(res.data.data);
+      } else {
+        setMessages([]);
+      }
+      
+      await loadingAlert.close();
+    } catch (err) {
+      await loadingAlert.close();
+      
+      if (err.response) {
+        switch (err.response.status) {
+          case 401:
+            showErrorAlert("Session Expired", "Please login again to continue chatting.");
+            // Optional: Redirect to login
+            // window.location.href = "/login";
+            break;
+          case 403:
+            showErrorAlert("Access Denied", "You don't have permission to access chat history.");
+            break;
+          case 404:
+            showErrorAlert("Not Found", "Chat history not found.");
+            break;
+          default:
+            showErrorAlert("Error", "Failed to load messages. Please try again.");
+        }
+      } else {
+        showErrorAlert("Network Error", "Unable to connect to the server. Please check your connection.");
+      }
+      console.error("Error loading messages:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  // Load messages when chat opens
+  useEffect(() => {
+    if (open && token) {
+      loadMessages();
+    } else {
+      setMessages([]);
+    }
+  }, [open]);
+
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Scroll when messages change
+  useEffect(() => {
+    if (open && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, open]);
+
+  // Handle reply with SweetAlert
+  const handleReply = async () => {
+    if (!newMessage.trim() || sending) return;
+    
+    // Optional: Show confirmation for long messages
+    if (newMessage.trim().length > 500) {
+      const confirmed = await showConfirmationDialog(
+        "Send Long Message?",
+        "Your message is quite long. Are you sure you want to send it?",
+        "Send",
+        "Cancel"
+      );
+      if (!confirmed) return;
+    }
+    
+    const messageToSend = newMessage.trim();
+    
+    // Create local message
+    const localMessage = {
+      _id: Date.now(),
+      sender: "User",
+      text: messageToSend,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Optimistic Update
+    setMessages((prev) => [...prev, localMessage]);
+    setNewMessage("");
+    setSending(true);
+
+    try {
+      // Show sending indicator
+      const sendingAlert = showLoadingAlert("Sending", "Your message is being sent...");
+      
+      await axios.post(
+        "http://localhost:4000/api/chat/sendMessage",
+        { text: messageToSend }, 
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+      
+      await sendingAlert.close();
+      await showSuccessAlert("Sent!", "Message delivered successfully");
+      
+      // Wait a bit before reloading messages
+      setTimeout(() => {
+        loadMessages();
+      }, 500);
+      
+    } catch (error) {
+      console.error("Message sending failed:", error);
+      
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            showErrorAlert("Session Expired", "Please login again to send messages.");
+            break;
+          case 403:
+            showErrorAlert("Permission Denied", "You don't have permission to send messages.");
+            break;
+          case 429:
+            showErrorAlert("Too Many Requests", "Please wait a moment before sending another message.");
+            break;
+          case 500:
+            showErrorAlert("Server Error", "Our server encountered an error. Please try again later.");
+            break;
+          default:
+            showErrorAlert("Failed to Send", "Unable to send message. Please try again.");
+        }
+      } else if (error.request) {
+        showErrorAlert("Network Error", "Unable to connect to the server. Please check your internet connection.");
+      } else {
+        showErrorAlert("Error", "Something went wrong. Please try again.");
+      }
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg._id !== localMessage._id));
+      setNewMessage(messageToSend);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Handle chat window toggle with confirmation if there's unsent message
+  const handleToggleChat = async () => {
+    if (newMessage.trim() && !open) {
+      const confirmed = await showConfirmationDialog(
+        "Unsaved Message",
+        "You have an unsent message. Open chat anyway?",
+        "Open",
+        "Continue Writing"
+      );
+      if (!confirmed) return;
+    }
+    setOpen(!open);
+  };
+
+  // Clear chat history
+  const handleClearChat = async () => {
+    if (messages.length === 0) return;
+    
+    const confirmed = await showConfirmationDialog(
+      "Clear Chat History?",
+      "This will remove all your chat history. This action cannot be undone.",
+      "Clear All",
+      "Cancel"
+    );
+    
+    if (!confirmed) return;
+    
+    const loadingAlert = showLoadingAlert("Clearing", "Removing chat history...");
+    
+    try {
+      await axios.delete("http://localhost:4000/api/chat/clearMessages", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      await loadingAlert.close();
+      await showSuccessAlert("Cleared!", "All chat history has been removed.");
+      setMessages([]);
+    } catch (error) {
+      await loadingAlert.close();
+      showErrorAlert("Clear Failed", "Failed to clear chat history. Please try again.");
+      console.error("Error clearing messages:", error);
+    }
+  };
+
+  // Debug: Check token with SweetAlert
+  useEffect(() => {
+    if (!token && open) {
+      Swal.fire({
+        title: "Authentication Required",
+        text: "Please login to use the chat feature.",
+        icon: "warning",
+        confirmButtonText: "Login",
+        showCancelButton: true,
+        cancelButtonText: "Cancel"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Redirect to login page
+          window.location.href = "/login";
+        } else {
+          setOpen(false);
+        }
+      });
+    }
+  }, [open, token]);
+
+  return (
+    <div className="fixed bottom-5 right-5 z-50">
+      {/* Floating button with notification badge */}
+      <div className="relative">
+        <button
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+          onClick={handleToggleChat}
+        >
+          💬
+          {messages.length > 0 && !open && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+              {messages.length > 9 ? '9+' : messages.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Chat window */}
+      {open && (
+        <div className="absolute bottom-20 right-0 w-80 h-96 bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+          {/* Header with gradient */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex justify-between items-center px-4 py-3">
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <div className="w-3 h-3 bg-green-400 rounded-full absolute -top-0 -right-0 animate-ping"></div>
+                <div className="w-3 h-3 bg-green-400 rounded-full absolute -top-0 -right-0"></div>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">AI Assistant</h3>
+                <p className="text-xs opacity-80">
+                  {(loading || sending) ? "Processing..." : "Online"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {messages.length > 0 && (
+                <button
+                  onClick={handleClearChat}
+                  className="text-xs bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition"
+                  title="Clear chat history"
+                >
+                  🗑️
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                className="text-lg hover:text-gray-200 transition"
+                title="Close chat"
+              >
+                ✖
+              </button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gradient-to-b from-gray-50 to-white">
+            {/* Loading Indicator with SweetAlert2 style */}
+            {loading && messages.length === 0 && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mx-auto mb-3"></div>
+                <p className="text-gray-500 text-sm">Loading your conversation history...</p>
+              </div>
+            )}
+
+            {/* No messages */}
+            {!loading && messages.length === 0 && (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">💬</span>
+                </div>
+                <h4 className="font-semibold text-gray-700">Start a Conversation</h4>
+                <p className="text-gray-500 text-sm mt-1">Ask me anything! I'm here to help.</p>
+                <div className="mt-4 text-left bg-blue-50 p-3 rounded-lg border border-blue-100">
+                  <p className="text-xs text-gray-600 mb-1">Try asking:</p>
+                  <ul className="text-xs text-gray-700 space-y-1">
+                    <li>• "Hello, how can you help me?"</li>
+                    <li>• "Explain machine learning in simple terms"</li>
+                    <li>• "What's the weather like today?"</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Messages */}
+            {messages.map((message) => (
+              <div
+                key={message._id}
+                className={`p-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
+                  message.sender !== "User"
+                    ? "bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200"
+                    : "bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"
+                } max-w-[85%] ${
+                  message.sender !== "User" ? "mr-auto" : "ml-auto"
+                }`}
+              >
+                <div className="flex items-start space-x-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    message.sender !== "User" 
+                      ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white" 
+                      : "bg-gradient-to-r from-gray-500 to-gray-600 text-white"
+                  }`}>
+                    {message.sender !== "User" ? "AI" : "U"}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">
+                      {message.sender}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1">
+                      {message.text}
+                    </p>
+                    <small className="text-xs text-gray-500 block mt-2">
+                      {new Date(message.createdAt).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: true 
+                      })}
+                    </small>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Sending indicator */}
+            {sending && (
+              <div className="text-center py-2">
+                <div className="inline-flex items-center space-x-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                  <span className="text-sm">Sending message...</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Scroll Ref */}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Footer with Reply */}
+          <div className="border-t border-gray-200 p-3 bg-white">
+            <div className="flex space-x-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type your message here..."
+                  disabled={loading || sending}
+                  className="w-full border border-gray-300 rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed pr-12"
+                  onKeyPress={(e) => { 
+                    if (e.key === 'Enter' && !sending && newMessage.trim()) {
+                      handleReply();
+                    }
+                  }}
+                  maxLength={2000}
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
+                  {newMessage.length}/2000
+                </div>
+              </div>
+              <button
+                onClick={handleReply}
+                disabled={loading || sending || !newMessage.trim()}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center w-12"
+                title={sending ? "Sending..." : "Send message"}
+              >
+                {sending ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <span className="text-lg">➤</span>
+                )}
+              </button>
+            </div>
+            {newMessage.length > 1500 && (
+              <p className="text-xs text-red-500 mt-2 text-center">
+                Message getting too long ({newMessage.length}/2000)
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+````
+
+## File: all.md
+````markdown
+import axios from "axios";
+import React, { useEffect, useState, useRef } from "react";
+import Swal from "sweetalert2";
+
+const token = localStorage.getItem("token");
+
+export default function Notification() {
+  const [notifications, setNotifications] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const prevCount = useRef(0);
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get("http://localhost:4000/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const newNotifications = res.data.adminMessages;
+
+      if (prevCount.current && newNotifications.length > prevCount.current) {
+        Swal.fire({
+          icon: "info",
+          title: "New Notification",
+          text: "You have new messages",
+          showConfirmButton: false,
+          timer: 2000,
+          toast: true,
+          position: "top-end",
+        });
+      }
+
+      prevCount.current = newNotifications.length;
+      setNotifications(newNotifications);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleReply = (userId) => {
+    setCurrentUserId(userId);
+    setReplyText("");
+    setShowModal(true);
+  };
+
+  const sendReply = async () => {
+    if (!replyText.trim()) return;
+
+    const result = await Swal.fire({
+      title: "Send Reply?",
+      text: "Are you sure you want to send this reply?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Send",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#ef4444",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await axios.post(
+        "http://localhost:4000/api/simai/admin/replymessage",
+        { message: replyText, userId: currentUserId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Reply Sent!",
+          showConfirmButton: false,
+          timer: 1500,
+          toast: true,
+          position: "top-end",
+        });
+
+        await fetchNotifications();
+        setShowModal(false);
+        setReplyText("");
+        setCurrentUserId(null);
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Failed to send reply",
+        text: err.response?.data?.message || "Something went wrong!",
+      });
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.patch(
+        `http://localhost:4000/api/notifications/read/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (err) {
+      console.error("Failed to mark as read", err);
+    }
+  };
+
+  const handleDelete = (id) => {
+    Swal.fire({
+      title: "Delete Notification?",
+      text: "This action cannot be undone",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+    }).then(async (result) => {
+      if (!result.isConfirmed) return;
+
+      try {
+        await axios.delete(`http://localhost:4000/api/notifications/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setNotifications((prev) => prev.filter((n) => n._id !== id));
+
+        Swal.fire({
+          icon: "success",
+          title: "Deleted",
+          toast: true,
+          timer: 1500,
+          showConfirmButton: false,
+          position: "top-end",
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: "error",
+          title: "Delete failed",
+          text: err.response?.data?.message || "Something went wrong",
+        });
+      }
+    });
+  };
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 font-sans tracking-tight">
+            Notifications
+          </h1>
+          <p className="text-gray-600 mt-2 font-medium">
+            Manage your messages and user communications
+          </p>
+          {unreadCount > 0 && (
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-semibold mt-3">
+              <span className="w-2 h-2 bg-blue-600 rounded-full mr-2 animate-pulse"></span>
+              {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
+            </div>
+          )}
+        </div>
+
+        {/* Notifications Table */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg
+                  className="w-16 h-16 mx-auto"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                No notifications yet
+              </h3>
+              <p className="text-gray-500">
+                Messages from users will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      #
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      User ID
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Message
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {notifications.map((notif, index) => (
+                    <tr
+                      key={notif._id}
+                      className={`transition-colors duration-150 hover:bg-gray-50 ${
+                        !notif.isRead ? "bg-blue-50/50" : ""
+                      }`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {index + 1}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-mono bg-gray-100 px-3 py-1 rounded-lg text-gray-700 inline-block">
+                          {notif.userId}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-md truncate">
+                          {notif.message}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">
+                          {new Date(notif.sentAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                          <br />
+                          <span className="text-gray-500 text-xs">
+                            {new Date(notif.sentAt).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleReply(notif._id)}
+                            className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-sm hover:shadow"
+                          >
+                            Reply
+                          </button>
+                          {!notif.isRead && (
+                            <button
+                              onClick={() => handleMarkAsRead(notif._id)}
+                              className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-sm hover:shadow"
+                            >
+                              Read
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(notif._id)}
+                            className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Reply Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+              <div
+                className="fixed inset-0 transition-opacity"
+                aria-hidden="true"
+              >
+                <div className="absolute inset-0 bg-gray-900 opacity-75"></div>
+              </div>
+              <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div className="bg-white px-6 pt-6 pb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Reply to User
+                    </h3>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="text-gray-400 hover:text-gray-500 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Your reply message:
+                    </label>
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Type your response here..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
+                      rows={4}
+                      autoFocus
+                    />
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        onClick={() => setShowModal(false)}
+                        className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={sendReply}
+                        disabled={!replyText.trim()}
+                        className={`px-5 py-2.5 font-medium rounded-xl transition-all duration-200 ${
+                          replyText.trim()
+                            ? "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-sm hover:shadow"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                      >
+                        Send Reply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+````
+
+## File: eslint.config.js
+````javascript
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+])
+````
+
+## File: index.html
+````html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>app</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+````
+
+## File: jsconfig.json
+````json
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ],
+            "@components/*": [
+                "src/components/*"
+            ],
+            "@utils/*": [
+                "src/utils/*"
+            ]
+        }
+    },
+    "include": [
+        "src"
+    ]
+}
+````
+
+## File: public/vite.svg
+````xml
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+````
+
+## File: README.md
+````markdown
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+````
+
+## File: repomix.config.json
+````json
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 52428800
+  },
+  "output": {
+    "filePath": "repomix-output.md",
+    "style": "markdown",
+    "parsableStyle": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "truncateBase64": false,
+    "copyToClipboard": false,
+    "includeFullDirectoryStructure": false,
+    "tokenCountTree": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false,
+      "includeLogs": false,
+      "includeLogsCount": 50
+    }
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": []
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}
+````
+
+## File: src/App.css
+````css
+
+````
+
+## File: src/App.jsx
+````javascript
+import Homepage from "@/components/pages/Homepage";
+import NotFound from "@/components/pages/NotFound"; // import new page
+import { useState } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import "./App.css";
+
+import Uploadmedia from "@/components/utils/mediaUpload";
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/*" element={<Homepage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
+  );
+}
+
+export default App;
+````
+
+## File: src/assets/react.svg
+````xml
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+````
+
+## File: src/components/Banners.jsx
+````javascript
+import React, { useState, useEffect, useRef } from 'react';
+
+export default function Banners({ images }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const timeoutRef = useRef(null);
+
+  const delay = 3000; // 3 seconds per slide
+
+  const resetTimeout = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  };
+
+  useEffect(() => {
+    resetTimeout();
+    timeoutRef.current = setTimeout(() => {
+      setCurrentIndex((prevIndex) =>
+        prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, delay);
+
+    return () => resetTimeout();
+  }, [currentIndex, images.length]);
+
+  const goToSlide = (index) => {
+    setCurrentIndex(index);
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex(currentIndex === 0 ? images.length - 1 : currentIndex - 1);
+  };
+
+  const nextSlide = () => {
+    setCurrentIndex(currentIndex === images.length - 1 ? 0 : currentIndex + 1);
+  };
+
+  return (
+    <div className="relative w-full overflow-hidden">
+      {/* Slides */}
+      <div
+        className="flex transition-transform duration-700 ease-in-out"
+        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+      >
+        {images.map((src, idx) => (
+          <div key={idx} className="flex-shrink-0 w-full">
+            <img src={src} alt={`banner-${idx}`} className="w-full h-64 object-cover rounded-lg" />
+          </div>
+        ))}
+      </div>
+
+      {/* Arrows */}
+      <button
+        onClick={prevSlide}
+        className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
+      >
+        &#8592;
+      </button>
+      <button
+        onClick={nextSlide}
+        className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
+      >
+        &#8594;
+      </button>
+
+      {/* Dots */}
+      <div className="absolute bottom-2 w-full flex justify-center space-x-2">
+        {images.map((_, idx) => (
+          <div
+            key={idx}
+            onClick={() => goToSlide(idx)}
+            className={`h-2 w-2 rounded-full cursor-pointer ${
+              idx === currentIndex ? 'bg-white' : 'bg-gray-400'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/imageSlider.jsx
+````javascript
+import React, { useState } from "react";
+import { AiOutlineLeft, AiOutlineRight } from "react-icons/ai";
+
+export default function ImageSlider({ images = [] }) {
+  const [currentImage, setCurrentImage] = useState(0);
+
+  const prevImage = () => {
+    setCurrentImage((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const nextImage = () => {
+    setCurrentImage((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  if (!images.length) return null;
+
+  return (
+    <div className="w-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto">
+      {/* Main Image */}
+      <div className="relative w-full aspect-square rounded-xl overflow-hidden shadow-lg">
+        <img
+          src={images[currentImage]}
+          alt={`product-${currentImage}`}
+          className="w-full h-full object-cover object-center"
+        />
+
+        {/* Left Arrow */}
+        <button
+          onClick={prevImage}
+          className="absolute top-1/2 left-2 sm:left-3 md:left-4 -translate-y-1/2 bg-black/40 text-white p-2 sm:p-3 md:p-4 rounded-full hover:bg-black/60 transition"
+        >
+          <AiOutlineLeft size={20} className="sm:text-[24px] md:text-[28px]" />
+        </button>
+
+        {/* Right Arrow */}
+        <button
+          onClick={nextImage}
+          className="absolute top-1/2 right-2 sm:right-3 md:right-4 -translate-y-1/2 bg-black/40 text-white p-2 sm:p-3 md:p-4 rounded-full hover:bg-black/60 transition"
+        >
+          <AiOutlineRight size={20} className="sm:text-[24px] md:text-[28px]" />
+        </button>
+      </div>
+
+      {/* Thumbnail Strip */}
+      <div className="flex gap-2 mt-3 justify-center overflow-x-auto">
+        {images.map((img, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentImage(index)}
+            className={`flex-shrink-0 border-2 rounded-lg overflow-hidden ${
+              currentImage === index ? "border-red-500" : "border-transparent"
+            }`}
+          >
+            <img
+              src={img}
+              alt={`thumb-${index}`}
+              className="w-16 h-16 object-cover object-center"
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/about.jsx
+````javascript
+import React from 'react';
+
+export default function About() {
+  return (
+    <div className="p-6 max-w-4xl mx-auto text-center">
+      <h1 className="text-3xl font-bold mb-4">About Us</h1>
+      <p className="text-gray-700 text-lg">
+        Welcome to our website! This is the About page where you can share information
+        about your company, mission, or services.
+      </p>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/Dashboard/dashboard.jsx
+````javascript
+import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate, Navigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import Swal from "sweetalert2";
+
+import Sidebar from "@/components/pages/admin/Dashboard/Sidebar";
+import TopBar from "@/components/pages/admin/Dashboard/TopBar";
+import DashboardRoutes from "@/components/pages/admin/Dashboard/DashboardRoutes";
+import Footer from "@/components/pages/admin/Dashboard/Footer";
+
+export default function Dashboard() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, totalRevenue: 0, newUsers: 0 });
+
+  const navigate = useNavigate();
+
+  const toggleMobile = () => setMobileOpen(!mobileOpen);
+
+  const handleLogout = () => {
+    Swal.fire({
+      title: "Logout?",
+      text: "Are you sure you want to logout?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, logout!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem("token");
+        window.dispatchEvent(new Event("authChange"));
+        navigate("/login");
+      }
+    });
+  };
+
+  const authcheck = useCallback(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser(null);
+      navigate("/login");
+      setLoading(false);
+      return;
+    }
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.role !== "admin") {
+        Swal.fire({ icon: "error", title: "Access Denied", text: "Only administrators can access this dashboard" })
+          .then(() => navigate("/"));
+        setLoading(false);
+        return;
+      }
+      setUser(decoded);
+      setLoading(false);
+    } catch {
+      localStorage.removeItem("token");
+      setUser(null);
+      navigate("/login");
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    authcheck();
+    window.addEventListener("authChange", authcheck);
+    return () => window.removeEventListener("authChange", authcheck);
+  }, [authcheck]);
+
+  if (loading) return <div>Loading...</div>;
+  if (!user || user.role !== "admin") return <Navigate to="/login" />;
+
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <Sidebar user={user} unreadCount={unreadCount} stats={stats} handleLogout={handleLogout} closeMobile={() => setMobileOpen(false)} />
+      <TopBar user={user} mobileOpen={mobileOpen} toggleMobile={toggleMobile} />
+      <div className="flex-1 lg:mt-15 lg:ml-20">
+        <DashboardRoutes stats={stats} />
+        <Footer />
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/Dashboard/DashboardRoutes.jsx
+````javascript
+// DashboardRoutes.jsx
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import AddProducts from "@/components/pages/admin/AddProducts";
+import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
+import EditProducts from "@/components/pages/admin/EditProducts";
+import Notification from "@/components/pages/admin/Notification";
+import StatCard from "@/components/pages/admin/Dashboard/StatCard";
+import { FiPackage, FiUsers, FiDollarSign } from "react-icons/fi";
+import { MdShoppingCart } from "react-icons/md";
+
+export default function DashboardRoutes({ stats }) {
+  return (
+    <Routes>
+      <Route
+        index
+        element={
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="text-6xl mb-6">📊</div>
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-4">Dashboard Overview</h2>
+            <p className="text-gray-600 max-w-2xl mb-8">
+              Select a section from the sidebar to manage products, view notifications, or access other admin features.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 w-full max-w-4xl">
+              <StatCard icon={<FiPackage size={24} />} title="Total Products" value={stats.totalProducts} color="text-green-600" />
+              <StatCard icon={<MdShoppingCart size={24} />} title="Total Orders" value={stats.totalOrders} color="text-indigo-600" />
+              <StatCard icon={<FiDollarSign size={24} />} title="Total Revenue" value={`$${stats.totalRevenue.toLocaleString()}`} color="text-amber-600" />
+              <StatCard icon={<FiUsers size={24} />} title="New Users" value={stats.newUsers} color="text-teal-600" />
+            </div>
+          </div>
+        }
+      />
+      <Route path="adminviewproducts" element={<AdminAllProductView />} />
+      <Route path="addproducts" element={<AddProducts />} />
+      <Route path="editproducts/:id" element={<EditProducts />} />
+      <Route path="notification" element={<Notification />} />
+    </Routes>
+  );
+}
+````
+
+## File: src/components/pages/admin/Dashboard/Footer.jsx
+````javascript
+// Footer.jsx
+import React from "react";
+
+export default function Footer() {
+  return (
+    <div className="p-4 text-center text-gray-500 text-sm border-t border-gray-200">
+      <p>Admin Dashboard v1.0 • © {new Date().getFullYear()} Your Company</p>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/Dashboard/Sidebar.jsx
+````javascript
+// Sidebar.jsx
+import React from "react";
+import { Link } from "react-router-dom";
+import { RxDashboard, RxExit } from "react-icons/rx";
+import {
+  MdOutlineGridView,
+  MdAddBox,
+  MdNotifications,
+  MdShoppingCart,
+  MdBarChart,
+  MdSettings,
+} from "react-icons/md";
+import { FiUsers } from "react-icons/fi";
+
+export default function Sidebar({
+  user,
+  unreadCount,
+  stats,
+  handleLogout,
+  closeMobile,
+}) {
+  return (
+    <div className="fixed lg:sticky top-0 left-0 h-screen w-72 bg-white border-r border-gray-200 shadow-xl z-40 transition-transform duration-300">
+      {/* Logo */}
+      <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <Link to="/admin/dashboard" className="flex items-center">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-teal-500 rounded-lg flex items-center justify-center mr-3">
+            <RxDashboard className="text-white text-xl" />
+          </div>
+          <span className="text-2xl font-bold text-gray-800">AdminPanel</span>
+        </Link>
+      </div>
+
+      {/* User Info */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center">
+          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-teal-400 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">
+            {user?.name?.charAt(0) || "A"}
+          </div>
+          <div>
+            <div className="font-semibold text-gray-800">
+              {user?.name || "Admin User"}
+            </div>
+            <div className="text-sm text-gray-500">
+              {user?.email || "admin@example.com"}
+            </div>
+            <div className="text-xs mt-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full inline-block">
+              Administrator
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 px-2">
+          Navigation
+        </div>
+        <Link
+          to="/admin/dashboard"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <RxDashboard size={20} className="text-blue-600" />
+          Overview
+        </Link>
+        <Link
+          to="/admin/dashboard/adminviewproducts"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <MdOutlineGridView size={20} className="text-green-600" />
+          View Products
+        </Link>
+        <Link
+          to="/admin/dashboard/addproducts"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <MdAddBox size={20} className="text-purple-600" />
+          Add Product
+        </Link>
+        <Link
+          to="/admin/dashboard/notification"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <MdNotifications size={20} className="text-red-600 relative" />
+          Notifications {unreadCount > 0 && `(${unreadCount})`}
+        </Link>
+        <Link
+          to="/admin/dashboard/orders"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <MdShoppingCart size={20} className="text-indigo-600" />
+          Orders ({stats.totalOrders})
+        </Link>
+        <Link
+          to="/admin/dashboard/users"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <FiUsers size={20} className="text-teal-600" />
+          Users
+        </Link>
+        <Link
+          to="/admin/dashboard/analytics"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <MdBarChart size={20} className="text-amber-600" />
+          Analytics
+        </Link>
+        <Link
+          to="/admin/dashboard/settings"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50"
+          onClick={closeMobile}
+        >
+          <MdSettings size={20} className="text-gray-600" />
+          Settings
+        </Link>
+      </nav>
+
+      {/* Logout */}
+      <div className="p-4 border-t border-gray-200">
+        <button
+          onClick={handleLogout}
+          className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-xl text-base font-medium bg-red-50 text-red-600 hover:bg-red-100"
+        >
+          <RxExit size={20} />
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/Dashboard/StatCard.jsx
+````javascript
+// StatCard.jsx
+import React from "react";
+
+export default function StatCard({ icon, title, value, color }) {
+  return (
+    <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 flex items-center space-x-4">
+      <div className={`p-3 rounded-full bg-opacity-10 ${color.replace("text-", "bg-")}`}>
+        {React.cloneElement(icon, { className: color })}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-500">{title}</p>
+        <p className="text-xl font-bold text-gray-800">{value}</p>
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/Dashboard/TopBar.jsx
+````javascript
+// TopBar.jsx
+import React from "react";
+import { RxHamburgerMenu } from "react-icons/rx";
+
+export default function TopBar({ user, mobileOpen, toggleMobile }) {
+  return (
+    <div className="lg:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-teal-500 p-4 flex justify-between items-center z-50 shadow-lg">
+      <div className="flex items-center">
+        <button onClick={toggleMobile} className="mr-4 text-white">
+          <RxHamburgerMenu size={28} />
+        </button>
+        <h1 className="text-white text-xl font-bold">Dashboard</h1>
+      </div>
+      <div className="flex items-center space-x-4">
+        <div className="text-right hidden sm:block">
+          <div className="text-sm text-blue-100">Welcome</div>
+          <div className="text-white font-semibold">{user?.name || "Admin"}</div>
+        </div>
+        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+          <span className="text-white font-bold">{user?.name?.charAt(0) || "A"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
 
 ## File: src/components/pages/admin/repomix-output.md
 ````markdown
@@ -3682,3079 +5208,6 @@ export default function Payment() {
 }
 ````
 
-## File: src/components/pages/AiChatBot.jsx
-````javascript
-import React, { useState, useEffect, useRef } from "react";
-import ChatHeader from "@/components/pages/AiChatBot/ChatHeader";
-import ChatHistory from "@/components/pages/AiChatBot/ChatHistory";
-import ChatInput from "@/components/pages/AiChatBot/ChatInput";
-import FloatingButton from "@/components/pages/AiChatBot/FloatingButton";
-import useSimAIChat from "@/components/pages/AiChatBot/useSimAIChat"; // Change from { useSimAIChat } to default import
-import AlertService from "@/components/pages/AiChatBot/AlertService";
-import { API_BASE_URL } from "@/components/pages/AiChatBot/constants";
-
-export default function AiChatBot() {
-  const [open, setOpen] = useState(false);
-  const [newMessage, setNewMessage] = useState("");
-  const messagesEndRef = useRef(null);
-  
-  // Get user token from your auth system (example)
-  const userToken = localStorage.getItem('token') || sessionStorage.getItem('token');
-  
-  const {
-    messages,
-    loading,
-    sending,
-    aiTyping,
-    sendMessage,
-    clearMessages,
-    connectionStatus,
-    checkConnection
-  } = useSimAIChat(userToken); // Pass token to hook
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (open && messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages, open]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleReply = async () => {
-    if (!newMessage.trim() || sending || !userToken) {
-      AlertService.showError(
-        "Cannot Send Message",
-        !userToken ? "Please login to use the chat." : "Invalid message or already sending."
-      );
-      return;
-    }
-    
-    const confirmed = await AlertService.showConfirmation(
-      "Send Message?",
-      "Are you sure you want to send this message to AI?",
-      "Send",
-      "Cancel"
-    );
-    
-    if (!confirmed) return;
-    
-    const result = await sendMessage(newMessage);
-    if (result.success) {
-      setNewMessage("");
-    } else {
-      AlertService.showError("Error", result.error || "Failed to send message");
-    }
-  };
-
-  const handleToggleChat = async () => {
-    if (!open) {
-      if (!userToken) {
-        AlertService.showError("Login Required", "Please login to use the AI chat.");
-        return;
-      }
-      
-      const isConnected = await checkConnection();
-      if (!isConnected) {
-        AlertService.showError("Connection Error", "Cannot connect to AI service. Please try again.");
-        return;
-      }
-    }
-    setOpen(!open);
-  };
-
-  return (
-    <div className="fixed bottom-5 right-5 z-50">
-      <FloatingButton 
-        onClick={handleToggleChat}
-        isOpen={open}
-        messageCount={messages.length}
-        disabled={!userToken}
-      />
-
-      {open && (
-        <div className="absolute bottom-20 right-0 w-80 h-96 bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-          <ChatHeader 
-            loading={loading}
-            sending={sending}
-            onClear={clearMessages}
-            onClose={() => setOpen(false)}
-            messageCount={messages.length}
-            connectionStatus={connectionStatus}
-          />
-
-          <ChatHistory 
-            messages={messages}
-            loading={loading}
-            sending={sending}
-            aiTyping={aiTyping}
-            messagesEndRef={messagesEndRef}
-          />
-
-          <ChatInput 
-            value={newMessage}
-            onChange={setNewMessage}
-            onSubmit={handleReply}
-            disabled={loading || sending || !userToken}
-            sending={sending}
-            placeholder={!userToken ? "Please login to chat..." : "Type your message..."}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-````
-
-## File: src/components/pages/AiChatBot/AlertService.jsx
-````javascript
-import Swal from "sweetalert2";
-
-class AlertService {
-  static showLoading(title = "Loading...", text = "Please wait") {
-    return Swal.fire({
-      title,
-      text,
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      willOpen: () => Swal.showLoading(),
-    });
-  }
-
-  static showSuccess(title = "Success!", text = "Operation completed successfully") {
-    return Swal.fire({
-      title,
-      text,
-      icon: "success",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-
-  static showError(title = "Error!", text = "Something went wrong") {
-    return Swal.fire({
-      title,
-      text,
-      icon: "error",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#d33",
-    });
-  }
-
-  static showWarning(title = "Warning!", text = "Please check your input") {
-    return Swal.fire({
-      title,
-      text,
-      icon: "warning",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#f59e0b",
-    });
-  }
-
-  static async showConfirmation(title = "Are you sure?", text = "", confirmText = "Yes", cancelText = "No") {
-    const result = await Swal.fire({
-      title,
-      text,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: confirmText,
-      cancelButtonText: cancelText,
-    });
-    return result.isConfirmed;
-  }
-
-  static close() {
-    Swal.close();
-  }
-}
-
-export default AlertService;
-````
-
-## File: src/components/pages/AiChatBot/ChatHeader.jsx
-````javascript
-import React from "react";
-
-const ChatHeader = ({ loading, sending, onClear, onClose, messageCount, connectionStatus }) => {
-  return (
-    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex justify-between items-center px-4 py-3">
-      <div className="flex items-center space-x-2">
-        <div className="relative">
-          <div className={`w-3 h-3 rounded-full absolute -top-0 -right-0 ${
-            connectionStatus === 'connected' 
-              ? 'bg-green-400 animate-ping' 
-              : 'bg-red-400'
-          }`}></div>
-          <div className={`w-3 h-3 rounded-full absolute -top-0 -right-0 ${
-            connectionStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'
-          }`}></div>
-        </div>
-        <div>
-          <h3 className="font-bold text-sm">Sim.ai Assistant</h3>
-          <p className="text-xs opacity-80">
-            {(loading || sending) ? "Processing..." : connectionStatus === 'connected' ? "Online" : "Offline"}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center space-x-2">
-        {messageCount > 0 && (
-          <button
-            onClick={onClear}
-            className="text-xs bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition"
-            title="Clear chat history"
-          >
-            🗑️
-          </button>
-        )}
-        <button
-          onClick={onClose}
-          className="text-lg hover:text-gray-200 transition"
-          title="Close chat"
-        >
-          ✖
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default ChatHeader;
-````
-
-## File: src/components/pages/AiChatBot/ChatHistory.jsx
-````javascript
-import React from "react";
-
-const FloatingButton = ({ onClick, isOpen, messageCount }) => {
-  return (
-    <div className="relative">
-      <button
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-        onClick={onClick}
-      >
-        {isOpen ? "✖" : "💬"}
-        {!isOpen && messageCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {messageCount > 9 ? '9+' : messageCount}
-          </span>
-        )}
-      </button>
-    </div>
-  );
-};
-
-export default FloatingButton;
-````
-
-## File: src/components/pages/AiChatBot/ChatInput.jsx
-````javascript
-import React from "react";
-import { MESSAGE_LIMITS } from "@/components/pages/AiChatBot/constants";
-
-const ChatInput = ({ 
-  value, 
-  onChange, 
-  onSubmit, 
-  disabled, 
-  sending,
-  placeholder = "Type your message..." 
-}) => {
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !sending && value.trim()) {
-      e.preventDefault();
-      onSubmit();
-    }
-  };
-
-  return (
-    <div className="border-t border-gray-200 p-3 bg-white">
-      <div className="flex space-x-2">
-        <div className="relative flex-1">
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            disabled={disabled}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed pr-12 resize-none"
-            rows="1"
-            maxLength={MESSAGE_LIMITS.MAX_LENGTH}
-          />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
-            {value.length}/{MESSAGE_LIMITS.MAX_LENGTH}
-          </div>
-        </div>
-        <button
-          onClick={onSubmit}
-          disabled={disabled || !value.trim()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center w-12"
-          title={sending ? "Sending..." : "Send message"}
-        >
-          {sending ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-          ) : (
-            <span className="text-lg">➤</span>
-          )}
-        </button>
-      </div>
-      {value.length > MESSAGE_LIMITS.WARNING_THRESHOLD && (
-        <p className="text-xs text-red-500 mt-2 text-center">
-          Message getting too long ({value.length}/{MESSAGE_LIMITS.MAX_LENGTH})
-        </p>
-      )}
-    </div>
-  );
-};
-
-export default ChatInput;
-````
-
-## File: src/components/pages/AiChatBot/ChatMessage.jsx
-````javascript
-import React from "react";
-
-const ChatMessage = ({ message }) => {
-  const isAI = message.sender === "AI Assistant";
-  const isSystem = message.sender === "System";
-  
-  return (
-    <div
-      className={`p-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
-        isAI
-          ? "bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200"
-          : isSystem
-          ? "bg-gradient-to-r from-red-50 to-orange-100 border border-red-200"
-          : "bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"
-      } max-w-[85%] ${isAI || isSystem ? "mr-auto" : "ml-auto"}`}
-    >
-      <div className="flex items-start space-x-2">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-          isAI 
-            ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white" 
-            : isSystem
-            ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
-            : "bg-gradient-to-r from-gray-500 to-gray-600 text-white"
-        }`}>
-          {isAI ? "AI" : isSystem ? "!" : "U"}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-800">
-            {message.sender}
-          </p>
-          <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
-            {message.text}
-          </p>
-          <small className="text-xs text-gray-500 block mt-2">
-            {new Date(message.createdAt).toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: true 
-            })}
-          </small>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default ChatMessage;
-````
-
-## File: src/components/pages/AiChatBot/constants.jsx
-````javascript
-// 👉 Base API URL
-export const API_BASE_URL = "/api/chat";
-
-// 👉 Message types
-export const MESSAGE_TYPES = {
-  USER: "USER",
-  AI: "AI",
-  SYSTEM: "SYSTEM",
-};
-
-// 👉 Message limits (used in ChatInput.jsx)
-export const MESSAGE_LIMITS = {
-  MAX_LENGTH: 500,
-  WARNING_THRESHOLD: 400,
-};
-
-// 👉 Chat Storage
-export const CHAT_STORAGE_KEY = "sim_ai_chat_messages";
-
-// 👉 Chat settings (used in older hook)
-export const CHAT_SETTINGS = {
-  TYPING_DELAY: 600,
-};
-
-// 👉 Optional endpoints for useChat.jsx (so it won’t break)
-export const API_ENDPOINTS = {
-  GET_MESSAGES: "/getMessagesbyid",
-  SEND_MESSAGE: "/ai-chat",
-  CLEAR_MESSAGES: "/clearMessages",
-};
-````
-
-## File: src/components/pages/AiChatBot/FloatingButton.jsx
-````javascript
-import React from "react";
-
-const FloatingButton = ({ onClick, isOpen, messageCount }) => {
-  return (
-    <div className="relative">
-      <button
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-        onClick={onClick}
-      >
-        {isOpen ? "✖" : "💬"}
-        {!isOpen && messageCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {messageCount > 9 ? '9+' : messageCount}
-          </span>
-        )}
-      </button>
-    </div>
-  );
-};
-
-export default FloatingButton;
-````
-
-## File: src/components/pages/AiChatBot/repomix-output.xml
-````xml
-This file is a merged representation of the entire codebase, combined into a single document by Repomix.
-
-<file_summary>
-This section contains a summary of this file.
-
-<purpose>
-This file contains a packed representation of the entire repository's contents.
-It is designed to be easily consumable by AI systems for analysis, code review,
-or other automated processes.
-</purpose>
-
-<file_format>
-The content is organized as follows:
-1. This summary section
-2. Repository information
-3. Directory structure
-4. Repository files (if enabled)
-5. Multiple file entries, each consisting of:
-  - File path as an attribute
-  - Full contents of the file
-</file_format>
-
-<usage_guidelines>
-- This file should be treated as read-only. Any changes should be made to the
-  original repository files, not this packed version.
-- When processing this file, use the file path to distinguish
-  between different files in the repository.
-- Be aware that this file may contain sensitive information. Handle it with
-  the same level of security as you would the original repository.
-</usage_guidelines>
-
-<notes>
-- Some files may have been excluded based on .gitignore rules and Repomix's configuration
-- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Files matching patterns in .gitignore are excluded
-- Files matching default ignore patterns are excluded
-- Files are sorted by Git change count (files with more changes are at the bottom)
-</notes>
-
-</file_summary>
-
-<directory_structure>
-AlertService.jsx
-ChatHeader.jsx
-ChatHistory.jsx
-ChatInput.jsx
-ChatMessage.jsx
-constants.jsx
-FloatingButton.jsx
-simAIService.jsx
-storage.jsx
-TypingIndicator.jsx
-useChat.jsx
-useSimAIChat.jsx
-</directory_structure>
-
-<files>
-This section contains the contents of the repository's files.
-
-<file path="AlertService.jsx">
-import Swal from "sweetalert2";
-
-class AlertService {
-  static showLoading(title = "Loading...", text = "Please wait") {
-    return Swal.fire({
-      title,
-      text,
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      willOpen: () => Swal.showLoading(),
-    });
-  }
-
-  static showSuccess(title = "Success!", text = "Operation completed successfully") {
-    return Swal.fire({
-      title,
-      text,
-      icon: "success",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-
-  static showError(title = "Error!", text = "Something went wrong") {
-    return Swal.fire({
-      title,
-      text,
-      icon: "error",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#d33",
-    });
-  }
-
-  static showWarning(title = "Warning!", text = "Please check your input") {
-    return Swal.fire({
-      title,
-      text,
-      icon: "warning",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#f59e0b",
-    });
-  }
-
-  static async showConfirmation(title = "Are you sure?", text = "", confirmText = "Yes", cancelText = "No") {
-    const result = await Swal.fire({
-      title,
-      text,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: confirmText,
-      cancelButtonText: cancelText,
-    });
-    return result.isConfirmed;
-  }
-
-  static close() {
-    Swal.close();
-  }
-}
-
-export default AlertService;
-</file>
-
-<file path="ChatHeader.jsx">
-import React from "react";
-
-const ChatHeader = ({ loading, sending, onClear, onClose, messageCount, connectionStatus }) => {
-  return (
-    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex justify-between items-center px-4 py-3">
-      <div className="flex items-center space-x-2">
-        <div className="relative">
-          <div className={`w-3 h-3 rounded-full absolute -top-0 -right-0 ${
-            connectionStatus === 'connected' 
-              ? 'bg-green-400 animate-ping' 
-              : 'bg-red-400'
-          }`}></div>
-          <div className={`w-3 h-3 rounded-full absolute -top-0 -right-0 ${
-            connectionStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'
-          }`}></div>
-        </div>
-        <div>
-          <h3 className="font-bold text-sm">Sim.ai Assistant</h3>
-          <p className="text-xs opacity-80">
-            {(loading || sending) ? "Processing..." : connectionStatus === 'connected' ? "Online" : "Offline"}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center space-x-2">
-        {messageCount > 0 && (
-          <button
-            onClick={onClear}
-            className="text-xs bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition"
-            title="Clear chat history"
-          >
-            🗑️
-          </button>
-        )}
-        <button
-          onClick={onClose}
-          className="text-lg hover:text-gray-200 transition"
-          title="Close chat"
-        >
-          ✖
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default ChatHeader;
-</file>
-
-<file path="ChatHistory.jsx">
-import React from "react";
-
-const FloatingButton = ({ onClick, isOpen, messageCount }) => {
-  return (
-    <div className="relative">
-      <button
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-        onClick={onClick}
-      >
-        {isOpen ? "✖" : "💬"}
-        {!isOpen && messageCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {messageCount > 9 ? '9+' : messageCount}
-          </span>
-        )}
-      </button>
-    </div>
-  );
-};
-
-export default FloatingButton;
-</file>
-
-<file path="ChatInput.jsx">
-import React from "react";
-import { MESSAGE_LIMITS } from "@/components/pages/AiChatBot/constants";
-
-const ChatInput = ({ 
-  value, 
-  onChange, 
-  onSubmit, 
-  disabled, 
-  sending,
-  placeholder = "Type your message..." 
-}) => {
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !sending && value.trim()) {
-      e.preventDefault();
-      onSubmit();
-    }
-  };
-
-  return (
-    <div className="border-t border-gray-200 p-3 bg-white">
-      <div className="flex space-x-2">
-        <div className="relative flex-1">
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            disabled={disabled}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed pr-12 resize-none"
-            rows="1"
-            maxLength={MESSAGE_LIMITS.MAX_LENGTH}
-          />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
-            {value.length}/{MESSAGE_LIMITS.MAX_LENGTH}
-          </div>
-        </div>
-        <button
-          onClick={onSubmit}
-          disabled={disabled || !value.trim()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center w-12"
-          title={sending ? "Sending..." : "Send message"}
-        >
-          {sending ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-          ) : (
-            <span className="text-lg">➤</span>
-          )}
-        </button>
-      </div>
-      {value.length > MESSAGE_LIMITS.WARNING_THRESHOLD && (
-        <p className="text-xs text-red-500 mt-2 text-center">
-          Message getting too long ({value.length}/{MESSAGE_LIMITS.MAX_LENGTH})
-        </p>
-      )}
-    </div>
-  );
-};
-
-export default ChatInput;
-</file>
-
-<file path="ChatMessage.jsx">
-import React from "react";
-
-const ChatMessage = ({ message }) => {
-  const isAI = message.sender === "AI Assistant";
-  const isSystem = message.sender === "System";
-  
-  return (
-    <div
-      className={`p-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
-        isAI
-          ? "bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200"
-          : isSystem
-          ? "bg-gradient-to-r from-red-50 to-orange-100 border border-red-200"
-          : "bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"
-      } max-w-[85%] ${isAI || isSystem ? "mr-auto" : "ml-auto"}`}
-    >
-      <div className="flex items-start space-x-2">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-          isAI 
-            ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white" 
-            : isSystem
-            ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
-            : "bg-gradient-to-r from-gray-500 to-gray-600 text-white"
-        }`}>
-          {isAI ? "AI" : isSystem ? "!" : "U"}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-800">
-            {message.sender}
-          </p>
-          <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
-            {message.text}
-          </p>
-          <small className="text-xs text-gray-500 block mt-2">
-            {new Date(message.createdAt).toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: true 
-            })}
-          </small>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default ChatMessage;
-</file>
-
-<file path="constants.jsx">
-// 👉 Base API URL
-export const API_BASE_URL = "/api/chat";
-
-// 👉 Message types
-export const MESSAGE_TYPES = {
-  USER: "USER",
-  AI: "AI",
-  SYSTEM: "SYSTEM",
-};
-
-// 👉 Any other global constants can go here
-export const CHAT_STORAGE_KEY = "sim_ai_chat_messages";
-</file>
-
-<file path="FloatingButton.jsx">
-import React from "react";
-
-const FloatingButton = ({ onClick, isOpen, messageCount }) => {
-  return (
-    <div className="relative">
-      <button
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center text-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-        onClick={onClick}
-      >
-        {isOpen ? "✖" : "💬"}
-        {!isOpen && messageCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {messageCount > 9 ? '9+' : messageCount}
-          </span>
-        )}
-      </button>
-    </div>
-  );
-};
-
-export default FloatingButton;
-</file>
-
-<file path="simAIService.jsx">
-import axios from "axios";
-import { API_BASE_URL } from "@/components/pages/AiChatBot/constants";
-
-class SimAIService {
-  constructor() {
-    this.baseURL = API_BASE_URL;
-  }
-
-  async sendMessage(message) {
-    try {
-      const response = await axios.post(
-        `${this.baseURL}/api/chat`,
-        { userInput: message },
-        {
-          headers: { "Content-Type": "application/json" },
-          timeout: 30000,
-        }
-      );
-
-      return {
-        success: response.data.success,
-        reply: response.data.reply || "No response from AI",
-        error: response.data.error,
-      };
-    } catch (error) {
-      console.error("SimAIService - Error:", error);
-      
-      let errorMessage = "Failed to connect to AI service";
-      if (error.response) {
-        errorMessage = error.response.data?.error || `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage = "No response from backend server";
-      }
-
-      return { success: false, reply: "", error: errorMessage };
-    }
-  }
-
-  async testConnection() {
-    try {
-      const response = await axios.get(`${this.baseURL}/health`, {
-        timeout: 5000,
-      });
-      return response.status === 200;
-    } catch (error) {
-      console.log("Backend health check failed:", error.message);
-      return false;
-    }
-  }
-}
-
-const simAIService = new SimAIService();
-export default simAIService;
-</file>
-
-<file path="storage.jsx">
-const STORAGE_KEY = "sim_ai_chat_messages";
-
-export const saveMessages = (messages) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  } catch (error) {
-    console.error("Failed to save messages:", error);
-  }
-};
-
-export const loadMessages = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
-    console.error("Failed to load messages:", error);
-    return [];
-  }
-};
-
-export const clearMessages = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error("Failed to clear messages:", error);
-  }
-};
-</file>
-
-<file path="TypingIndicator.jsx">
-import React from "react";
-
-const TypingIndicator = () => {
-  return (
-    <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 max-w-[85%] mr-auto">
-      <div className="flex items-center space-x-2">
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-        </div>
-        <span className="text-sm text-gray-600">Sim.ai is thinking...</span>
-      </div>
-    </div>
-  );
-};
-
-export default TypingIndicator;
-</file>
-
-<file path="useChat.jsx">
-import { useState, useCallback, useEffect } from "react";
-import axios from "axios";
-import AlertService from "./AlertService";
-import { API_BASE_URL, API_ENDPOINTS } from "./constants";
-
-const useChat = () => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [aiTyping, setAiTyping] = useState(false);
-
-  const token = localStorage.getItem("token");
-
-  const loadMessages = useCallback(async () => {
-    if (loading || !token) return;
-
-    const loadingAlert = AlertService.showLoading("Loading Messages", "Fetching your chat history...");
-    
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.GET_MESSAGES}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      let loadedMessages = [];
-      if (res.data?.messages) {
-        loadedMessages = res.data.messages;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        loadedMessages = res.data.data;
-      }
-      
-      setMessages(loadedMessages);
-      await loadingAlert.close();
-    } catch (err) {
-      await loadingAlert.close();
-      handleApiError(err, "load");
-      console.error("Error loading messages:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const sendMessage = async (messageText) => {
-    if (!messageText.trim() || sending || !token) return;
-
-    const messageToSend = messageText.trim();
-    
-    // Create local message
-    const localMessage = {
-      _id: Date.now(),
-      sender: "User",
-      text: messageToSend,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Optimistic Update
-    setMessages(prev => [...prev, localMessage]);
-    setSending(true);
-
-    try {
-      const sendingAlert = AlertService.showLoading("Sending", "Your message is being sent...");
-      
-      await axios.post(
-        `${API_BASE_URL}${API_ENDPOINTS.SEND_MESSAGE}`,
-        { text: messageToSend }, 
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
-      );
-      
-      await sendingAlert.close();
-      AlertService.showSuccess("Sent!", "Message delivered successfully");
-      
-      // Refresh messages after sending
-      loadMessages();
-      
-    } catch (error) {
-      console.error("Message sending failed:", error);
-      handleApiError(error, "send");
-      
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg._id !== localMessage._id));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const clearMessages = async () => {
-    if (messages.length === 0 || !token) return;
-    
-    const confirmed = await AlertService.showConfirmation(
-      "Clear Chat History?",
-      "This will remove all your chat history. This action cannot be undone.",
-      "Clear All",
-      "Cancel"
-    );
-    
-    if (!confirmed) return;
-    
-    const loadingAlert = AlertService.showLoading("Clearing", "Removing chat history...");
-    
-    try {
-      await axios.delete(`${API_BASE_URL}${API_ENDPOINTS.CLEAR_MESSAGES}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      await loadingAlert.close();
-      AlertService.showSuccess("Cleared!", "All chat history has been removed.");
-      setMessages([]);
-    } catch (error) {
-      await loadingAlert.close();
-      AlertService.showError("Clear Failed", "Failed to clear chat history. Please try again.");
-      console.error("Error clearing messages:", error);
-    }
-  };
-
-  const handleApiError = (error, operation) => {
-    if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          AlertService.showError("Session Expired", `Please login again to ${operation} messages.`);
-          break;
-        case 403:
-          AlertService.showError("Access Denied", `You don't have permission to ${operation} messages.`);
-          break;
-        case 404:
-          if (operation === "load") {
-            AlertService.showError("Not Found", "Chat history not found.");
-          }
-          break;
-        case 429:
-          AlertService.showError("Too Many Requests", "Please wait a moment before sending another message.");
-          break;
-        case 500:
-          AlertService.showError("Server Error", "Our server encountered an error. Please try again later.");
-          break;
-        default:
-          AlertService.showError("Error", `Failed to ${operation} messages. Please try again.`);
-      }
-    } else if (error.request) {
-      AlertService.showError("Network Error", "Unable to connect to the server. Please check your internet connection.");
-    } else {
-      AlertService.showError("Error", "Something went wrong. Please try again.");
-    }
-  };
-
-  return {
-    messages,
-    loading,
-    sending,
-    aiTyping,
-    loadMessages,
-    sendMessage,
-    clearMessages,
-    setMessages
-  };
-};
-
-export default useChat;
-</file>
-
-<file path="useSimAIChat.jsx">
-import { useState, useCallback, useEffect } from "react";
-import { MESSAGE_TYPES } from "@/components/pages/AiChatBot/constants";
-
-// Custom storage functions (you can keep these or adapt)
-const saveMessages = (messages) => {
-  try {
-    localStorage.setItem('sim_ai_chat_messages', JSON.stringify(messages));
-  } catch (error) {
-    console.error("Failed to save messages:", error);
-  }
-};
-
-const loadMessages = () => {
-  try {
-    const saved = localStorage.getItem('sim_ai_chat_messages');
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
-    console.error("Failed to load messages:", error);
-    return [];
-  }
-};
-
-const clearStorage = () => {
-  localStorage.removeItem('sim_ai_chat_messages');
-};
-
-// Service to call your backend
-const simAIService = {
-  sendMessage: async (messageText, token) => {
-    try {
-      const response = await fetch('/api/chat/ai-chat', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: messageText })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      return {
-        success: data.success,
-        reply: data.messageData?.text || data.reply || "No response",
-        messageData: data.messageData
-      };
-    } catch (error) {
-      console.error("API call failed:", error);
-      return {
-        success: false,
-        error: error.message,
-        reply: "Sorry, I'm having trouble connecting. Please try again."
-      };
-    }
-  },
-
-  testConnection: async (token) => {
-    try {
-      const response = await fetch('/api/chat/ai-chat', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: "test" })
-      });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
-  }
-};
-
-const useSimAIChat = (token) => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [aiTyping, setAiTyping] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
-
-  // Load messages from storage on mount
-  useEffect(() => {
-    setLoading(true);
-    const savedMessages = loadMessages();
-    if (savedMessages.length > 0) {
-      setMessages(savedMessages);
-    }
-    setLoading(false);
-    
-    // Check connection if token is available
-    if (token) {
-      checkConnection();
-    }
-  }, [token]);
-
-  // Save messages when they change
-  useEffect(() => {
-    if (messages.length > 0) {
-      saveMessages(messages);
-    }
-  }, [messages]);
-
-  const checkConnection = useCallback(async () => {
-    if (!token) {
-      setConnectionStatus("disconnected");
-      return false;
-    }
-
-    setConnectionStatus("connecting");
-    try {
-      const isConnected = await simAIService.testConnection(token);
-      setConnectionStatus(isConnected ? "connected" : "disconnected");
-      return isConnected;
-    } catch (error) {
-      setConnectionStatus("disconnected");
-      return false;
-    }
-  }, [token]);
-
-  const sendMessage = useCallback(async (messageText) => {
-    if (!messageText.trim() || sending || !token) {
-      return { 
-        success: false, 
-        error: !token ? "Authentication required" : "Invalid message or already sending" 
-      };
-    }
-
-    // Add user message
-    const userMessage = {
-      id: Date.now(),
-      type: MESSAGE_TYPES.USER,
-      sender: "User",
-      text: messageText,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setSending(true);
-    setAiTyping(true);
-
-    try {
-      // Send to your backend
-      const result = await simAIService.sendMessage(messageText, token);
-      
-      if (result.success) {
-        // Add AI response
-        const aiMessage = {
-          id: Date.now() + 1,
-          type: MESSAGE_TYPES.AI,
-          sender: "AI Assistant",
-          text: result.reply,
-          createdAt: new Date().toISOString(),
-        };
-
-        setMessages(prev => [...prev, aiMessage]);
-        return { 
-          success: true, 
-          message: "Message sent successfully",
-          data: result.messageData 
-        };
-      } else {
-        // Add error message
-        const errorMessage = {
-          id: Date.now() + 1,
-          type: MESSAGE_TYPES.SYSTEM,
-          sender: "System",
-          text: `Error: ${result.error}`,
-          createdAt: new Date().toISOString(),
-        };
-
-        setMessages(prev => [...prev, errorMessage]);
-        return { success: false, error: result.error };
-      }
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: MESSAGE_TYPES.SYSTEM,
-        sender: "System",
-        text: `Error: ${error.message}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages(prev => [...prev, errorMessage]);
-      return { success: false, error: error.message };
-    } finally {
-      setSending(false);
-      setAiTyping(false);
-    }
-  }, [sending, token]);
-
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-    clearStorage();
-  }, []);
-
-  const loadHistoryFromBackend = useCallback(async () => {
-    if (!token) return;
-
-    try {
-      const response = await fetch('/api/chat/getMessagesbyid', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.messages) {
-          // Format backend messages to match frontend format
-          const formattedMessages = data.messages.map(msg => ({
-            id: msg._id,
-            type: msg.sender === 'User' ? MESSAGE_TYPES.USER : 
-                  msg.sender === 'AI Assistant' ? MESSAGE_TYPES.AI : MESSAGE_TYPES.SYSTEM,
-            sender: msg.sender,
-            text: msg.text,
-            createdAt: msg.createdAt || new Date().toISOString()
-          }));
-          
-          setMessages(formattedMessages);
-          saveMessages(formattedMessages);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load history:", error);
-    }
-  }, [token]);
-
-  return {
-    messages,
-    loading,
-    sending,
-    aiTyping,
-    sendMessage,
-    clearMessages,
-    connectionStatus,
-    checkConnection,
-    setMessages,
-    loadHistoryFromBackend
-  };
-};
-
-export default useSimAIChat;
-</file>
-
-</files>
-````
-
-## File: src/components/pages/AiChatBot/simAIService.jsx
-````javascript
-import axios from "axios";
-import { API_BASE_URL } from "@/components/pages/AiChatBot/constants";
-
-class SimAIService {
-  constructor() {
-    this.baseURL = API_BASE_URL;
-  }
-
-  async sendMessage(message) {
-    try {
-      const response = await axios.post(
-        `${this.baseURL}/api/chat`,
-        { userInput: message },
-        {
-          headers: { "Content-Type": "application/json" },
-          timeout: 30000,
-        }
-      );
-
-      return {
-        success: response.data.success,
-        reply: response.data.reply || "No response from AI",
-        error: response.data.error,
-      };
-    } catch (error) {
-      console.error("SimAIService - Error:", error);
-      
-      let errorMessage = "Failed to connect to AI service";
-      if (error.response) {
-        errorMessage = error.response.data?.error || `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage = "No response from backend server";
-      }
-
-      return { success: false, reply: "", error: errorMessage };
-    }
-  }
-
-  async testConnection() {
-    try {
-      const response = await axios.get(`${this.baseURL}/health`, {
-        timeout: 5000,
-      });
-      return response.status === 200;
-    } catch (error) {
-      console.log("Backend health check failed:", error.message);
-      return false;
-    }
-  }
-}
-
-const simAIService = new SimAIService();
-export default simAIService;
-````
-
-## File: src/components/pages/AiChatBot/storage.jsx
-````javascript
-const STORAGE_KEY = "sim_ai_chat_messages";
-
-export const saveMessages = (messages) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  } catch (error) {
-    console.error("Failed to save messages:", error);
-  }
-};
-
-export const loadMessages = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
-    console.error("Failed to load messages:", error);
-    return [];
-  }
-};
-
-export const clearMessages = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error("Failed to clear messages:", error);
-  }
-};
-````
-
-## File: src/components/pages/AiChatBot/TypingIndicator.jsx
-````javascript
-import React from "react";
-
-const TypingIndicator = () => {
-  return (
-    <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 max-w-[85%] mr-auto">
-      <div className="flex items-center space-x-2">
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-        </div>
-        <span className="text-sm text-gray-600">Sim.ai is thinking...</span>
-      </div>
-    </div>
-  );
-};
-
-export default TypingIndicator;
-````
-
-## File: src/components/pages/AiChatBot/useChat.jsx
-````javascript
-import { useState, useCallback, useEffect } from "react";
-import axios from "axios";
-import AlertService from "./AlertService";
-import { API_BASE_URL, API_ENDPOINTS } from "./constants";
-
-const useChat = () => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [aiTyping, setAiTyping] = useState(false);
-
-  const token = localStorage.getItem("token");
-
-  const loadMessages = useCallback(async () => {
-    if (loading || !token) return;
-
-    const loadingAlert = AlertService.showLoading("Loading Messages", "Fetching your chat history...");
-    
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.GET_MESSAGES}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      let loadedMessages = [];
-      if (res.data?.messages) {
-        loadedMessages = res.data.messages;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        loadedMessages = res.data.data;
-      }
-      
-      setMessages(loadedMessages);
-      await loadingAlert.close();
-    } catch (err) {
-      await loadingAlert.close();
-      handleApiError(err, "load");
-      console.error("Error loading messages:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const sendMessage = async (messageText) => {
-    if (!messageText.trim() || sending || !token) return;
-
-    const messageToSend = messageText.trim();
-    
-    // Create local message
-    const localMessage = {
-      _id: Date.now(),
-      sender: "User",
-      text: messageToSend,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Optimistic Update
-    setMessages(prev => [...prev, localMessage]);
-    setSending(true);
-
-    try {
-      const sendingAlert = AlertService.showLoading("Sending", "Your message is being sent...");
-      
-      await axios.post(
-        `${API_BASE_URL}${API_ENDPOINTS.SEND_MESSAGE}`,
-        { text: messageToSend }, 
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
-      );
-      
-      await sendingAlert.close();
-      AlertService.showSuccess("Sent!", "Message delivered successfully");
-      
-      // Refresh messages after sending
-      loadMessages();
-      
-    } catch (error) {
-      console.error("Message sending failed:", error);
-      handleApiError(error, "send");
-      
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg._id !== localMessage._id));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const clearMessages = async () => {
-    if (messages.length === 0 || !token) return;
-    
-    const confirmed = await AlertService.showConfirmation(
-      "Clear Chat History?",
-      "This will remove all your chat history. This action cannot be undone.",
-      "Clear All",
-      "Cancel"
-    );
-    
-    if (!confirmed) return;
-    
-    const loadingAlert = AlertService.showLoading("Clearing", "Removing chat history...");
-    
-    try {
-      await axios.delete(`${API_BASE_URL}${API_ENDPOINTS.CLEAR_MESSAGES}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      await loadingAlert.close();
-      AlertService.showSuccess("Cleared!", "All chat history has been removed.");
-      setMessages([]);
-    } catch (error) {
-      await loadingAlert.close();
-      AlertService.showError("Clear Failed", "Failed to clear chat history. Please try again.");
-      console.error("Error clearing messages:", error);
-    }
-  };
-
-  const handleApiError = (error, operation) => {
-    if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          AlertService.showError("Session Expired", `Please login again to ${operation} messages.`);
-          break;
-        case 403:
-          AlertService.showError("Access Denied", `You don't have permission to ${operation} messages.`);
-          break;
-        case 404:
-          if (operation === "load") {
-            AlertService.showError("Not Found", "Chat history not found.");
-          }
-          break;
-        case 429:
-          AlertService.showError("Too Many Requests", "Please wait a moment before sending another message.");
-          break;
-        case 500:
-          AlertService.showError("Server Error", "Our server encountered an error. Please try again later.");
-          break;
-        default:
-          AlertService.showError("Error", `Failed to ${operation} messages. Please try again.`);
-      }
-    } else if (error.request) {
-      AlertService.showError("Network Error", "Unable to connect to the server. Please check your internet connection.");
-    } else {
-      AlertService.showError("Error", "Something went wrong. Please try again.");
-    }
-  };
-
-  return {
-    messages,
-    loading,
-    sending,
-    aiTyping,
-    loadMessages,
-    sendMessage,
-    clearMessages,
-    setMessages
-  };
-};
-
-export default useChat;
-````
-
-## File: src/components/pages/AiChatBot/useSimAIChat.jsx
-````javascript
-import { useState, useCallback, useEffect } from "react";
-import { MESSAGE_TYPES } from "@/components/pages/AiChatBot/constants";
-
-// Custom storage functions (you can keep these or adapt)
-const saveMessages = (messages) => {
-  try {
-    localStorage.setItem('sim_ai_chat_messages', JSON.stringify(messages));
-  } catch (error) {
-    console.error("Failed to save messages:", error);
-  }
-};
-
-const loadMessages = () => {
-  try {
-    const saved = localStorage.getItem('sim_ai_chat_messages');
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
-    console.error("Failed to load messages:", error);
-    return [];
-  }
-};
-
-const clearStorage = () => {
-  localStorage.removeItem('sim_ai_chat_messages');
-};
-
-// Service to call your backend
-const simAIService = {
-  sendMessage: async (messageText, token) => {
-    try {
-      const response = await fetch('/api/chat/ai-chat', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: messageText })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      return {
-        success: data.success,
-        reply: data.messageData?.text || data.reply || "No response",
-        messageData: data.messageData
-      };
-    } catch (error) {
-      console.error("API call failed:", error);
-      return {
-        success: false,
-        error: error.message,
-        reply: "Sorry, I'm having trouble connecting. Please try again."
-      };
-    }
-  },
-
-  testConnection: async (token) => {
-    try {
-      const response = await fetch('/api/chat/ai-chat', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: "test" })
-      });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
-  }
-};
-
-const useSimAIChat = (token) => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [aiTyping, setAiTyping] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
-
-  // Load messages from storage on mount
-  useEffect(() => {
-    setLoading(true);
-    const savedMessages = loadMessages();
-    if (savedMessages.length > 0) {
-      setMessages(savedMessages);
-    }
-    setLoading(false);
-    
-    // Check connection if token is available
-    if (token) {
-      checkConnection();
-    }
-  }, [token]);
-
-  // Save messages when they change
-  useEffect(() => {
-    if (messages.length > 0) {
-      saveMessages(messages);
-    }
-  }, [messages]);
-
-  const checkConnection = useCallback(async () => {
-    if (!token) {
-      setConnectionStatus("disconnected");
-      return false;
-    }
-
-    setConnectionStatus("connecting");
-    try {
-      const isConnected = await simAIService.testConnection(token);
-      setConnectionStatus(isConnected ? "connected" : "disconnected");
-      return isConnected;
-    } catch (error) {
-      setConnectionStatus("disconnected");
-      return false;
-    }
-  }, [token]);
-
-  const sendMessage = useCallback(async (messageText) => {
-    if (!messageText.trim() || sending || !token) {
-      return { 
-        success: false, 
-        error: !token ? "Authentication required" : "Invalid message or already sending" 
-      };
-    }
-
-    // Add user message
-    const userMessage = {
-      id: Date.now(),
-      type: MESSAGE_TYPES.USER,
-      sender: "User",
-      text: messageText,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setSending(true);
-    setAiTyping(true);
-
-    try {
-      // Send to your backend
-      const result = await simAIService.sendMessage(messageText, token);
-      
-      if (result.success) {
-        // Add AI response
-        const aiMessage = {
-          id: Date.now() + 1,
-          type: MESSAGE_TYPES.AI,
-          sender: "AI Assistant",
-          text: result.reply,
-          createdAt: new Date().toISOString(),
-        };
-
-        setMessages(prev => [...prev, aiMessage]);
-        return { 
-          success: true, 
-          message: "Message sent successfully",
-          data: result.messageData 
-        };
-      } else {
-        // Add error message
-        const errorMessage = {
-          id: Date.now() + 1,
-          type: MESSAGE_TYPES.SYSTEM,
-          sender: "System",
-          text: `Error: ${result.error}`,
-          createdAt: new Date().toISOString(),
-        };
-
-        setMessages(prev => [...prev, errorMessage]);
-        return { success: false, error: result.error };
-      }
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: MESSAGE_TYPES.SYSTEM,
-        sender: "System",
-        text: `Error: ${error.message}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages(prev => [...prev, errorMessage]);
-      return { success: false, error: error.message };
-    } finally {
-      setSending(false);
-      setAiTyping(false);
-    }
-  }, [sending, token]);
-
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-    clearStorage();
-  }, []);
-
-  const loadHistoryFromBackend = useCallback(async () => {
-    if (!token) return;
-
-    try {
-      const response = await fetch('/api/chat/getMessagesbyid', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.messages) {
-          // Format backend messages to match frontend format
-          const formattedMessages = data.messages.map(msg => ({
-            id: msg._id,
-            type: msg.sender === 'User' ? MESSAGE_TYPES.USER : 
-                  msg.sender === 'AI Assistant' ? MESSAGE_TYPES.AI : MESSAGE_TYPES.SYSTEM,
-            sender: msg.sender,
-            text: msg.text,
-            createdAt: msg.createdAt || new Date().toISOString()
-          }));
-          
-          setMessages(formattedMessages);
-          saveMessages(formattedMessages);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load history:", error);
-    }
-  }, [token]);
-
-  return {
-    messages,
-    loading,
-    sending,
-    aiTyping,
-    sendMessage,
-    clearMessages,
-    connectionStatus,
-    checkConnection,
-    setMessages,
-    loadHistoryFromBackend
-  };
-};
-
-export default useSimAIChat;
-````
-
-## File: src/components/utils/swalHelpers.jsx
-````javascript
-// swalHelpers.js
-import Swal from "sweetalert2";
-
-// Show loading alert
-export const showLoadingAlert = (title = "Loading...", text = "Please wait") => {
-  Swal.fire({
-    title,
-    text,
-    allowOutsideClick: false,
-    showConfirmButton: false,
-    willOpen: () => Swal.showLoading(),
-  });
-  return Swal;
-};
-
-// Show success alert
-export const showSuccessAlert = (title = "Success!", text = "Operation completed successfully") => {
-  return Swal.fire({
-    title,
-    text,
-    icon: "success",
-    timer: 2000,
-    showConfirmButton: false,
-  });
-};
-
-// Show error alert
-export const showErrorAlert = (title = "Error!", text = "Something went wrong") => {
-  return Swal.fire({
-    title,
-    text,
-    icon: "error",
-    confirmButtonText: "OK",
-    confirmButtonColor: "#d33",
-  });
-};
-
-// Show confirmation dialog
-export const showConfirmationDialog = async (
-  title = "Are you sure?",
-  text = "",
-  confirmText = "Yes",
-  cancelText = "No"
-) => {
-  const result = await Swal.fire({
-    title,
-    text,
-    icon: "question",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: confirmText,
-    cancelButtonText: cancelText,
-  });
-  return result.isConfirmed;
-};
-````
-
-## File: src/components/utils/voice.jsx
-````javascript
-export function speakText(text) {
-  if (!text) return;
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";       // Change language if needed
-  utterance.rate = 1;             // Speed of speech
-  utterance.pitch = 1;            // Voice pitch
-  window.speechSynthesis.speak(utterance);
-}
-````
-
-## File: eslint.config.js
-````javascript
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
-      },
-    },
-    rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
-    },
-  },
-])
-````
-
-## File: index.html
-````html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-````
-
-## File: jsconfig.json
-````json
-{
-    "compilerOptions": {
-        "baseUrl": ".",
-        "paths": {
-            "@/*": [
-                "src/*"
-            ],
-            "@components/*": [
-                "src/components/*"
-            ],
-            "@utils/*": [
-                "src/utils/*"
-            ]
-        }
-    },
-    "include": [
-        "src"
-    ]
-}
-````
-
-## File: public/vite.svg
-````
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
-````
-
-## File: README.md
-````markdown
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-````
-
-## File: repomix.config.json
-````json
-{
-  "$schema": "https://repomix.com/schemas/latest/schema.json",
-  "input": {
-    "maxFileSize": 52428800
-  },
-  "output": {
-    "filePath": "repomix-output.md",
-    "style": "markdown",
-    "parsableStyle": false,
-    "fileSummary": true,
-    "directoryStructure": true,
-    "files": true,
-    "removeComments": false,
-    "removeEmptyLines": false,
-    "compress": false,
-    "topFilesLength": 5,
-    "showLineNumbers": false,
-    "truncateBase64": false,
-    "copyToClipboard": false,
-    "includeFullDirectoryStructure": false,
-    "tokenCountTree": false,
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100,
-      "includeDiffs": false,
-      "includeLogs": false,
-      "includeLogsCount": 50
-    }
-  },
-  "include": [],
-  "ignore": {
-    "useGitignore": true,
-    "useDotIgnore": true,
-    "useDefaultPatterns": true,
-    "customPatterns": []
-  },
-  "security": {
-    "enableSecurityCheck": true
-  },
-  "tokenCount": {
-    "encoding": "o200k_base"
-  }
-}
-````
-
-## File: src/App.jsx
-````javascript
-import Homepage from "@/components/pages/Homepage";
-import NotFound from "@/components/pages/NotFound"; // import new page
-import { useState } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import "./App.css";
-
-import Uploadmedia from "@/components/utils/mediaUpload";
-
-function App() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <div>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/*" element={<Homepage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
-  );
-}
-
-export default App;
-````
-
-## File: src/assets/react.svg
-````
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
-````
-
-## File: src/components/Banners.jsx
-````javascript
-import React, { useState, useEffect, useRef } from 'react';
-
-export default function Banners({ images }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const timeoutRef = useRef(null);
-
-  const delay = 3000; // 3 seconds per slide
-
-  const resetTimeout = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-  };
-
-  useEffect(() => {
-    resetTimeout();
-    timeoutRef.current = setTimeout(() => {
-      setCurrentIndex((prevIndex) =>
-        prevIndex === images.length - 1 ? 0 : prevIndex + 1
-      );
-    }, delay);
-
-    return () => resetTimeout();
-  }, [currentIndex, images.length]);
-
-  const goToSlide = (index) => {
-    setCurrentIndex(index);
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex(currentIndex === 0 ? images.length - 1 : currentIndex - 1);
-  };
-
-  const nextSlide = () => {
-    setCurrentIndex(currentIndex === images.length - 1 ? 0 : currentIndex + 1);
-  };
-
-  return (
-    <div className="relative w-full overflow-hidden">
-      {/* Slides */}
-      <div
-        className="flex transition-transform duration-700 ease-in-out"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-      >
-        {images.map((src, idx) => (
-          <div key={idx} className="flex-shrink-0 w-full">
-            <img src={src} alt={`banner-${idx}`} className="w-full h-64 object-cover rounded-lg" />
-          </div>
-        ))}
-      </div>
-
-      {/* Arrows */}
-      <button
-        onClick={prevSlide}
-        className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
-      >
-        &#8592;
-      </button>
-      <button
-        onClick={nextSlide}
-        className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
-      >
-        &#8594;
-      </button>
-
-      {/* Dots */}
-      <div className="absolute bottom-2 w-full flex justify-center space-x-2">
-        {images.map((_, idx) => (
-          <div
-            key={idx}
-            onClick={() => goToSlide(idx)}
-            className={`h-2 w-2 rounded-full cursor-pointer ${
-              idx === currentIndex ? 'bg-white' : 'bg-gray-400'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-````
-
-## File: src/components/imageSlider.jsx
-````javascript
-import React, { useState } from "react";
-import { AiOutlineLeft, AiOutlineRight } from "react-icons/ai";
-
-export default function ImageSlider({ images = [] }) {
-  const [currentImage, setCurrentImage] = useState(0);
-
-  const prevImage = () => {
-    setCurrentImage((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
-
-  const nextImage = () => {
-    setCurrentImage((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
-
-  if (!images.length) return null;
-
-  return (
-    <div className="w-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto">
-      {/* Main Image */}
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden shadow-lg">
-        <img
-          src={images[currentImage]}
-          alt={`product-${currentImage}`}
-          className="w-full h-full object-cover object-center"
-        />
-
-        {/* Left Arrow */}
-        <button
-          onClick={prevImage}
-          className="absolute top-1/2 left-2 sm:left-3 md:left-4 -translate-y-1/2 bg-black/40 text-white p-2 sm:p-3 md:p-4 rounded-full hover:bg-black/60 transition"
-        >
-          <AiOutlineLeft size={20} className="sm:text-[24px] md:text-[28px]" />
-        </button>
-
-        {/* Right Arrow */}
-        <button
-          onClick={nextImage}
-          className="absolute top-1/2 right-2 sm:right-3 md:right-4 -translate-y-1/2 bg-black/40 text-white p-2 sm:p-3 md:p-4 rounded-full hover:bg-black/60 transition"
-        >
-          <AiOutlineRight size={20} className="sm:text-[24px] md:text-[28px]" />
-        </button>
-      </div>
-
-      {/* Thumbnail Strip */}
-      <div className="flex gap-2 mt-3 justify-center overflow-x-auto">
-        {images.map((img, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentImage(index)}
-            className={`flex-shrink-0 border-2 rounded-lg overflow-hidden ${
-              currentImage === index ? "border-red-500" : "border-transparent"
-            }`}
-          >
-            <img
-              src={img}
-              alt={`thumb-${index}`}
-              className="w-16 h-16 object-cover object-center"
-            />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-````
-
-## File: src/components/newadds.jsx
-````javascript
-import React, { useState, useRef, useEffect } from 'react';
-
-export default function Marquee({ 
-  children, 
-  direction = 'left',
-  speed = 50,
-  pauseOnHover = true,
-  gradient = true,
-  className = ''
-}) {
-  const [isPaused, setIsPaused] = useState(false);
-  const marqueeRef = useRef(null);
-
-  // Get keyframes based on direction
-  const getKeyframes = () => {
-    if (direction === 'right') {
-      return `
-        @keyframes marquee {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-      `;
-    } else {
-      return `
-        @keyframes marquee {
-          0% {
-            transform: translateX(100%);
-          }
-          100% {
-            transform: translateX(-100%);
-          }
-        }
-      `;
-    }
-  };
-
-  const containerStyle = {
-    position: 'relative',
-    overflow: 'hidden',
-    width: '100%',
-  };
-
-  const innerStyle = {
-    display: 'flex',
-    width: 'max-content',
-    whiteSpace: 'nowrap',
-    animation: `marquee ${speed}s linear infinite`,
-    animationPlayState: isPaused ? 'paused' : 'running',
-  };
-
-  const contentStyle = {
-    flexShrink: 0,
-    display: 'flex',
-  };
-
-  const gradientStyle = {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: '100px',
-    pointerEvents: 'none',
-    zIndex: 2,
-  };
-
-  const gradientLeftStyle = {
-    ...gradientStyle,
-    left: 0,
-    background: 'linear-gradient(to right, white, transparent)',
-  };
-
-  const gradientRightStyle = {
-    ...gradientStyle,
-    right: 0,
-    background: 'linear-gradient(to left, white, transparent)',
-  };
-
-  return (
-    <div 
-      className={className}
-      style={containerStyle}
-      onMouseEnter={() => pauseOnHover && setIsPaused(true)}
-      onMouseLeave={() => pauseOnHover && setIsPaused(false)}
-    >
-      <style>{getKeyframes()}</style>
-      
-      <div 
-        style={innerStyle}
-        ref={marqueeRef}
-      >
-        <div style={contentStyle}>
-          {children}
-        </div>
-        <div style={contentStyle} aria-hidden="true">
-          {children}
-        </div>
-      </div>
-      
-      {gradient && (
-        <>
-          <div style={gradientLeftStyle}></div>
-          <div style={gradientRightStyle}></div>
-        </>
-      )}
-    </div>
-  );
-}
-````
-
-## File: src/components/pages/about.jsx
-````javascript
-import React from 'react';
-
-export default function About() {
-  return (
-    <div className="p-6 max-w-4xl mx-auto text-center">
-      <h1 className="text-3xl font-bold mb-4">About Us</h1>
-      <p className="text-gray-700 text-lg">
-        Welcome to our website! This is the About page where you can share information
-        about your company, mission, or services.
-      </p>
-    </div>
-  );
-}
-````
-
-## File: src/components/pages/admin/payment.jsx
-````javascript
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  CreditCard, Shield, Lock, CheckCircle, ArrowLeft, 
-  Truck, Package, Wallet, DollarSign 
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
-
-export default function Payment() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const orderData = location.state?.orderData;
-
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [cardDetails, setCardDetails] = useState({
-    cardNumber: '',
-    cardName: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: ''
-  });
-
-  const [userInfo, setUserInfo] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
-
-  useEffect(() => {
-    if (!orderData) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Order Data Missing',
-        text: 'Please complete the shipping process first.',
-      }).then(() => {
-        navigate('/shipping');
-      });
-      return;
-    }
-
-    // Get user info from order data or fetch from API
-    const token = localStorage.getItem('token');
-    if (token && orderData.userInfo) {
-      setUserInfo(orderData.userInfo);
-    }
-  }, [orderData, navigate]);
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const handleCardInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Format card number with spaces
-    if (name === 'cardNumber') {
-      const formatted = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-      setCardDetails(prev => ({ ...prev, [name]: formatted.slice(0, 19) }));
-    } 
-    // Format CVV to max 3-4 digits
-    else if (name === 'cvv') {
-      const formatted = value.replace(/\D/g, '').slice(0, 4);
-      setCardDetails(prev => ({ ...prev, [name]: formatted }));
-    }
-    // Format expiry month/year
-    else if (name === 'expiryMonth') {
-      const formatted = value.replace(/\D/g, '').slice(0, 2);
-      setCardDetails(prev => ({ ...prev, [name]: formatted }));
-    }
-    else if (name === 'expiryYear') {
-      const formatted = value.replace(/\D/g, '').slice(0, 4);
-      setCardDetails(prev => ({ ...prev, [name]: formatted }));
-    }
-    else {
-      setCardDetails(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const validateCardDetails = () => {
-    if (!cardDetails.cardNumber || cardDetails.cardNumber.replace(/\s/g, '').length < 16) {
-      return 'Please enter a valid 16-digit card number';
-    }
-    if (!cardDetails.cardName) {
-      return 'Please enter the name on card';
-    }
-    if (!cardDetails.expiryMonth || !cardDetails.expiryYear) {
-      return 'Please enter card expiry date';
-    }
-    const month = parseInt(cardDetails.expiryMonth);
-    const year = parseInt(cardDetails.expiryYear);
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-    
-    if (month < 1 || month > 12) {
-      return 'Invalid expiry month';
-    }
-    if (year < currentYear || (year === currentYear && month < currentMonth)) {
-      return 'Card has expired';
-    }
-    if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
-      return 'Please enter a valid CVV';
-    }
-    return null;
-  };
-
-  const handlePlaceOrder = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Login Required',
-      text: 'Please log in to complete your order.',
-    });
-    navigate('/login');
-    return;
-  }
-
-  if (!orderData) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Order Error',
-      text: 'Order data is missing. Please try again.',
-    });
-    return;
-  }
-
-  if (paymentMethod === 'card') {
-    const validationError = validateCardDetails();
-    if (validationError) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Validation Error',
-        text: validationError,
-      });
-      return;
-    }
-  }
-
-  // Confirm with Swal first
-  const result = await Swal.fire({
-    title: 'Confirm Order',
-    html: `... your summary HTML ...`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Place Order',
-    cancelButtonText: 'Cancel'
-  });
-
-  if (!result.isConfirmed) return;
-
-  setLoading(true);
-
-  try {
-    // Send order to backend
-    const response = await axios.post(
-      'http://localhost:4000/api/orders', // your backend route
-      {
-        ...orderData,
-        paymentMethod,
-        cardDetails: paymentMethod === 'card' ? cardDetails : null
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    const savedOrder = response.data;
-
-    // Show success Swal
-    await Swal.fire({
-      icon: 'success',
-      title: 'Order Placed!',
-      html: `
-        <p>Order #${savedOrder._id} has been placed successfully.</p>
-        <p>Total: Rs. ${savedOrder.total?.toFixed(2)}</p>
-      `,
-      showConfirmButton: true
-    });
-
-    navigate('/orders'); // go to order list page
-  } catch (error) {
-    console.error(error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Order Failed',
-      text: error.response?.data?.message || 'Something went wrong!',
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  const handleBackToShipping = () => {
-    navigate('/shipping', { state: { quoteData: orderData } });
-  };
-
-  if (!orderData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-            <Package className="h-8 w-8 text-gray-400" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Order Found</h2>
-          <p className="text-gray-600 mb-4">Please complete the shipping process first.</p>
-          <button
-            onClick={() => navigate('/shipping')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Go to Shipping
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={handleBackToShipping}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Shipping
-          </button>
-          
-          <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-purple-500 rounded-lg">
-              <CreditCard className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Complete Your Payment</h1>
-              <p className="text-gray-600">Secure payment gateway - Your information is protected</p>
-            </div>
-          </div>
-          
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between mt-8 mb-6">
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-2">
-                <p className="text-sm font-medium">Cart</p>
-                <p className="text-xs text-gray-500">Completed</p>
-              </div>
-            </div>
-            
-            <div className="flex-1 h-1 bg-green-500 mx-4"></div>
-            
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-2">
-                <p className="text-sm font-medium">Shipping</p>
-                <p className="text-xs text-gray-500">Completed</p>
-              </div>
-            </div>
-            
-            <div className="flex-1 h-1 bg-green-500 mx-4"></div>
-            
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
-                <Lock className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-2">
-                <p className="text-sm font-medium">Payment</p>
-                <p className="text-xs text-gray-500">Current Step</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Payment Methods */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Payment Method Selection */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2 text-purple-500" />
-                Select Payment Method
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <button
-                  onClick={() => setPaymentMethod('card')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'card' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'card' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                    <CreditCard className={`h-5 w-5 ${paymentMethod === 'card' ? 'text-purple-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Credit/Debit Card</p>
-                    <p className="text-sm text-gray-500">Pay with Visa, MasterCard</p>
-                  </div>
-                  {paymentMethod === 'card' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod('wallet')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'wallet' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'wallet' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                    <Wallet className={`h-5 w-5 ${paymentMethod === 'wallet' ? 'text-purple-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Digital Wallet</p>
-                    <p className="text-sm text-gray-500">Apple Pay, Google Pay</p>
-                  </div>
-                  {paymentMethod === 'wallet' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod('bank')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'bank' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'bank' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-          <DollarSign className={`h-5 w-5 ${paymentMethod === 'bank' ? 'text-purple-600' : 'text-gray-600'}`} />
-
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Bank Transfer</p>
-                    <p className="text-sm text-gray-500">Direct bank payment</p>
-                  </div>
-                  {paymentMethod === 'bank' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod('cod')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'cod' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'cod' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                    <Truck className={`h-5 w-5 ${paymentMethod === 'cod' ? 'text-purple-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Cash on Delivery</p>
-                    <p className="text-sm text-gray-500">Pay when you receive</p>
-                  </div>
-                  {paymentMethod === 'cod' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-              </div>
-
-              {/* Card Details Form */}
-              {paymentMethod === 'card' && (
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <Lock className="h-5 w-5 mr-2 text-blue-500" />
-                    Card Details
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Card Number *
-                      </label>
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        value={cardDetails.cardNumber}
-                        onChange={handleCardInputChange}
-                        placeholder="1234 5678 9012 3456"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        maxLength="19"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Name on Card *
-                      </label>
-                      <input
-                        type="text"
-                        name="cardName"
-                        value={cardDetails.cardName}
-                        onChange={handleCardInputChange}
-                        placeholder="John Doe"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Expiry Month *
-                        </label>
-                        <input
-                          type="text"
-                          name="expiryMonth"
-                          value={cardDetails.expiryMonth}
-                          onChange={handleCardInputChange}
-                          placeholder="MM"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          maxLength="2"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Expiry Year *
-                        </label>
-                        <input
-                          type="text"
-                          name="expiryYear"
-                          value={cardDetails.expiryYear}
-                          onChange={handleCardInputChange}
-                          placeholder="YYYY"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          maxLength="4"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          CVV *
-                        </label>
-                        <input
-                          type="password"
-                          name="cvv"
-                          value={cardDetails.cvv}
-                          onChange={handleCardInputChange}
-                          placeholder="123"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          maxLength="4"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center mt-4">
-                      <Shield className="h-5 w-5 text-green-500 mr-2" />
-                      <p className="text-sm text-gray-600">
-                        Your card details are encrypted and secure. We do not store your card information.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Other Payment Method Messages */}
-              {paymentMethod !== 'card' && (
-                <div className="bg-blue-50 p-6 rounded-lg">
-                  <div className="flex items-start">
-                    <Shield className="h-6 w-6 text-blue-500 mr-3 mt-1 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">
-                        {paymentMethod === 'wallet' && 'Digital Wallet Payment'}
-                        {paymentMethod === 'bank' && 'Bank Transfer'}
-                        {paymentMethod === 'cod' && 'Cash on Delivery'}
-                      </h4>
-                      <p className="text-gray-600">
-                        {paymentMethod === 'wallet' && 'You will be redirected to your preferred digital wallet for secure payment.'}
-                        {paymentMethod === 'bank' && 'Bank transfer details will be provided after order confirmation.'}
-                        {paymentMethod === 'cod' && 'Pay when your order is delivered. Additional charges may apply.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Order Summary Preview */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                <Package className="h-5 w-5 mr-2 text-amber-500" />
-                Order Summary
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span>Rs. {orderData.labeledTotal?.toFixed(2)}</span>
-                </div>
-                {orderData.discount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
-                    <span>- Rs. {orderData.discount?.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="text-green-600">FREE</span>
-                </div>
-                <div className="border-t pt-3 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-800">Total Amount</span>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-gray-900">Rs. {orderData.total?.toFixed(2)}</p>
-                      {orderData.discount > 0 && (
-                        <p className="text-sm text-green-600">
-                          You saved Rs. {orderData.discount?.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <h4 className="font-semibold text-gray-800 mb-3">Items in Order ({orderData.items?.length || 0})</h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {orderData.items?.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {item.images?.[0] ? (
-                            <img src={item.images[0]} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <Package className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{item.productName}</p>
-                          <p className="text-xs text-gray-500">Qty: {item.qty}</p>
-                        </div>
-                      </div>
-                      <p className="font-semibold">Rs. {(item.lastPrice * item.qty).toFixed(2)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Payment Summary & Button */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
-              {/* Security Assurance */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <Shield className="h-5 w-5 mr-2 text-green-500" />
-                  Secure Payment
-                </h3>
-                <ul className="space-y-3 text-sm text-gray-600">
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>256-bit SSL encryption</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>PCI DSS compliant</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>No card details stored</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Money-back guarantee</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Payment Summary & Button */}
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-800">Payment Summary</h3>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Order #{orderData.orderId}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Items Total</span>
-                      <span>Rs. {orderData.labeledTotal?.toFixed(2)}</span>
-                    </div>
-                    {orderData.discount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
-                        <span>- Rs. {orderData.discount?.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-green-600">FREE</span>
-                    </div>
-                    <div className="border-t pt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold text-gray-900">Total to Pay</span>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-gray-900">Rs. {orderData.total?.toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">including all taxes</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Terms and Conditions */}
-                <div className="mb-6">
-                  <div className="flex items-start mb-2">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      className="h-4 w-4 text-purple-600 rounded mt-1 mr-2"
-                      defaultChecked
-                    />
-                    <label htmlFor="terms" className="text-sm text-gray-600">
-                      I agree to the{' '}
-                      <button className="text-purple-600 hover:text-purple-700">Terms & Conditions</button>{' '}
-                      and{' '}
-                      <button className="text-purple-600 hover:text-purple-700">Privacy Policy</button>
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    By completing this purchase, you agree to our terms and authorize the charge to your selected payment method.
-                  </p>
-                </div>
-
-                {/* Payment Button */}
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={loading}
-                  className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Processing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-5 w-5" />
-                      <span>
-                        Pay Rs. {orderData.total?.toFixed(2)}
-                      </span>
-                    </>
-                  )}
-                </button>
-
-                <p className="text-center text-xs text-gray-500 mt-4">
-                  <Shield className="h-3 w-3 inline mr-1" />
-                  Secured by SSL encryption
-                </p>
-              </div>
-
-              {/* Support Info */}
-              <div className="text-center">
-                <p className="text-sm text-gray-500">
-                  Need help?{' '}
-                  <button className="text-purple-600 hover:text-purple-700 font-medium">
-                    Contact Customer Support
-                  </button>
-                </p>
-                <p className="text-xs text-gray-400 mt-2">
-                  You can cancel your order within 24 hours
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-````
-
 ## File: src/components/pages/NotFound.jsx
 ````javascript
 import React from "react";
@@ -6771,714 +5224,6 @@ export default function NotFound() {
       >
         Go Home
       </Link>
-    </div>
-  );
-}
-````
-
-## File: src/components/pages/orderpage.jsx
-````javascript
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Package, 
-  Truck, 
-  CheckCircle, 
-  Clock, 
-  XCircle, 
-  ArrowLeft,
-  Search,
-  Eye,
-  MapPin,
-  CreditCard,
-  RefreshCw,
-  AlertCircle
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
-
-export default function OrderPage() {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  // Fetch orders from backend
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const res = await axios.get('http://localhost:4000/api/orders/my-orders', {
-          headers: getAuthHeader()
-        });
-        
-        if (res.data.success) {
-          setOrders(res.data.orders || []);
-          setFilteredOrders(res.data.orders || []);
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: res.data.message || 'Failed to load orders',
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to load orders. Please try again.',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, []);
-
-  // Filter and search orders
-  useEffect(() => {
-    let result = orders;
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      result = result.filter(order => order.status === statusFilter);
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(order => 
-        order.orderId.toLowerCase().includes(term) ||
-        (order.items && order.items.some(item => 
-          item.productName?.toLowerCase().includes(term)
-        ))
-      );
-    }
-
-    setFilteredOrders(result);
-  }, [orders, searchTerm, statusFilter]);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'shipped': return 'bg-amber-100 text-amber-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      case 'refunded': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return dateString || 'Unknown date';
-    }
-  };
-
-  const handleViewOrderDetails = (order) => {
-    setSelectedOrder(order);
-  };
-
-  const handleCloseOrderDetails = () => {
-    setSelectedOrder(null);
-  };
-
-  const handleCancelOrder = async (orderId) => {
-    const result = await Swal.fire({
-      title: 'Cancel Order?',
-      text: 'Are you sure you want to cancel this order?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, cancel it!'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        setLoading(true);
-        const res = await axios.put(`http://localhost:4000/api/orders/${orderId}/cancel`, {}, {
-          headers: getAuthHeader()
-        });
-        
-        if (res.data.success) {
-          // Update local state
-          setOrders(orders.map(order => 
-            order._id === orderId ? { ...order, status: 'cancelled' } : order
-          ));
-
-          Swal.fire({
-            icon: 'success',
-            title: 'Cancelled!',
-            text: res.data.message || 'Order has been cancelled successfully.',
-            timer: 1500,
-            showConfirmButton: false
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: res.data.message || 'Failed to cancel order',
-          });
-        }
-      } catch (error) {
-        console.error('Cancel order error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to cancel order. Please try again.',
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleTrackOrder = (orderId) => {
-    Swal.fire({
-      title: 'Track Order',
-      text: `Tracking for order ${orderId} is not available yet.`,
-      icon: 'info',
-      confirmButtonText: 'OK'
-    });
-  };
-
-  const handleDownloadInvoice = async (orderId) => {
-    try {
-      // For now, show a message. You can implement actual invoice download later.
-      Swal.fire({
-        title: 'Invoice Download',
-        html: `Invoice for order <strong>${orderId}</strong> will be available soon.`,
-        icon: 'info',
-        confirmButtonText: 'OK'
-      });
-    } catch (error) {
-      console.error('Download invoice error:', error);
-    }
-  };
-
-  const handleReorder = (order) => {
-    Swal.fire({
-      title: 'Reorder Items?',
-      text: 'Add all items from this order to your cart?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, add to cart',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Add items to cart (you need to implement this)
-        console.log('Adding to cart:', order.items);
-        Swal.fire({
-          icon: 'info',
-          title: 'Feature Coming Soon',
-          text: 'Reorder feature will be available soon.',
-          timer: 2000
-        });
-      }
-    });
-  };
-
-  const handleRefreshOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get('http://localhost:4000/api/orders/my-orders', {
-        headers: getAuthHeader()
-      });
-      
-      if (res.data.success) {
-        setOrders(res.data.orders || []);
-        setFilteredOrders(res.data.orders || []);
-        Swal.fire({
-          icon: 'success',
-          title: 'Refreshed!',
-          text: 'Orders list updated successfully.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-    } catch (error) {
-      console.error('Refresh error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getOrderCountByStatus = (status) => {
-    if (status === 'all') return orders.length;
-    return orders.filter(order => order.status === status).length;
-  };
-
-  const getTotalSpent = () => {
-    return orders
-      .filter(order => order.paymentStatus === 'paid')
-      .reduce((total, order) => total + (order.total || 0), 0);
-  };
-
-  if (loading && orders.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your orders...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Go Back
-            </button>
-            <button
-              onClick={handleRefreshOrders}
-              disabled={loading}
-              className="flex items-center text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-            <div className="mb-4 md:mb-0">
-              <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-              <p className="text-gray-600">View and manage all your orders</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Total Orders</p>
-                <p className="text-2xl font-bold">{orders.length}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Total Spent</p>
-                <p className="text-2xl font-bold">Rs. {getTotalSpent().toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                  <Package className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">All Orders</p>
-                  <p className="text-xl font-bold">{getOrderCountByStatus('all')}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-2 bg-amber-100 rounded-lg mr-3">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Processing</p>
-                  <p className="text-xl font-bold">{getOrderCountByStatus('processing')}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg mr-3">
-                  <Truck className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Shipped</p>
-                  <p className="text-xl font-bold">{getOrderCountByStatus('shipped')}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                  <CheckCircle className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Delivered</p>
-                  <p className="text-xl font-bold">{getOrderCountByStatus('delivered')}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters and Search */}
-          <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search orders by ID or product name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="processing">Processing</option>
-                  <option value="shipped">Shipped</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Orders List */}
-        <div className="space-y-4">
-          {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              {orders.length === 0 ? (
-                <>
-                  <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Yet</h3>
-                  <p className="text-gray-500 mb-6">You haven't placed any orders yet.</p>
-                  <button
-                    onClick={() => navigate('/')}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Start Shopping
-                  </button>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-16 w-16 text-amber-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Found</h3>
-                  <p className="text-gray-500 mb-6">Try adjusting your search or filter criteria.</p>
-                  <button
-                    onClick={() => {
-                      setSearchTerm('');
-                      setStatusFilter('all');
-                    }}
-                    className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Clear Filters
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            filteredOrders.map((order) => (
-              <div key={order._id} className="bg-white rounded-lg shadow overflow-hidden">
-                {/* Order Header */}
-                <div className="border-b border-gray-200 p-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between">
-                    <div className="mb-2 md:mb-0">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="font-bold text-lg text-gray-900">{order.orderId}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {order.status?.charAt(0)?.toUpperCase() + order.status?.slice(1) || 'Unknown'}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
-                          {order.paymentStatus?.charAt(0)?.toUpperCase() + order.paymentStatus?.slice(1) || 'Unknown'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Ordered on {formatDate(order.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</p>
-                      <p className="text-sm text-gray-500">{order.items?.length || 0} item(s)</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Items */}
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {order.items?.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {item.image ? (
-                            <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <Package className="h-6 w-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-800">{item.productName || 'Unknown Product'}</h4>
-                          <p className="text-sm text-gray-500">Qty: {item.qty} × Rs. {(item.lastPrice || 0).toLocaleString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">Rs. {((item.lastPrice || 0) * (item.qty || 1)).toLocaleString()}</p>
-                        </div>
-                      </div>
-                    )) || (
-                      <div className="text-center py-4 text-gray-500">
-                        No items found
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Order Actions */}
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={() => handleViewOrderDetails(order)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </button>
-                      
-                      {order.status === 'processing' && (
-                        <button
-                          onClick={() => handleCancelOrder(order.orderId)}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
-                          disabled={loading}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancel Order
-                        </button>
-                      )}
-
-                      {order.status === 'shipped' && (
-                        <button
-                          onClick={() => handleTrackOrder(order.orderId)}
-                          className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center"
-                        >
-                          <Truck className="h-4 w-4 mr-2" />
-                          Track Order
-                        </button>
-                      )}
-
-                      {order.status === 'delivered' && (
-                        <button
-                          onClick={() => handleReorder(order)}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
-                        >
-                          <Package className="h-4 w-4 mr-2" />
-                          Reorder
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleDownloadInvoice(order.orderId)}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
-                      >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Invoice
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Order Details Modal */}
-        {selectedOrder && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                {/* Modal Header */}
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
-                    <p className="text-gray-600">{selectedOrder.orderId}</p>
-                  </div>
-                  <button
-                    onClick={handleCloseOrderDetails}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <XCircle className="h-6 w-6" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Left Column - Order Summary */}
-                  <div>
-                    {/* Status Timeline */}
-                    <div className="mb-8">
-                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-                        <Truck className="h-5 w-5 mr-2" />
-                        Order Status
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center">
-                          <div className={`p-2 rounded-full mr-3 ${selectedOrder.status === 'processing' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                            <Package className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Order Placed</p>
-                            <p className="text-sm text-gray-500">{formatDate(selectedOrder.createdAt)}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <div className={`p-2 rounded-full mr-3 ${selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
-                            <Truck className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Shipped</p>
-                            {selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered' ? (
-                              <p className="text-sm text-gray-500">On the way</p>
-                            ) : (
-                              <p className="text-sm text-gray-500">Pending</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <div className={`p-2 rounded-full mr-3 ${selectedOrder.status === 'delivered' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                            <CheckCircle className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Delivered</p>
-                            {selectedOrder.status === 'delivered' ? (
-                              <p className="text-sm text-gray-500">{formatDate(selectedOrder.updatedAt)}</p>
-                            ) : (
-                              <p className="text-sm text-gray-500">Expected soon</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Information */}
-                    <div className="mb-8">
-                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-                        <CreditCard className="h-5 w-5 mr-2" />
-                        Payment Information
-                      </h3>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-500">Payment Method</p>
-                            <p className="font-medium">{(selectedOrder.paymentMethod || 'Unknown').toUpperCase()}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Payment Status</p>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(selectedOrder.paymentStatus)}`}>
-                              {(selectedOrder.paymentStatus || 'Unknown').charAt(0)?.toUpperCase() + (selectedOrder.paymentStatus || '').slice(1)}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Order Date</p>
-                            <p className="font-medium">{formatDate(selectedOrder.createdAt)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Last Updated</p>
-                            <p className="font-medium">{formatDate(selectedOrder.updatedAt)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column - Shipping & Items */}
-                  <div>
-                    {/* Shipping Address */}
-                    <div className="mb-8">
-                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-                        <MapPin className="h-5 w-5 mr-2" />
-                        Shipping Address
-                      </h3>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium">{selectedOrder.shippingAddress?.name || 'N/A'}</p>
-                        <p className="text-gray-600">{selectedOrder.shippingAddress?.phone || 'N/A'}</p>
-                        <p className="mt-2">{selectedOrder.shippingAddress?.addressLine || 'N/A'}</p>
-                        <p>{selectedOrder.shippingAddress?.city || ''}{selectedOrder.shippingAddress?.postalCode ? `, ${selectedOrder.shippingAddress.postalCode}` : ''}</p>
-                      </div>
-                    </div>
-
-                    {/* Order Summary */}
-                    <div>
-                      <h3 className="font-semibold text-gray-800 mb-4">Order Summary</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Subtotal</span>
-                          <span>Rs. {(selectedOrder.subtotal || 0).toLocaleString()}</span>
-                        </div>
-                        {(selectedOrder.discount || 0) > 0 && (
-                          <div className="flex justify-between text-green-600">
-                            <span>Discount</span>
-                            <span>- Rs. {(selectedOrder.discount || 0).toLocaleString()}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Shipping</span>
-                          <span className="text-green-600">FREE</span>
-                        </div>
-                        <div className="border-t pt-3 mt-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold text-gray-900">Total</span>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-gray-900">Rs. {(selectedOrder.total || 0).toLocaleString()}</p>
-                              <p className="text-sm text-gray-500">including all taxes</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Close Button */}
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <button
-                    onClick={handleCloseOrderDetails}
-                    className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -8384,6 +6129,19 @@ export default function uploadMediaToSupabase(file) {
 }
 ````
 
+## File: src/components/utils/voice.jsx
+````javascript
+export function speakText(text) {
+  if (!text) return;
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";       // Change language if needed
+  utterance.rate = 1;             // Speed of speech
+  utterance.pitch = 1;            // Voice pitch
+  window.speechSynthesis.speak(utterance);
+}
+````
+
 ## File: src/index.css
 ````css
 @import "tailwindcss";
@@ -8429,6 +6187,504 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+````
+
+## File: aichatbot.text
+````
+import React, { useEffect, useState, useRef } from "react";
+import axios from "axios";
+
+export default function AiChatbot() {
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [messages, setMessages] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [adminMessageCount, setAdminMessageCount] = useState(0);
+  const messagesEndRef = useRef(null);
+  const recognition = useRef(null);
+  const inputRef = useRef(null);
+  const notificationSoundRef = useRef(null);
+
+  // Initialize notification sound
+  useEffect(() => {
+    notificationSoundRef.current = new Audio(
+      "https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"
+    );
+    notificationSoundRef.current.volume = 0.3;
+  }, []);
+
+  // Fetch messages and check for admin messages
+  const fetchMessages = async () => {
+    const currentToken = localStorage.getItem("token");
+    if (!currentToken) {
+      setMessages([]);
+      return;
+    }
+    try {
+      const res = await axios.get("http://localhost:4000/api/messages/getMessages", {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      });
+      const fetchedMessages = res.data.messages || [];
+      setMessages(fetchedMessages);
+      
+      // Check for admin messages (messages sent by admin)
+      const hasAdminMessage = fetchedMessages.some(msg => 
+        msg.text && msg.text.includes("admin:") || msg.text.includes("Admin:")
+      );
+      
+      if (hasAdminMessage && !open) {
+        triggerAdminNotification();
+      }
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+    }
+  };
+
+  // Listen for auth changes
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setToken(localStorage.getItem("token"));
+      fetchMessages();
+    };
+    
+    const handleLogout = () => {
+      setMessages([]);
+      setToken(null);
+    };
+
+    // Listen for admin messages (you can trigger this from backend)
+    const handleAdminMessage = (event) => {
+      if (event.detail && event.detail.adminMessage) {
+        triggerAdminNotification();
+      }
+    };
+
+    window.addEventListener("authChange", handleAuthChange);
+    window.addEventListener("logout", handleLogout);
+    window.addEventListener("adminMessageReceived", handleAdminMessage);
+
+    fetchMessages();
+
+    return () => {
+      window.removeEventListener("authChange", handleAuthChange);
+      window.removeEventListener("logout", handleLogout);
+      window.removeEventListener("adminMessageReceived", handleAdminMessage);
+    };
+  }, [open]);
+
+  // Setup speech recognition
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition.current = new SpeechRecognition();
+      recognition.current.continuous = false;
+      recognition.current.lang = "en-US";
+
+      recognition.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setListening(false);
+        stopSpeaking();
+        sendHandle(transcript, true);
+      };
+
+      recognition.current.onend = () => setListening(false);
+    }
+  }, []);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Focus input when chat opens
+  useEffect(() => {
+    if (open && inputRef.current) {
+      setTimeout(() => inputRef.current.focus(), 100);
+    }
+  }, [open]);
+
+  // Trigger admin notification
+  const triggerAdminNotification = () => {
+    setAdminMessageCount(prev => prev + 1);
+    setShowNotification(true);
+    
+    // Play notification sound
+    if (notificationSoundRef.current) {
+      notificationSoundRef.current.play().catch(e => console.log("Sound play error:", e));
+    }
+    
+    // Auto-hide notification after 5 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 5000);
+  };
+
+  // Close notification
+  const closeNotification = () => {
+    setShowNotification(false);
+    setAdminMessageCount(0);
+  };
+
+  // Voice controls
+  const handleVoice = () => {
+    if (!recognition.current) return;
+    if (listening) {
+      recognition.current.stop();
+      setListening(false);
+    } else {
+      recognition.current.start();
+      setListening(true);
+      stopSpeaking();
+    }
+  };
+
+  const speakText = (text) => {
+    if (!("speechSynthesis" in window)) return;
+    setSpeaking(true);
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.onend = () => setSpeaking(false);
+    speechSynthesis.speak(utter);
+  };
+
+  const stopSpeaking = () => {
+    if ("speechSynthesis" in window && speechSynthesis.speaking) {
+      speechSynthesis.cancel();
+      setSpeaking(false);
+    }
+  };
+
+  // Fetch AI reply
+  const fetchAiReply = async (userText) => {
+    try {
+      setIsTyping(true);
+      const currentToken = localStorage.getItem("token");
+      const res = await axios.post(
+        "http://localhost:4000/api/simai/reply",
+        { query: userText },
+        { headers: { Authorization: `Bearer ${currentToken}` } }
+      );
+      setIsTyping(false);
+      return res.data.reply || "No response from AI.";
+    } catch (err) {
+      setIsTyping(false);
+      console.error("Error fetching AI reply:", err);
+      return "Sorry, I couldn't find an answer in my knowledge base.";
+    }
+  };
+
+  // Send message
+  const sendHandle = async (voiceInput = null, isVoice = false) => {
+    const textToSend = voiceInput || input;
+    if (!textToSend?.trim()) return;
+
+    const newMessage = {
+      sender: "user",
+      text: textToSend,
+      _id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, newMessage]);
+    setInput("");
+
+    // Admin message handling (user sending to admin)
+    if (textToSend.toLowerCase().includes("@admin")) {
+      const textAfterAdmin = textToSend.split("@admin")[1]?.trim();
+      if (!textAfterAdmin) {
+        console.error("You must type a message after @admin");
+        alert("You must type a message after @admin");
+        return;
+      }
+
+      try {
+        const currentToken = localStorage.getItem("token");
+        await axios.post(
+          "http://localhost:4000/api/simai/admin/message",
+          { message: textToSend },
+          { headers: { Authorization: `Bearer ${currentToken}`, "Content-Type": "application/json" } }
+        );
+      } catch (err) {
+        console.error("Admin endpoint error:", err);
+      }
+
+      const adminMessageObj = {
+        sender: "ai",
+        text: "✅ Your message has been sent to the admin. They will respond shortly.",
+        _id: (Date.now() + 1).toString(),
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, adminMessageObj]);
+      if (isVoice) speakText(adminMessageObj.text);
+      return;
+    }
+
+    // Normal AI message
+    try {
+      const currentToken = localStorage.getItem("token");
+      await axios.post(
+        "http://localhost:4000/api/messages/sendMessages",
+        { input: textToSend },
+        { headers: { Authorization: `Bearer ${currentToken}` } }
+      );
+    } catch (err) {
+      console.error("Error sending user message:", err);
+    }
+
+    const aiText = await fetchAiReply(newMessage.text);
+    const aiMessage = {
+      sender: "ai",
+      text: aiText,
+      _id: (Date.now() + 2).toString(),
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, aiMessage]);
+    if (isVoice) speakText(aiText);
+  };
+
+  return (
+    <>
+      {/* Admin Notification Alert */}
+      {showNotification && !open && (
+        <div className="fixed top-4 right-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-3 rounded-lg shadow-xl z-50 flex items-center gap-3 animate-slideIn">
+          <div className="relative">
+            <span className="text-xl">🔔</span>
+            <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-ping"></div>
+          </div>
+          <div>
+            <p className="font-medium">New message from admin!</p>
+            <p className="text-sm opacity-90">Click the chat button to view</p>
+          </div>
+          <button
+            onClick={closeNotification}
+            className="ml-2 p-1 hover:bg-white/20 rounded-full"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Floating Button */}
+      {!open && (<button
+  onClick={() => {
+    const currentToken = localStorage.getItem("token");
+    if (!currentToken) {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: "warning",
+          title: "Not Logged In",
+          text: "You need to log in to use the chatbot.",
+          showCancelButton: true,
+          confirmButtonText: "Go to Login",
+          cancelButtonText: "Cancel",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = "/login";
+          }
+        });
+      } else {
+        alert("Please login to use the chatbot");
+      }
+      return;
+    }
+    setOpen(true);
+    closeNotification(); // Close notification when opening chat
+  }}
+  className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 flex items-center justify-center z-40"
+>
+  <div className="relative">
+    <span className="text-2xl">🤖</span>
+    {adminMessageCount > 0 && (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
+        {adminMessageCount > 9 ? '9+' : adminMessageCount}
+      </span>
+    )}
+  </div>
+</button>)}
+
+      {/* Chat Widget */}
+      {open && (
+        <div className="fixed bottom-6 right-6 w-96 h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 z-50">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-5 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-lg">🤖</span>
+                </div>
+                {speaking && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">AI Assistant</h3>
+                <div className="flex items-center gap-2 text-xs opacity-90">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span>Online</span>
+                  {isTyping && <span className="ml-2 animate-pulse">Typing...</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={stopSpeaking}
+                disabled={!speaking}
+                className={`p-2 rounded-lg ${speaking ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-500 cursor-not-allowed'} transition-colors`}
+                title="Stop speaking"
+              >
+                <span className="text-sm">⏹</span>
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                title="Close chat"
+              >
+                <span className="text-sm">✕</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Messages Container */}
+          <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-gray-500 p-8">
+                <div className="text-4xl mb-4 opacity-50">👋</div>
+                <h3 className="text-lg font-semibold mb-2">Welcome to AI Assistant</h3>
+                <p className="text-center text-sm text-gray-600 mb-6">
+                  Start a conversation with me! I can help you with questions, explanations, and more.
+                </p>
+                <div className="text-xs text-gray-500">
+                  💡 Tip: Use <code className="bg-gray-200 px-2 py-1 rounded">@admin</code> to contact administrators
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((message) => (
+                  <div
+                    key={message._id}
+                    className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
+                        message.sender === "user"
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none"
+                          : message.text.includes("admin:") || message.text.includes("Admin:")
+                          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-bl-none border-l-4 border-yellow-400"
+                          : "bg-gradient-to-r from-gray-100 to-white border border-gray-200 rounded-bl-none"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {message.text.includes("admin:") || message.text.includes("Admin:") ? (
+                          <>
+                            <span className="text-sm">👑</span>
+                            <span className="text-xs opacity-90">Admin</span>
+                          </>
+                        ) : message.sender === "ai" ? (
+                          <span className="text-xs opacity-90">AI Assistant</span>
+                        ) : null}
+                      </div>
+                      <div className="whitespace-pre-wrap break-words text-sm">
+                        {message.text.replace("admin:", "").replace("Admin:", "").trim()}
+                      </div>
+                      <div className={`text-xs mt-2 ${message.sender === "user" ? "text-blue-200" : "text-gray-300"}`}>
+                        {new Date(message.timestamp).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                        {message.sender === "user" && message.text.includes("@admin") && (
+                          <span className="ml-2 px-2 py-0.5 bg-blue-700 rounded-full text-xs">
+                            To Admin
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] rounded-2xl rounded-bl-none p-4 bg-gradient-to-r from-gray-100 to-white border border-gray-200 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Input Area */}
+          <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="flex gap-2">
+              <button
+                onClick={handleVoice}
+                className={`p-2.5 rounded-full flex-shrink-0 transition-all ${
+                  listening 
+                    ? "animate-pulse bg-red-100 text-red-600 border-2 border-red-300" 
+                    : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                }`}
+                title={listening ? "Stop listening" : "Start voice input"}
+              >
+                {listening ? "⏹" : "🎤"}
+              </button>
+              
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                type="text"
+                placeholder="Type your message..."
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
+                onKeyDown={(e) => e.key === "Enter" && sendHandle()}
+              />
+              
+              <button
+                onClick={() => sendHandle()}
+                disabled={!input.trim() || isTyping}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium flex-shrink-0"
+              >
+                Send
+              </button>
+            </div>
+            
+            <div className="mt-2 text-xs text-gray-500 flex justify-between px-1">
+              <span>Press Enter to send</span>
+              <span>Shift+Enter for new line</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add animation styles */}
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          .animate-slideIn {
+            animation: slideIn 0.3s ease-out;
+          }
+        `}
+      </style>
+    </>
+  );
+}
 ````
 
 ## File: src/components/Card.jsx
@@ -8523,477 +6779,339 @@ export default function Card({
 }
 ````
 
-## File: src/components/pages/shipping.jsx
+## File: src/components/newadds.jsx
+````javascript
+import React, { useState, useRef, useEffect } from 'react';
+
+export default function Marquee({ 
+  children, 
+  direction = 'left',
+  speed = 50,
+  pauseOnHover = true,
+  gradient = true,
+  className = ''
+}) {
+  const [isPaused, setIsPaused] = useState(false);
+  const marqueeRef = useRef(null);
+
+  // Get keyframes based on direction
+  const getKeyframes = () => {
+    if (direction === 'right') {
+      return `
+        @keyframes marquee {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `;
+    } else {
+      return `
+        @keyframes marquee {
+          0% {
+            transform: translateX(100%);
+          }
+          100% {
+            transform: translateX(-100%);
+          }
+        }
+      `;
+    }
+  };
+
+  const containerStyle = {
+    position: 'relative',
+    overflow: 'hidden',
+    width: '100%',
+  };
+
+  const innerStyle = {
+    display: 'flex',
+    width: 'max-content',
+    whiteSpace: 'nowrap',
+    animation: `marquee ${speed}s linear infinite`,
+    animationPlayState: isPaused ? 'paused' : 'running',
+  };
+
+  const contentStyle = {
+    flexShrink: 0,
+    display: 'flex',
+  };
+
+  const gradientStyle = {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '100px',
+    pointerEvents: 'none',
+    zIndex: 2,
+  };
+
+  const gradientLeftStyle = {
+    ...gradientStyle,
+    left: 0,
+    background: 'linear-gradient(to right, white, transparent)',
+  };
+
+  const gradientRightStyle = {
+    ...gradientStyle,
+    right: 0,
+    background: 'linear-gradient(to left, white, transparent)',
+  };
+
+  return (
+    <div 
+      className={className}
+      style={containerStyle}
+      onMouseEnter={() => pauseOnHover && setIsPaused(true)}
+      onMouseLeave={() => pauseOnHover && setIsPaused(false)}
+    >
+      <style>{getKeyframes()}</style>
+      
+      <div 
+        style={innerStyle}
+        ref={marqueeRef}
+      >
+        <div style={contentStyle}>
+          {children}
+        </div>
+        <div style={contentStyle} aria-hidden="true">
+          {children}
+        </div>
+      </div>
+      
+      {gradient && (
+        <>
+          <div style={gradientLeftStyle}></div>
+          <div style={gradientRightStyle}></div>
+        </>
+      )}
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/payment.jsx
 ````javascript
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Truck, Package, CreditCard, Shield, CheckCircle, ArrowLeft, Lock, MapPin, User, Phone, Edit, Plus, Trash2 } from 'lucide-react';
+import { 
+  CreditCard, Shield, Lock, CheckCircle, ArrowLeft, 
+  Truck, Package, Wallet, DollarSign 
+} from 'lucide-react';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
-export default function Shipping() {
+export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
-  const quoteData = location.state;
+  const orderData = location.state?.orderData;
 
   const [loading, setLoading] = useState(false);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddressIndex, setEditingAddressIndex] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [cardDetails, setCardDetails] = useState({
+    cardNumber: '',
+    cardName: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cvv: ''
+  });
 
   const [userInfo, setUserInfo] = useState({
-    name: 'John Doe',
-    phone: '+94 77 123 4567',
-    email: 'john@example.com'
-  });
-
-  const [addresses, setAddresses] = useState([]);
-  const [selectedAddress, setSelectedAddress] = useState(null);
-  const [addressForm, setAddressForm] = useState({
-    type: 'Home',
     name: '',
-    phone: '',
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    province: '',
-    postalCode: '',
-    isDefault: false
+    email: '',
+    phone: ''
   });
 
-  // ✅ FIX: Proper auth header with Bearer prefix
+  useEffect(() => {
+    if (!orderData) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Order Data Missing',
+        text: 'Please complete the shipping process first.',
+      }).then(() => {
+        navigate('/shipping');
+      });
+      return;
+    }
+
+    // Get user info from order data or fetch from API
+    const token = localStorage.getItem('token');
+    if (token && orderData.userInfo) {
+      setUserInfo(orderData.userInfo);
+    }
+  }, [orderData, navigate]);
+
   const getAuthHeader = () => {
     const token = localStorage.getItem('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // ✅ FIX: Fetch addresses from API with correct endpoint and headers
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No token found');
-      Swal.fire({
-        icon: 'warning',
-        title: 'Login Required',
-        text: 'Please log in to continue',
-      });
-      navigate('/login');
-      return;
+  const handleCardInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Format card number with spaces
+    if (name === 'cardNumber') {
+      const formatted = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+      setCardDetails(prev => ({ ...prev, [name]: formatted.slice(0, 19) }));
+    } 
+    // Format CVV to max 3-4 digits
+    else if (name === 'cvv') {
+      const formatted = value.replace(/\D/g, '').slice(0, 4);
+      setCardDetails(prev => ({ ...prev, [name]: formatted }));
     }
-
-    const fetchAddresses = async () => {
-      try {
-        const res = await axios.get('http://localhost:4000/api/addresses', {
-          headers: getAuthHeader()
-        });
-        
-        if (res.data && Array.isArray(res.data)) {
-          // ✅ FIX: Map _id to id for frontend compatibility
-          const mappedAddresses = res.data.map(addr => ({
-            id: addr._id, // Map MongoDB _id to id
-            ...addr
-          }));
-          
-          setAddresses(mappedAddresses);
-          const defaultAddr = mappedAddresses.find(addr => addr.isDefault) || mappedAddresses[0];
-          setSelectedAddress(defaultAddr || null);
-        } else {
-          console.error('Invalid response format:', res.data);
-        }
-      } catch (error) {
-        console.error('Error fetching addresses:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to load addresses. Please try again.',
-          timer: 3000,
-        });
-      }
-    };
-    
-    fetchAddresses();
-  }, []);
-
-  // ✅ FIX: Fetch user info with correct endpoint
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
-    const fetchUserInfo = async () => {
-      try {
-        const res = await axios.get('http://localhost:4000/api/users/me', {
-          headers: getAuthHeader()
-        });
-        
-        if (res.data) {
-          const userData = res.data.user || res.data;
-          setUserInfo({
-            name: userData.name || 'John Doe',
-            phone: userData.phone || '+94 77 123 4567',
-            email: userData.email || 'john@example.com'
-          });
-          
-          // Pre-fill address form with user info
-          setAddressForm(prev => ({
-            ...prev,
-            name: userData.name || '',
-            phone: userData.phone || ''
-          }));
-        }
-      } catch (error) {
-        console.error('Error fetching user info:', error);
-      }
-    };
-    
-    fetchUserInfo();
-  }, []);
-
-  const handleAddressFormChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setAddressForm({
-      ...addressForm,
-      [name]: type === 'checkbox' ? checked : value
-    });
-  };
-
-  // ✅ FIX: Save or update address with correct endpoint and headers
-  const handleSaveAddress = async () => {
-    if (!addressForm.name || !addressForm.phone || !addressForm.addressLine1 || !addressForm.city) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Information',
-        text: 'Please fill in all required fields (Name, Phone, Address, City)',
-      });
-      return;
+    // Format expiry month/year
+    else if (name === 'expiryMonth') {
+      const formatted = value.replace(/\D/g, '').slice(0, 2);
+      setCardDetails(prev => ({ ...prev, [name]: formatted }));
     }
-
-    try {
-      setLoading(true);
-      let response;
-
-      if (editingAddressIndex !== null) {
-        // Update existing address
-        const addrId = addresses[editingAddressIndex].id;
-        response = await axios.put(
-          `http://localhost:4000/api/addresses/${addrId}`,
-          addressForm,
-          { headers: getAuthHeader() }
-        );
-
-        // ✅ FIX: Map response _id to id
-        const updatedAddress = {
-          id: response.data._id,
-          ...response.data
-        };
-
-        const updatedAddresses = [...addresses];
-        updatedAddresses[editingAddressIndex] = updatedAddress;
-        setAddresses(updatedAddresses);
-        setSelectedAddress(updatedAddress);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Address Updated',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-      } else {
-        // Add new address
-        response = await axios.post(
-          'http://localhost:4000/api/addresses',
-          addressForm,
-          { headers: getAuthHeader() }
-        );
-
-        // ✅ FIX: Map response _id to id
-        const newAddress = {
-          id: response.data._id,
-          ...response.data
-        };
-
-        let updatedAddresses = [...addresses];
-        if (addressForm.isDefault) {
-          updatedAddresses = updatedAddresses.map(addr => ({ ...addr, isDefault: false }));
-        }
-
-        updatedAddresses.push(newAddress);
-        setAddresses(updatedAddresses);
-        if (addressForm.isDefault || updatedAddresses.length === 1) {
-          setSelectedAddress(newAddress);
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Address Added',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-
-      // Reset form
-      setAddressForm({
-        type: 'Home',
-        name: userInfo.name,
-        phone: userInfo.phone,
-        addressLine1: '',
-        addressLine2: '',
-        city: '',
-        province: '',
-        postalCode: '',
-        isDefault: false
-      });
-      setShowAddressForm(false);
-      setEditingAddressIndex(null);
-
-    } catch (error) {
-      console.error('Save address error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Something went wrong',
-      });
-    } finally {
-      setLoading(false);
+    else if (name === 'expiryYear') {
+      const formatted = value.replace(/\D/g, '').slice(0, 4);
+      setCardDetails(prev => ({ ...prev, [name]: formatted }));
+    }
+    else {
+      setCardDetails(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  // ✅ FIX: Delete address with correct endpoint and headers
-  const handleDeleteAddress = async (index) => {
-    const addressId = addresses[index].id;
+  const validateCardDetails = () => {
+    if (!cardDetails.cardNumber || cardDetails.cardNumber.replace(/\s/g, '').length < 16) {
+      return 'Please enter a valid 16-digit card number';
+    }
+    if (!cardDetails.cardName) {
+      return 'Please enter the name on card';
+    }
+    if (!cardDetails.expiryMonth || !cardDetails.expiryYear) {
+      return 'Please enter card expiry date';
+    }
+    const month = parseInt(cardDetails.expiryMonth);
+    const year = parseInt(cardDetails.expiryYear);
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    
+    if (month < 1 || month > 12) {
+      return 'Invalid expiry month';
+    }
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      return 'Card has expired';
+    }
+    if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
+      return 'Please enter a valid CVV';
+    }
+    return null;
+  };
 
-    const result = await Swal.fire({
-      title: 'Delete Address?',
-      text: 'Are you sure you want to delete this address?',
+  const handlePlaceOrder = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    Swal.fire({
       icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel'
+      title: 'Login Required',
+      text: 'Please log in to complete your order.',
     });
+    navigate('/login');
+    return;
+  }
 
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(`http://localhost:4000/api/addresses/${addressId}`, {
-          headers: getAuthHeader()
-        });
-
-        const updatedAddresses = addresses.filter((_, i) => i !== index);
-        setAddresses(updatedAddresses);
-
-        if (selectedAddress?.id === addressId) {
-          setSelectedAddress(updatedAddresses[0] || null);
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Deleted!',
-          text: 'Address has been deleted successfully.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-      } catch (error) {
-        console.error('Delete address error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to delete address',
-        });
-      }
-    }
-  };
-
-  // Edit address
-  const handleEditAddress = (index) => {
-    const address = addresses[index];
-    setAddressForm({
-      type: address.type || 'Home',
-      name: address.name || '',
-      phone: address.phone || '',
-      addressLine1: address.addressLine1 || '',
-      addressLine2: address.addressLine2 || '',
-      city: address.city || '',
-      province: address.province || '',
-      postalCode: address.postalCode || '',
-      isDefault: address.isDefault || false
+  if (!orderData) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Order Error',
+      text: 'Order data is missing. Please try again.',
     });
-    setEditingAddressIndex(index);
-    setShowAddressForm(true);
-  };
+    return;
+  }
 
-  // ✅ FIX: Set default address with correct endpoint
-  const handleSetDefaultAddress = async (index) => {
-    try {
-      const addrId = addresses[index].id;
-      const res = await axios.put(
-        `http://localhost:4000/api/addresses/${addrId}`,
-        { isDefault: true },
-        { headers: getAuthHeader() }
-      );
-
-      const updatedAddresses = addresses.map((addr, i) => ({
-        ...addr,
-        isDefault: i === index
-      }));
-
-      setAddresses(updatedAddresses);
-      setSelectedAddress(updatedAddresses[index]);
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Default Address Updated',
-        timer: 1500,
-        showConfirmButton: false
-      });
-
-    } catch (error) {
-      console.error('Set default address error:', error);
+  if (paymentMethod === 'card') {
+    const validationError = validateCardDetails();
+    if (validationError) {
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Failed to set default address',
+        title: 'Validation Error',
+        text: validationError,
       });
+      return;
     }
-  };
+  }
 
-  // ✅ FIX: Update user info with correct endpoint
-  const handleUserInfoUpdate = async () => {
-    const { value: formData } = await Swal.fire({
-      title: 'Update Contact Information',
-      html: `
-        <input id="swal-name" class="swal2-input" placeholder="Full Name" value="${userInfo.name}">
-        <input id="swal-phone" class="swal2-input" placeholder="Phone" value="${userInfo.phone}">
-        <input id="swal-email" class="swal2-input" placeholder="Email" value="${userInfo.email}" disabled>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Update',
-      preConfirm: () => {
-        const name = document.getElementById('swal-name').value;
-        const phone = document.getElementById('swal-phone').value;
-        const email = userInfo.email;
-        
-        if (!name || !phone) {
-          Swal.showValidationMessage('Please fill all fields');
-          return false;
-        }
-        return { name, phone, email };
+  // Confirm with Swal first
+  const result = await Swal.fire({
+    title: 'Confirm Order',
+    html: `... your summary HTML ...`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Place Order',
+    cancelButtonText: 'Cancel'
+  });
+
+  if (!result.isConfirmed) return;
+
+  setLoading(true);
+
+  try {
+    // Send order to backend
+    const response = await axios.post(
+      'http://localhost:4000/api/orders/payment', // your backend route
+      {
+        ...orderData,
+        paymentMethod,
+        cardDetails: paymentMethod === 'card' ? cardDetails : null
       },
-      allowOutsideClick: () => !Swal.isLoading()
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const savedOrder = response.data;
+
+    // Show success Swal
+    await Swal.fire({
+      icon: 'success',
+      title: 'Order Placed!',
+      html: `
+        <p>Order #${savedOrder._id} has been placed successfully.</p>
+        <p>Total: Rs. ${savedOrder.total?.toFixed(2)}</p>
+      `,
+      showConfirmButton: true
     });
 
-    if (formData) {
-      try {
-        setLoading(true);
-        const res = await axios.put(
-          'http://localhost:4000/api/users/me',
-          formData,
-          { headers: getAuthHeader() }
-        );
-        
-        const updatedUser = res.data.user || res.data;
-        setUserInfo({
-          name: updatedUser.name || userInfo.name,
-          phone: updatedUser.phone || userInfo.phone,
-          email: updatedUser.email || userInfo.email
-        });
-        
-        // Update address form with new user info
-        setAddressForm(prev => ({
-          ...prev,
-          name: updatedUser.name || '',
-          phone: updatedUser.phone || ''
-        }));
+    navigate('/orders'); // go to order list page
+  } catch (error) {
+    console.error(error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Order Failed',
+      text: error.response?.data?.message || 'Something went wrong!',
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Updated!',
-          text: 'Your contact information has been updated.',
-          timer: 1500,
-          showConfirmButton: false
-        });
 
-      } catch (error) {
-        console.error('Update user info error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to update info',
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
+  const handleBackToShipping = () => {
+    navigate('/shipping', { state: { quoteData: orderData } });
   };
 
-  // Proceed to payment
-  const handleProceedToPayment = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      Swal.fire({ 
-        icon: 'warning', 
-        title: 'Authentication Required', 
-        text: 'Please log in to continue.' 
-      });
-      navigate('/login');
-      return;
-    }
-
-    if (!quoteData || quoteData.total <= 0) {
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Order Error', 
-        text: 'Cannot proceed to payment. Order data missing or total is zero.' 
-      });
-      return;
-    }
-    
-    if (!selectedAddress) {
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Shipping Address Required', 
-        text: 'Please select or add a shipping address.' 
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await Swal.fire({ 
-        title: 'Processing Order...', 
-        html: 'Preparing your order for payment', 
-        allowOutsideClick: false, 
-        timer: 1000, 
-        didOpen: () => Swal.showLoading() 
-      });
-      
-      navigate('/payment', {
-        state: { 
-          orderData: { 
-            ...quoteData, 
-            items: quoteData.orderedItems, 
-            timestamp: new Date().toISOString(), 
-            orderId: `ORD-${Date.now().toString().slice(-8)}-${Math.floor(Math.random()*1000)}`, 
-            shippingAddress: selectedAddress, 
-            userInfo: userInfo 
-          } 
-        }
-      });
-    } catch (error) {
-      console.error('Proceed to payment error:', error);
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Processing Failed', 
-        text: 'There was an error processing your order.' 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoToCart = () => {
-    navigate('/viewcart');
-  };
+  if (!orderData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <Package className="h-8 w-8 text-gray-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Order Found</h2>
+          <p className="text-gray-600 mb-4">Please complete the shipping process first.</p>
+          <button
+            onClick={() => navigate('/shipping')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Shipping
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
@@ -9001,561 +7119,1051 @@ export default function Shipping() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={handleGoToCart}
+            onClick={handleBackToShipping}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Cart
+            Back to Shipping
           </button>
           
           <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-blue-500 rounded-lg">
-              <Truck className="h-6 w-6 text-white" />
+            <div className="p-2 bg-purple-500 rounded-lg">
+              <CreditCard className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Shipping & Order Confirmation</h1>
-              <p className="text-gray-600">Review your order and shipping details before payment</p>
+              <h1 className="text-3xl font-bold text-gray-900">Complete Your Payment</h1>
+              <p className="text-gray-600">Secure payment gateway - Your information is protected</p>
+            </div>
+          </div>
+          
+          {/* Progress Steps */}
+          <div className="flex items-center justify-between mt-8 mb-6">
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-white" />
+              </div>
+              <div className="ml-2">
+                <p className="text-sm font-medium">Cart</p>
+                <p className="text-xs text-gray-500">Completed</p>
+              </div>
+            </div>
+            
+            <div className="flex-1 h-1 bg-green-500 mx-4"></div>
+            
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-white" />
+              </div>
+              <div className="ml-2">
+                <p className="text-sm font-medium">Shipping</p>
+                <p className="text-xs text-gray-500">Completed</p>
+              </div>
+            </div>
+            
+            <div className="flex-1 h-1 bg-green-500 mx-4"></div>
+            
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
+                <Lock className="h-5 w-5 text-white" />
+              </div>
+              <div className="ml-2">
+                <p className="text-sm font-medium">Payment</p>
+                <p className="text-xs text-gray-500">Current Step</p>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Order Summary & Shipping */}
+          {/* Left Column - Payment Methods */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Shipping Address Card */}
+            {/* Payment Method Selection */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-blue-500" />
-                  Shipping Address
-                </h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <CreditCard className="h-5 w-5 mr-2 text-purple-500" />
+                Select Payment Method
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <button
-                  onClick={() => {
-                    setAddressForm({
-                      type: 'Home',
-                      name: userInfo.name,
-                      phone: userInfo.phone,
-                      addressLine1: '',
-                      addressLine2: '',
-                      city: '',
-                      province: '',
-                      postalCode: '',
-                      isDefault: false
-                    });
-                    setEditingAddressIndex(null);
-                    setShowAddressForm(true);
-                  }}
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-700"
-                  disabled={loading}
+                  onClick={() => setPaymentMethod('card')}
+                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
+                    paymentMethod === 'card' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add New Address
+                  <div className={`p-2 rounded ${paymentMethod === 'card' ? 'bg-purple-100' : 'bg-gray-100'}`}>
+                    <CreditCard className={`h-5 w-5 ${paymentMethod === 'card' ? 'text-purple-600' : 'text-gray-600'}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Credit/Debit Card</p>
+                    <p className="text-sm text-gray-500">Pay with Visa, MasterCard</p>
+                  </div>
+                  {paymentMethod === 'card' && (
+                    <div className="ml-auto">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setPaymentMethod('wallet')}
+                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
+                    paymentMethod === 'wallet' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`p-2 rounded ${paymentMethod === 'wallet' ? 'bg-purple-100' : 'bg-gray-100'}`}>
+                    <Wallet className={`h-5 w-5 ${paymentMethod === 'wallet' ? 'text-purple-600' : 'text-gray-600'}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Digital Wallet</p>
+                    <p className="text-sm text-gray-500">Apple Pay, Google Pay</p>
+                  </div>
+                  {paymentMethod === 'wallet' && (
+                    <div className="ml-auto">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setPaymentMethod('bank')}
+                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
+                    paymentMethod === 'bank' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`p-2 rounded ${paymentMethod === 'bank' ? 'bg-purple-100' : 'bg-gray-100'}`}>
+          <DollarSign className={`h-5 w-5 ${paymentMethod === 'bank' ? 'text-purple-600' : 'text-gray-600'}`} />
+
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Bank Transfer</p>
+                    <p className="text-sm text-gray-500">Direct bank payment</p>
+                  </div>
+                  {paymentMethod === 'bank' && (
+                    <div className="ml-auto">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setPaymentMethod('cod')}
+                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
+                    paymentMethod === 'cod' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`p-2 rounded ${paymentMethod === 'cod' ? 'bg-purple-100' : 'bg-gray-100'}`}>
+                    <Truck className={`h-5 w-5 ${paymentMethod === 'cod' ? 'text-purple-600' : 'text-gray-600'}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Cash on Delivery</p>
+                    <p className="text-sm text-gray-500">Pay when you receive</p>
+                  </div>
+                  {paymentMethod === 'cod' && (
+                    <div className="ml-auto">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                  )}
                 </button>
               </div>
 
-              {/* Contact Information */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-800 flex items-center">
-                    <User className="h-4 w-4 mr-2" />
-                    Contact Information
+              {/* Card Details Form */}
+              {paymentMethod === 'card' && (
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                    <Lock className="h-5 w-5 mr-2 text-blue-500" />
+                    Card Details
                   </h3>
-                  <button
-                    onClick={handleUserInfoUpdate}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                    disabled={loading}
-                  >
-                    Edit
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-600">Name</p>
-                    <p className="font-medium">{userInfo.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Phone</p>
-                    <p className="font-medium">{userInfo.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Email</p>
-                    <p className="font-medium">{userInfo.email}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Address Selection */}
-              {showAddressForm ? (
-                <div className="bg-gray-50 p-6 rounded-lg mb-4">
-                  <h3 className="font-bold text-gray-800 mb-4">
-                    {editingAddressIndex !== null ? 'Edit Address' : 'Add New Address'}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Type
-                      </label>
-                      <select
-                        name="type"
-                        value={addressForm.type}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      >
-                        <option value="Home">Home</option>
-                        <option value="Work">Work</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name *
+                        Card Number *
                       </label>
                       <input
                         type="text"
-                        name="name"
-                        value={addressForm.name}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
+                        name="cardNumber"
+                        value={cardDetails.cardNumber}
+                        onChange={handleCardInputChange}
+                        placeholder="1234 5678 9012 3456"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        maxLength="19"
                       />
                     </div>
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={addressForm.phone}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 1 *
+                        Name on Card *
                       </label>
                       <input
                         type="text"
-                        name="addressLine1"
-                        value={addressForm.addressLine1}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
+                        name="cardName"
+                        value={cardDetails.cardName}
+                        onChange={handleCardInputChange}
+                        placeholder="John Doe"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 2
-                      </label>
-                      <input
-                        type="text"
-                        name="addressLine2"
-                        value={addressForm.addressLine2}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        City *
-                      </label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={addressForm.city}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Province
-                      </label>
-                      <input
-                        type="text"
-                        name="province"
-                        value={addressForm.province}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        name="postalCode"
-                        value={addressForm.postalCode}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center mb-4">
-                    <input
-                      type="checkbox"
-                      name="isDefault"
-                      checked={addressForm.isDefault}
-                      onChange={handleAddressFormChange}
-                      className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-                      id="defaultAddress"
-                      disabled={loading}
-                    />
-                    <label htmlFor="defaultAddress" className="ml-2 text-sm text-gray-700">
-                      Set as default shipping address
-                    </label>
-                  </div>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={handleSaveAddress}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={loading}
-                    >
-                      {loading ? 'Saving...' : (editingAddressIndex !== null ? 'Update Address' : 'Save Address')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAddressForm(false);
-                        setEditingAddressIndex(null);
-                      }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                      disabled={loading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {addresses.length > 0 ? (
-                    addresses.map((address, index) => (
-                      <div
-                        key={address.id || index}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          selectedAddress?.id === address.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => setSelectedAddress(address)}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center">
-                            <div className={`p-1 rounded mr-2 ${
-                              address.type === 'Home' ? 'bg-green-100 text-green-800' :
-                              address.type === 'Work' ? 'bg-blue-100 text-blue-800' :
-                              'bg-purple-100 text-purple-800'
-                            }`}>
-                              <span className="text-xs font-medium">{address.type || 'Home'}</span>
-                            </div>
-                            {address.isDefault && (
-                              <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
-                                Default
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditAddress(index);
-                              }}
-                              className="p-1 text-gray-500 hover:text-blue-600"
-                              disabled={loading}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteAddress(index);
-                              }}
-                              className="p-1 text-gray-500 hover:text-red-600"
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-sm">
-                          <p className="font-medium">{address.name}</p>
-                          <p className="text-gray-600">{address.phone}</p>
-                          <p className="mt-2">{address.addressLine1}</p>
-                          {address.addressLine2 && (
-                            <p>{address.addressLine2}</p>
-                          )}
-                          <p>{address.city}{address.province ? `, ${address.province}` : ''} {address.postalCode || ''}</p>
-                        </div>
-                        <div className="mt-3 flex space-x-2">
-                          {!address.isDefault && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetDefaultAddress(index);
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-700"
-                              disabled={loading}
-                            >
-                              Set as Default
-                            </button>
-                          )}
-                          {selectedAddress?.id === address.id && (
-                            <span className="text-xs text-green-600 flex items-center">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Selected
-                            </span>
-                          )}
-                        </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Expiry Month *
+                        </label>
+                        <input
+                          type="text"
+                          name="expiryMonth"
+                          value={cardDetails.expiryMonth}
+                          onChange={handleCardInputChange}
+                          placeholder="MM"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          maxLength="2"
+                        />
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">No addresses saved yet.</p>
-                      <p className="text-sm text-gray-400 mt-1">Add an address to continue</p>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Expiry Year *
+                        </label>
+                        <input
+                          type="text"
+                          name="expiryYear"
+                          value={cardDetails.expiryYear}
+                          onChange={handleCardInputChange}
+                          placeholder="YYYY"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          maxLength="4"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          CVV *
+                        </label>
+                        <input
+                          type="password"
+                          name="cvv"
+                          value={cardDetails.cvv}
+                          onChange={handleCardInputChange}
+                          placeholder="123"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          maxLength="4"
+                        />
+                      </div>
                     </div>
-                  )}
+                    
+                    <div className="flex items-center mt-4">
+                      <Shield className="h-5 w-5 text-green-500 mr-2" />
+                      <p className="text-sm text-gray-600">
+                        Your card details are encrypted and secure. We do not store your card information.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Other Payment Method Messages */}
+              {paymentMethod !== 'card' && (
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <div className="flex items-start">
+                    <Shield className="h-6 w-6 text-blue-500 mr-3 mt-1 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2">
+                        {paymentMethod === 'wallet' && 'Digital Wallet Payment'}
+                        {paymentMethod === 'bank' && 'Bank Transfer'}
+                        {paymentMethod === 'cod' && 'Cash on Delivery'}
+                      </h4>
+                      <p className="text-gray-600">
+                        {paymentMethod === 'wallet' && 'You will be redirected to your preferred digital wallet for secure payment.'}
+                        {paymentMethod === 'bank' && 'Bank transfer details will be provided after order confirmation.'}
+                        {paymentMethod === 'cod' && 'Pay when your order is delivered. Additional charges may apply.'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Order Summary Card */}
+            {/* Order Summary Preview */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <Package className="h-5 w-5 mr-2 text-amber-500" />
-                  Order Summary
-                </h2>
-                <span className="text-sm font-medium text-gray-500">
-                  {quoteData?.orderedItems?.length || 0} item(s)
-                </span>
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                <Package className="h-5 w-5 mr-2 text-amber-500" />
+                Order Summary
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span>Rs. {orderData.labeledTotal?.toFixed(2)}</span>
+                </div>
+                {orderData.discount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount</span>
+                    <span>- Rs. {orderData.discount?.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Shipping</span>
+                  <span className="text-green-600">FREE</span>
+                </div>
+                <div className="border-t pt-3 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-gray-800">Total Amount</span>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-gray-900">Rs. {orderData.total?.toFixed(2)}</p>
+                      {orderData.discount > 0 && (
+                        <p className="text-sm text-green-600">
+                          You saved Rs. {orderData.discount?.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              {quoteData ? (
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-gray-600">Total Amount</p>
-                        <p className="text-2xl font-bold text-gray-900">Rs. {quoteData.total?.toFixed(2)}</p>
-                        {quoteData.discount > 0 && (
-                          <p className="text-sm text-green-600 mt-1">
-                            You saved Rs. {quoteData.discount?.toFixed(2)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="p-3 bg-white rounded-lg shadow-sm">
-                        <CreditCard className="h-8 w-8 text-amber-500" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span>Rs. {quoteData.labeledTotal?.toFixed(2)}</span>
-                    </div>
-                    {quoteData.discount > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Discount</span>
-                        <span>- Rs. {quoteData.discount?.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-green-600">FREE</span>
-                    </div>
-                    <div className="border-t pt-3 flex justify-between font-semibold">
-                      <span>Total</span>
-                      <span className="text-lg">Rs. {quoteData.total?.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <h3 className="font-semibold text-gray-800 mb-4">Order Items:</h3>
-                    <div className="space-y-3">
-                      {quoteData.orderedItems?.map((item, index) => (
-                        <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            {item.image ? (
-                              <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
-                            ) : (
-                              <Package className="h-6 w-6 text-gray-400" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-800">{item.productName}</h4>
-                            <p className="text-sm text-gray-600">Quantity: {item.qty}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-gray-900">
-                              Rs. {(item.lastPrice * item.qty).toFixed(2)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Rs. {item.lastPrice.toFixed(2)} each
-                            </p>
-                          </div>
+              
+              <div className="mt-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Items in Order ({orderData.items?.length || 0})</h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {orderData.items?.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          {item.images?.[0] ? (
+                            <img src={item.images[0]} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <Package className="h-5 w-5 text-gray-400" />
+                          )}
                         </div>
-                      ))}
+                        <div>
+                          <p className="font-medium text-sm">{item.productName}</p>
+                          <p className="text-xs text-gray-500">Qty: {item.qty}</p>
+                        </div>
+                      </div>
+                      <p className="font-semibold">Rs. {(item.lastPrice * item.qty).toFixed(2)}</p>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Package className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500">No order data found. Please return to cart.</p>
-                  <button
-                    onClick={handleGoToCart}
-                    className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-                  >
-                    Go to Cart
-                  </button>
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* Right Column - Order Confirmation & Payment Button */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Payment Methods Preview */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2 text-purple-500" />
-                Payment Options
-              </h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <CreditCard className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-gray-700">Credit/Debit Card</p>
-                    <p className="text-xs text-gray-500 mt-1">Visa, MasterCard, American Express</p>
-                  </div>
-                </li>
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <svg className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                  <div>
-                    <p className="font-medium text-gray-700">Digital Wallets</p>
-                    <p className="text-xs text-gray-500 mt-1">Apple Pay, Google Pay, Samsung Pay</p>
-                  </div>
-                </li>
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <svg className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                  <div>
-                    <p className="font-medium text-gray-700">Bank Transfer</p>
-                    <p className="text-xs text-gray-500 mt-1">Direct bank payment</p>
-                  </div>
-                </li>
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <Truck className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-gray-700">Cash on Delivery</p>
-                    <p className="text-xs text-gray-500 mt-1">Pay when you receive</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
+          {/* Right Column - Payment Summary & Button */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-8 space-y-6">
+              {/* Security Assurance */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                  <Shield className="h-5 w-5 mr-2 text-green-500" />
+                  Secure Payment
+                </h3>
+                <ul className="space-y-3 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>256-bit SSL encryption</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>PCI DSS compliant</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>No card details stored</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Money-back guarantee</span>
+                  </li>
+                </ul>
+              </div>
 
-            {/* Security Info */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                <Shield className="h-5 w-5 mr-2 text-green-500" />
-                Secure Checkout
-              </h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>256-bit SSL encryption</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>PCI DSS compliant</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>Your data is protected</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Order Confirmation Button */}
-            <div className="sticky top-8">
+              {/* Payment Summary & Button */}
               <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                <h3 className="font-bold text-gray-800 mb-4">Ready to Pay</h3>
-                
                 <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-600">Amount to Pay</p>
-                    <p className="text-xs text-gray-500">Order #{quoteData ? `ORD-${Date.now().toString().slice(-6)}` : '-----'}</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-gray-800">Payment Summary</h3>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      Order #{orderData.orderId}
+                    </span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    Rs. {quoteData?.total?.toFixed(2) || '0.00'}
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Items Total</span>
+                      <span>Rs. {orderData.labeledTotal?.toFixed(2)}</span>
+                    </div>
+                    {orderData.discount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount</span>
+                        <span>- Rs. {orderData.discount?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Shipping</span>
+                      <span className="text-green-600">FREE</span>
+                    </div>
+                    <div className="border-t pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-gray-900">Total to Pay</span>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-gray-900">Rs. {orderData.total?.toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">including all taxes</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Terms and Conditions */}
+                <div className="mb-6">
+                  <div className="flex items-start mb-2">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      className="h-4 w-4 text-purple-600 rounded mt-1 mr-2"
+                      defaultChecked
+                    />
+                    <label htmlFor="terms" className="text-sm text-gray-600">
+                      I agree to the{' '}
+                      <button className="text-purple-600 hover:text-purple-700">Terms & Conditions</button>{' '}
+                      and{' '}
+                      <button className="text-purple-600 hover:text-purple-700">Privacy Policy</button>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    By completing this purchase, you agree to our terms and authorize the charge to your selected payment method.
                   </p>
-                  {quoteData?.discount > 0 && (
-                    <p className="text-sm text-green-600 mt-1">
-                      You saved Rs. {quoteData.discount.toFixed(2)}
-                    </p>
-                  )}
                 </div>
 
                 {/* Payment Button */}
                 <button
-                  onClick={handleProceedToPayment}
-                  disabled={!quoteData || quoteData.total <= 0 || loading || !selectedAddress}
-                  className={`w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 ${
-                    quoteData && quoteData.total > 0 && !loading && selectedAddress
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                      : 'bg-gray-400 cursor-not-allowed'
-                  }`}
+                  onClick={handlePlaceOrder}
+                  disabled={loading}
+                  className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Preparing...</span>
+                      <span>Processing...</span>
                     </>
                   ) : (
                     <>
                       <Lock className="h-5 w-5" />
-                      <span>Proceed to Payment</span>
+                      <span>
+                        Pay Rs. {orderData.total?.toFixed(2)}
+                      </span>
                     </>
                   )}
                 </button>
 
-                <p className="text-xs text-gray-500 text-center mt-4">
-                  By proceeding, you agree to our{' '}
-                  <button className="text-purple-600 hover:text-purple-700">Terms & Conditions</button>
+                <p className="text-center text-xs text-gray-500 mt-4">
+                  <Shield className="h-3 w-3 inline mr-1" />
+                  Secured by SSL encryption
                 </p>
               </div>
 
-              {/* Help Text */}
-              <div className="mt-4 text-center">
+              {/* Support Info */}
+              <div className="text-center">
                 <p className="text-sm text-gray-500">
                   Need help?{' '}
                   <button className="text-purple-600 hover:text-purple-700 font-medium">
-                    Contact Support
+                    Contact Customer Support
                   </button>
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  You can cancel your order within 24 hours
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/orderpage.jsx
+````javascript
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Package, Truck, CheckCircle, Clock, XCircle, ArrowLeft,
+  Search, Eye, MapPin, CreditCard, RefreshCw, AlertCircle
+} from 'lucide-react';
+import Swal from 'sweetalert2';
+import axios from 'axios';
+
+export default function OrderPage() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // Fetch orders
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get('http://localhost:4000/api/orders/my-orders', {
+          headers: getAuthHeader()
+        });
+
+        if (res.data.success) {
+          setOrders(res.data.orders || []);
+          setFilteredOrders(res.data.orders || []);
+        } else {
+          Swal.fire('Error', res.data.message || 'Failed to load orders', 'error');
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        Swal.fire('Error', error.response?.data?.message || 'Failed to load orders', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  // Filter orders
+  useEffect(() => {
+    let result = orders;
+
+    if (statusFilter !== 'all') result = result.filter(o => o.status === statusFilter);
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(o =>
+        o.orderId.toLowerCase().includes(term) ||
+        o.items?.some(item => item.productName?.toLowerCase().includes(term))
+      );
+    }
+
+    setFilteredOrders(result);
+  }, [orders, searchTerm, statusFilter]);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-amber-100 text-amber-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusColor = (status) => {
+    switch (status) {
+      case 'paid': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return dateString || 'Unknown date'; }
+  };
+
+  const handleViewOrderDetails = (order) => setSelectedOrder(order);
+  const handleCloseOrderDetails = () => setSelectedOrder(null);
+
+  const handleCancelOrder = async (orderId) => {
+    const result = await Swal.fire({
+      title: 'Cancel Order?',
+      text: 'Are you sure you want to cancel this order?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, cancel it!'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setLoading(true);
+      const res = await axios.put(`http://localhost:4000/api/orders/${orderId}/cancel`, {}, {
+        headers: getAuthHeader()
+      });
+
+      if (res.data.success) {
+        setOrders(orders.map(o => o._id === orderId ? { ...o, status: 'cancelled' } : o));
+        Swal.fire({ icon: 'success', title: 'Cancelled!', text: res.data.message || 'Order cancelled.', timer: 1500, showConfirmButton: false });
+      } else Swal.fire('Error', res.data.message || 'Failed to cancel order', 'error');
+    } catch (error) {
+      console.error('Cancel order error:', error);
+      Swal.fire('Error', error.response?.data?.message || 'Failed to cancel order.', 'error');
+    } finally { setLoading(false); }
+  };
+
+  const handleTrackOrder = (orderId) => {
+    Swal.fire('Track Order', `Tracking for order ${orderId} is not available yet.`, 'info');
+  };
+
+  const handleDownloadInvoice = (orderId) => {
+    Swal.fire('Invoice Download', `Invoice for order ${orderId} will be available soon.`, 'info');
+  };
+
+  const handleReorder = (order) => {
+    Swal.fire({
+      title: 'Reorder Items?',
+      text: 'Add all items from this order to your cart?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, add to cart'
+    }).then(res => {
+      if (res.isConfirmed) {
+        console.log('Adding to cart:', order.items);
+        Swal.fire({ icon: 'info', title: 'Feature Coming Soon', text: 'Reorder feature coming soon.', timer: 2000 });
+      }
+    });
+  };
+
+  const handleRefreshOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get('http://localhost:4000/api/orders/my-orders', { headers: getAuthHeader() });
+      if (res.data.success) setOrders(res.data.orders || []);
+    } catch (error) { console.error(error); } 
+    finally { setLoading(false); }
+  };
+
+  const getOrderCountByStatus = (status) => status === 'all' ? orders.length : orders.filter(o => o.status === status).length;
+  const getTotalSpent = () => orders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + (o.total || 0), 0);
+
+  if (loading && orders.length === 0) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading your orders...</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-5 w-5 mr-2" /> Go Back
+            </button>
+            <button onClick={handleRefreshOrders} disabled={loading} className="flex items-center text-blue-600 hover:text-blue-700 disabled:opacity-50">
+              <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          </div>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div className="mb-4 md:mb-0">
+              <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+              <p className="text-gray-600">View and manage all your orders</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Total Orders</p>
+                <p className="text-2xl font-bold">{orders.length}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Total Spent</p>
+                <p className="text-2xl font-bold">Rs. {getTotalSpent().toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {['all', 'processing', 'shipped', 'delivered'].map((status, idx) => {
+              const icons = [Package, Clock, Truck, CheckCircle];
+              const titles = ['All Orders', 'Processing', 'Shipped', 'Delivered'];
+              const colors = ['blue', 'amber', 'green', 'purple'];
+              const Icon = icons[idx];
+              return (
+                <div key={status} className="bg-white p-4 rounded-lg shadow">
+                  <div className="flex items-center">
+                    <div className={`p-2 bg-${colors[idx]}-100 rounded-lg mr-3`}>
+                      <Icon className={`h-5 w-5 text-${colors[idx]}-600`} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">{titles[idx]}</p>
+                      <p className="text-xl font-bold">{getOrderCountByStatus(status)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Filters & Search */}
+          <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input type="text" placeholder="Search orders by ID or product name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="all">All Status</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Orders List */}
+        <div className="space-y-4">
+          {filteredOrders.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              {orders.length === 0 ? (
+                <>
+                  <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Yet</h3>
+                  <p className="text-gray-500 mb-6">You haven't placed any orders yet.</p>
+                  <button onClick={() => navigate('/')} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Start Shopping</button>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-16 w-16 text-amber-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Found</h3>
+                  <p className="text-gray-500 mb-6">Try adjusting your search or filter criteria.</p>
+                  <button onClick={() => { setSearchTerm(''); setStatusFilter('all'); }} className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Clear Filters</button>
+                </>
+              )}
+            </div>
+          ) : (
+            filteredOrders.map(order => (
+              <div key={order._id} className="bg-white rounded-lg shadow overflow-hidden">
+                {/* Order Header */}
+                <div className="border-b border-gray-200 p-4 flex flex-col md:flex-row md:items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg text-gray-900">{order.orderId}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
+                      {order.paymentStatus?.charAt(0).toUpperCase() + order.paymentStatus?.slice(1)}
+                    </span>
+                    <p className="text-sm text-gray-500 mt-1">Ordered on {formatDate(order.createdAt)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</p>
+                    <p className="text-sm text-gray-500">{order.items?.length || 0} item(s)</p>
+                  </div>
+                </div>
+
+                {/* Order Items & Actions */}
+                <div className="p-4">
+                  <div className="space-y-3">
+                    {order.items?.map(item => (
+                      <div key={item.productId || Math.random()} className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          {item.image ? <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" /> : <Package className="h-6 w-6 text-gray-400" />}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-800">{item.productName}</h4>
+                          <p className="text-sm text-gray-500">Qty: {item.qty} × Rs. {(item.lastPrice || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">Rs. {(item.lastPrice * item.qty).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-6 pt-6 border-t border-gray-200 flex flex-wrap gap-3">
+                    <button onClick={() => handleViewOrderDetails(order)} className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center hover:bg-blue-700">
+                      <Eye className="h-4 w-4 mr-2" /> View Details
+                    </button>
+                    {order.status === 'processing' && <button onClick={() => handleCancelOrder(order._id)} className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center hover:bg-red-700"><XCircle className="h-4 w-4 mr-2" /> Cancel Order</button>}
+                    {order.status === 'shipped' && <button onClick={() => handleTrackOrder(order._id)} className="px-4 py-2 bg-amber-600 text-white rounded-lg flex items-center hover:bg-amber-700"><Truck className="h-4 w-4 mr-2" /> Track Order</button>}
+                    {order.status === 'delivered' && <button onClick={() => handleReorder(order)} className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center hover:bg-green-700"><Package className="h-4 w-4 mr-2" /> Reorder</button>}
+                    <button onClick={() => handleDownloadInvoice(order._id)} className="px-4 py-2 bg-gray-600 text-white rounded-lg flex items-center hover:bg-gray-700"><CreditCard className="h-4 w-4 mr-2" /> Invoice</button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Order Details Modal */}
+        {selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
+                    <p className="text-gray-600">{selectedOrder.orderId}</p>
+                  </div>
+                  <button onClick={handleCloseOrderDetails} className="text-gray-400 hover:text-gray-600"><XCircle className="h-6 w-6" /></button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Left - Status & Payment */}
+                  <div>
+                    {/* Timeline */}
+                    <div className="mb-8">
+                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center"><Truck className="h-5 w-5 mr-2" />Order Status</h3>
+                      <div className="space-y-4">
+                        {['processing', 'shipped', 'delivered'].map((step, idx) => {
+                          const stepNames = { processing: 'Order Placed', shipped: 'Shipped', delivered: 'Delivered' };
+                          const stepColors = { processing: 'bg-blue-100 text-blue-600', shipped: 'bg-amber-100 text-amber-600', delivered: 'bg-green-100 text-green-600' };
+                          const isCompleted = ['processing', 'shipped', 'delivered'].indexOf(step) <= ['processing', 'shipped', 'delivered'].indexOf(selectedOrder.status);
+                          return (
+                            <div key={step} className="flex items-center">
+                              <div className={`p-2 rounded-full mr-3 ${isCompleted ? stepColors[step] : 'bg-gray-100 text-gray-400'}`}>
+                                {step === 'processing' && <Package className="h-4 w-4" />}
+                                {step === 'shipped' && <Truck className="h-4 w-4" />}
+                                {step === 'delivered' && <CheckCircle className="h-4 w-4" />}
+                              </div>
+                              <div>
+                                <p className="font-medium">{stepNames[step]}</p>
+                                <p className={`text-sm ${selectedOrder.status === 'cancelled' ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                                  {selectedOrder.status === 'cancelled' ? 'Order Cancelled' :
+                                  step === 'processing' ? formatDate(selectedOrder.createdAt) :
+                                  step === 'delivered' && selectedOrder.status === 'delivered' ? formatDate(selectedOrder.updatedAt) : 'Pending'}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Payment */}
+                    <div className="mb-8">
+                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center"><CreditCard className="h-5 w-5 mr-2" />Payment Info</h3>
+                      <div className="flex justify-between mb-2"><span>Status</span><span className={`${getPaymentStatusColor(selectedOrder.paymentStatus)} px-2 py-1 rounded-full text-sm`}>{selectedOrder.paymentStatus}</span></div>
+                      <div className="flex justify-between mb-2"><span>Subtotal</span><span>Rs. {(selectedOrder.total - (selectedOrder.shippingFee || 0)).toLocaleString()}</span></div>
+                      <div className="flex justify-between mb-2"><span>Shipping</span><span className="text-green-600">{selectedOrder.shippingFee > 0 ? `Rs. ${selectedOrder.shippingFee.toLocaleString()}` : 'FREE'}</span></div>
+                      <div className="flex justify-between font-bold text-gray-900"><span>Total</span><span>Rs. {(selectedOrder.total || 0).toLocaleString()}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Right - Items */}
+                  <div>
+                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center"><Package className="h-5 w-5 mr-2" />Items</h3>
+                    <div className="space-y-4">
+                      {selectedOrder.items?.map(item => (
+                        <div key={item.productId || Math.random()} className="flex items-center space-x-4">
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            {item.image ? <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" /> : <Package className="h-6 w-6 text-gray-400" />}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-800">{item.productName}</h4>
+                            <p className="text-sm text-gray-500">Qty: {item.qty} × Rs. {(item.lastPrice || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="text-right font-semibold">Rs. {(item.lastPrice * item.qty).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 text-right">
+                  <button onClick={handleCloseOrderDetails} className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/utils/notificationDrop.jsx
+````javascript
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { FiBell, FiX } from "react-icons/fi";
+import axios from "axios";
+import Swal from "sweetalert2";
+
+export default function NavbarNotification() {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const pollingRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      setNotifications(res.data);
+      setUnreadCount(res.data.filter(n => !n.isRead).length);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const markAsRead = async (id) => {
+    try {
+      await axios.post(`http://localhost:4000/api/notifications/markRead/${id}`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const replyNotification = async (id, reply) => {
+    try {
+      await axios.post(`http://localhost:4000/api/notifications/reply/${id}`, { message: reply });
+      Swal.fire("Sent!", "Your reply has been sent.", "success");
+      setSelectedMessage(null);
+      setReplyText("");
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to send reply.", "error");
+    }
+  };
+
+  // Polling
+  useEffect(() => {
+    fetchNotifications();
+    pollingRef.current = setInterval(fetchNotifications, 3000);
+    return () => clearInterval(pollingRef.current);
+  }, [fetchNotifications]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative">
+      {/* Bell Icon */}
+      <button
+        onClick={() => setDropdownOpen(!dropdownOpen)}
+        className="relative p-2 rounded-full hover:bg-indigo-50 transition duration-200"
+      >
+        <FiBell className="text-2xl text-gray-700 hover:text-indigo-600 transition" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-pink-500 to-red-500 rounded-full text-xs flex items-center justify-center text-white shadow-md animate-bounce">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {/* Dropdown */}
+      {dropdownOpen && (
+        <div
+          ref={dropdownRef}
+          className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 transform transition-all duration-300 origin-top-right"
+        >
+          <div className="p-4 border-b flex justify-between items-center bg-gradient-to-r from-indigo-50 to-white rounded-t-xl">
+            <h3 className="font-semibold text-gray-800 text-lg">Notifications</h3>
+            <button onClick={fetchNotifications} className="text-indigo-500 hover:text-indigo-700 font-medium">
+              Refresh
+            </button>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
+            {notifications.length === 0 ? (
+              <div className="p-6 text-center text-gray-400 italic">✨ No notifications</div>
+            ) : (
+              notifications.map(n => (
+                <div
+                  key={n._id}
+                  className={`p-4 cursor-pointer hover:bg-indigo-50 transition ${!n.isRead ? "bg-yellow-50" : ""}`}
+                  onClick={() => setSelectedMessage(n)}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-700">{n.message}</span>
+                    {!n.isRead && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); markAsRead(n._id); }}
+                        className="text-xs text-green-600 hover:text-green-800 font-medium"
+                      >
+                        Mark read
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 mt-1 block">
+                    {new Date(n.sentAt).toLocaleString()}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Reply Modal */}
+      {selectedMessage && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl p-6 transform transition-all scale-100">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-indigo-600">Reply</h2>
+              <button onClick={() => { setSelectedMessage(null); setReplyText(""); }} className="text-gray-500 hover:text-red-500">
+                <FiX size={22} />
+              </button>
+            </div>
+
+            <p className="mb-2 font-medium text-gray-700">Original Message:</p>
+            <p className="mb-4 text-gray-600 italic">{selectedMessage.message}</p>
+
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              rows={4}
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none mb-4"
+              placeholder="Type your reply..."
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setSelectedMessage(null); setReplyText(""); }}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => replyNotification(selectedMessage.userId, replyText)}
+                disabled={!replyText.trim()}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg shadow hover:opacity-90 transition disabled:opacity-50"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -9647,47 +8255,6 @@ export default defineConfig({
     },
   },
 });
-````
-
-## File: package.json
-````json
-{
-  "name": "app",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.86.0",
-    "@tailwindcss/vite": "^4.1.17",
-    "axios": "^1.13.2",
-    "jwt-decode": "^4.0.0",
-    "lucide-react": "^0.556.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-icons": "^5.5.0",
-    "react-router-dom": "^7.9.6",
-    "sweetalert2": "^11.26.3",
-    "tailwindcss": "^4.1.17",
-    "uuid": "^13.0.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "vite": "^7.2.4"
-  }
-}
 ````
 
 ## File: src/components/pages/admin/AdminAllProductView.jsx
@@ -11219,746 +9786,1086 @@ export default function EditProduct() {
 }
 ````
 
-## File: src/components/pages/admin/notification.jsx
+## File: src/components/pages/shipping.jsx
 ````javascript
-import axios from "axios";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Truck, Package, CreditCard, Shield, CheckCircle, ArrowLeft, Lock, MapPin, User, Phone, Edit, Plus, Trash2 } from 'lucide-react';
+import Swal from 'sweetalert2';
+import axios from 'axios';
 
-export default function Notification() {
-  const token = localStorage.getItem("token");
-  const [users, setUsers] = useState([]);
-  const [showPopup, setShowPopup] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [replyText, setReplyText] = useState("");
+export default function Shipping() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const quoteData = location.state;
+
   const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddressIndex, setEditingAddressIndex] = useState(null);
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+  const [userInfo, setUserInfo] = useState({
+    name: 'John Doe',
+    phone: '+94 77 123 4567',
+    email: 'john@example.com'
+  });
+
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [addressForm, setAddressForm] = useState({
+    type: 'Home',
+    name: '',
+    phone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    province: '',
+    postalCode: '',
+    isDefault: false
+  });
+
+  // ✅ FIX: Proper auth header with Bearer prefix
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // Fetch all message threads (admin endpoint)
+  // ✅ FIX: Fetch addresses from API with correct endpoint and headers
   useEffect(() => {
-    const fetchMessages = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No token found');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Login Required',
+        text: 'Please log in to continue',
+      });
+      navigate('/login');
+      return;
+    }
+
+    const fetchAddresses = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/chat/admin/messages", {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await axios.get('http://localhost:4000/api/addresses', {
+          headers: getAuthHeader()
         });
         
-        // Based on your backend controller, data is in res.data.data
-        if (res.data.data) {
-          setUsers(res.data.data);
-        } else if (res.data.messages) {
-          // Alternative response format
-          setUsers(res.data.messages);
+        if (res.data && Array.isArray(res.data)) {
+          // ✅ FIX: Map _id to id for frontend compatibility
+          const mappedAddresses = res.data.map(addr => ({
+            id: addr._id, // Map MongoDB _id to id
+            ...addr
+          }));
+          
+          setAddresses(mappedAddresses);
+          const defaultAddr = mappedAddresses.find(addr => addr.isDefault) || mappedAddresses[0];
+          setSelectedAddress(defaultAddr || null);
+        } else {
+          console.error('Invalid response format:', res.data);
         }
-      } catch (err) {
-        console.error("Error fetching messages:", err);
-        if (err.response?.status === 403) {
-          alert("You don't have admin privileges");
-        }
+      } catch (error) {
+        console.error('Error fetching addresses:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to load addresses. Please try again.',
+          timer: 3000,
+        });
       }
     };
     
-    if (token) {
-      fetchMessages();
-    }
-  }, [token]);
+    fetchAddresses();
+  }, []);
 
+
+
+
+  // ✅ FIX: Fetch user info with correct endpoint
   useEffect(() => {
-    scrollToBottom();
-  }, [selectedUser]);
-
-  // Handle admin reply
-  const handleReply = async () => {
-    if (!selectedUser || !replyText.trim()) return;
-
-    setLoading(true);
-    try {
-      // Using your backend endpoint structure
-      const res = await axios.post(
-        "http://localhost:4000/api/chat/adminReply",
-        { 
-          userId: selectedUser.userId, // Send userId, not _id
-          text: replyText  // Changed from 'message' to 'text'
-        },
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    const fetchUserInfo = async () => {
+      try {
+        const res = await axios.get('http://localhost:4000/api/users/me', {
+          headers: getAuthHeader()
+        });
+        
+        if (res.data) {
+          const userData = res.data.user || res.data;
+          setUserInfo({
+            name: userData.name || 'John Doe',
+            phone: userData.phone || '+94 77 123 4567',
+            email: userData.email || 'john@example.com'
+          });
+          
+          // Pre-fill address form with user info
+          setAddressForm(prev => ({
+            ...prev,
+            name: userData.name || '',
+            phone: userData.phone || ''
+          }));
         }
-      );
-      
-      alert(res.data.message || "Reply sent successfully");
-
-      const newMessage = {
-        _id: Date.now().toString(),
-        sender: "admin",
-        text: replyText,
-        timestamp: new Date().toISOString(),
-      };
-
-      // Update selectedUser messages locally
-      setSelectedUser((prev) => ({
-        ...prev,
-        messages: [...prev.messages, newMessage],
-      }));
-
-      // Update main users array
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.userId === selectedUser.userId || u._id === selectedUser._id
-            ? { 
-                ...u, 
-                messages: [...u.messages, {
-                  sender: "admin",
-                  text: replyText,
-                  timestamp: new Date().toISOString()
-                }] 
-              }
-            : u
-        )
-      );
-
-      setReplyText("");
-      scrollToBottom();
-    } catch (err) {
-      console.error("Error sending reply:", err);
-      if (err.response) {
-        console.error("Response error:", err.response.data);
-        alert(`Failed to send reply: ${err.response.data.message || err.response.statusText}`);
-      } else {
-        alert("Failed to send reply");
+      } catch (error) {
+        console.error('Error fetching user info:', error);
       }
+    };
+    
+    fetchUserInfo();
+  }, []);
+
+  const handleAddressFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setAddressForm({
+      ...addressForm,
+      [name]: type === 'checkbox' ? checked : value
+    });
+  };
+
+  // ✅ FIX: Save or update address with correct endpoint and headers
+  const handleSaveAddress = async () => {
+    if (!addressForm.name || !addressForm.phone || !addressForm.addressLine1 || !addressForm.city) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Information',
+        text: 'Please fill in all required fields (Name, Phone, Address, City)',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let response;
+
+      if (editingAddressIndex !== null) {
+        // Update existing address
+        const addrId = addresses[editingAddressIndex].id;
+        response = await axios.put(
+          `http://localhost:4000/api/addresses/${addrId}`,
+          addressForm,
+          { headers: getAuthHeader() }
+        );
+
+        // ✅ FIX: Map response _id to id
+        const updatedAddress = {
+          id: response.data._id,
+          ...response.data
+        };
+
+        const updatedAddresses = [...addresses];
+        updatedAddresses[editingAddressIndex] = updatedAddress;
+        setAddresses(updatedAddresses);
+        setSelectedAddress(updatedAddress);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Address Updated',
+          timer: 1500,
+          showConfirmButton: false
+        });
+
+      } else {
+        // Add new address
+        response = await axios.post(
+          'http://localhost:4000/api/addresses',
+          addressForm,
+          { headers: getAuthHeader() }
+        );
+
+        // ✅ FIX: Map response _id to id
+        const newAddress = {
+          id: response.data._id,
+          ...response.data
+        };
+
+        let updatedAddresses = [...addresses];
+        if (addressForm.isDefault) {
+          updatedAddresses = updatedAddresses.map(addr => ({ ...addr, isDefault: false }));
+        }
+
+        updatedAddresses.push(newAddress);
+        setAddresses(updatedAddresses);
+        if (addressForm.isDefault || updatedAddresses.length === 1) {
+          setSelectedAddress(newAddress);
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Address Added',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      }
+
+      // Reset form
+      setAddressForm({
+        type: 'Home',
+        name: userInfo.name,
+        phone: userInfo.phone,
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        province: '',
+        postalCode: '',
+        isDefault: false
+      });
+      setShowAddressForm(false);
+      setEditingAddressIndex(null);
+
+    } catch (error) {
+      console.error('Save address error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Something went wrong',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Format messages for display
-  const formatMessages = (messages) => {
-    if (!messages || !Array.isArray(messages)) return [];
-    
-    return messages.map(msg => ({
-      ...msg,
-      // Ensure sender is in lowercase for comparison
-      sender: msg.sender?.toLowerCase() || "unknown"
-    }));
+  // ✅ FIX: Delete address with correct endpoint and headers
+  const handleDeleteAddress = async (index) => {
+    const addressId = addresses[index].id;
+
+    const result = await Swal.fire({
+      title: 'Delete Address?',
+      text: 'Are you sure you want to delete this address?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(`http://localhost:4000/api/addresses/${addressId}`, {
+          headers: getAuthHeader()
+        });
+
+        const updatedAddresses = addresses.filter((_, i) => i !== index);
+        setAddresses(updatedAddresses);
+
+        if (selectedAddress?.id === addressId) {
+          setSelectedAddress(updatedAddresses[0] || null);
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Address has been deleted successfully.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+
+      } catch (error) {
+        console.error('Delete address error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.response?.data?.message || 'Failed to delete address',
+        });
+      }
+    }
   };
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Admin Chat Dashboard</h1>
-      
-      <div className="w-full overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full border border-gray-200">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="p-3 text-left border-b font-semibold text-gray-700">User ID</th>
-              <th className="p-3 text-left border-b font-semibold text-gray-700">Email</th>
-              <th className="p-3 text-left border-b font-semibold text-gray-700">Messages</th>
-              <th className="p-3 text-left border-b font-semibold text-gray-700">Last Updated</th>
-              <th className="p-3 text-left border-b font-semibold text-gray-700">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="p-4 text-center text-gray-500">
-                  No chat threads found
-                </td>
-              </tr>
-            ) : (
-              users.map((user) => {
-                const formattedMessages = formatMessages(user.messages);
-                const userMessages = formattedMessages.filter(m => m.sender === 'user');
-                const lastUserMessage = userMessages[userMessages.length - 1];
-                
-                return (
-                  <tr key={user._id || user.userId} className="border-t hover:bg-gray-50">
-                    <td className="p-3 border-b">
-                      <div className="font-medium">{user.userId}</div>
-                      <div className="text-xs text-gray-500">Thread: {user._id?.substring(0, 8)}...</div>
-                    </td>
-                    <td className="p-3 border-b text-gray-600">{user.userEmail}</td>
-                    <td className="p-3 border-b">
-                      <div className="text-sm">
-                        <span className="font-medium">{formattedMessages.length}</span> messages
-                        {lastUserMessage && (
-                          <div className="text-xs text-gray-500 truncate max-w-xs">
-                            Last: "{lastUserMessage.text?.substring(0, 50)}..."
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 border-b">
-                      {user.updatedAt ? (
-                        <div>
-                          <div className="text-sm">{new Date(user.updatedAt).toLocaleDateString()}</div>
-                          <div className="text-xs text-gray-500">{new Date(user.updatedAt).toLocaleTimeString()}</div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">N/A</span>
-                      )}
-                    </td>
-                    <td className="p-3 border-b">
-                      <button
-                        onClick={() => {
-                          setSelectedUser({
-                            ...user,
-                            messages: formatMessages(user.messages)
-                          });
-                          setShowPopup(true);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-                      >
-                        View & Reply
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+  // Edit address
+  const handleEditAddress = (index) => {
+    const address = addresses[index];
+    setAddressForm({
+      type: address.type || 'Home',
+      name: address.name || '',
+      phone: address.phone || '',
+      addressLine1: address.addressLine1 || '',
+      addressLine2: address.addressLine2 || '',
+      city: address.city || '',
+      province: address.province || '',
+      postalCode: address.postalCode || '',
+      isDefault: address.isDefault || false
+    });
+    setEditingAddressIndex(index);
+    setShowAddressForm(true);
+  };
 
-      {/* Popup Modal */}
-      {showPopup && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="bg-blue-600 text-white p-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold">Chat with User</h2>
-                <p className="text-sm text-blue-100">
-                  User ID: {selectedUser.userId} | Email: {selectedUser.userEmail}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowPopup(false)}
-                className="text-white hover:text-gray-200 text-2xl"
-              >
-                ✖
-              </button>
-            </div>
+  // ✅ FIX: Set default address with correct endpoint
+  const handleSetDefaultAddress = async (index) => {
+    try {
+      const addrId = addresses[index].id;
+      const res = await axios.put(
+        `http://localhost:4000/api/addresses/${addrId}`,
+        { isDefault: true },
+        { headers: getAuthHeader() }
+      );
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-              {selectedUser.messages?.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  No messages in this thread yet.
-                </div>
-              ) : (
-                selectedUser.messages
-                  ?.sort((a, b) => new Date(a.timestamp || a.createdAt) - new Date(b.timestamp || b.createdAt))
-                  .map((msg, i) => (
-                    <div
-                      key={msg._id || i}
-                      className={`mb-3 flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}
-                    >
-                      <div
-                        className={`max-w-[70%] rounded-lg p-3 ${msg.sender === 'user'
-                            ? 'bg-white border border-gray-200 rounded-tl-none'
-                            : 'bg-blue-100 border border-blue-200 rounded-tr-none'
-                          }`}
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <span className={`font-semibold ${msg.sender === 'user' ? 'text-gray-700' : 'text-blue-700'}`}>
-                            {msg.sender === 'user' ? '👤 User' : '🛡️ Admin'}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                        <p className="text-gray-800">{msg.text}</p>
-                      </div>
-                    </div>
-                  ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+      const updatedAddresses = addresses.map((addr, i) => ({
+        ...addr,
+        isDefault: i === index
+      }));
 
-            {/* Reply Input Area */}
-            <div className="border-t p-4">
-              <textarea
-                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Type your reply..."
-                rows="3"
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                disabled={loading}
-              />
-              <div className="flex justify-end mt-3 space-x-3">
-                <button
-                  onClick={() => setShowPopup(false)}
-                  className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-                  disabled={loading}
-                >
-                  Close
-                </button>
-                <button
-                  onClick={handleReply}
-                  disabled={loading || !replyText.trim()}
-                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Sending...
-                    </span>
-                  ) : (
-                    "Send Reply"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-````
+      setAddresses(updatedAddresses);
+      setSelectedAddress(updatedAddresses[index]);
 
-## File: src/components/pages/HomeContainer.jsx
-````javascript
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import Card from "@/components/Card";
-import axios from "axios";
-import NewAdsTitles from "@/components/newadds";
-import Banners from "@/components/Banners";
-export default function HomeContainer() {
-  const [allProducts, setAllProducts] = useState([]);
-  const [displayedProducts, setDisplayedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(8);
-  const [hasMore, setHasMore] = useState(true);
-  const observerTarget = useRef(null);
+      Swal.fire({
+        icon: 'success',
+        title: 'Default Address Updated',
+        timer: 1500,
+        showConfirmButton: false
+      });
 
+    } catch (error) {
+      console.error('Set default address error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Failed to set default address',
+      });
+    }
+  };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get("http://localhost:4000/api/products");
-        if (Array.isArray(response.data)) {
-          setAllProducts(response.data);
-          setDisplayedProducts(response.data.slice(0, visibleCount));
-          setHasMore(response.data.length > visibleCount);
+  // ✅ FIX: Update user info with correct endpoint
+  const handleUserInfoUpdate = async () => {
+    const { value: formData } = await Swal.fire({
+      title: 'Update Contact Information',
+      html: `
+        <input id="swal-name" class="swal2-input" placeholder="Full Name" value="${userInfo.name}">
+        <input id="swal-phone" class="swal2-input" placeholder="Phone" value="${userInfo.phone}">
+        <input id="swal-email" class="swal2-input" placeholder="Email" value="${userInfo.email}" disabled>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Update',
+      preConfirm: () => {
+        const name = document.getElementById('swal-name').value;
+        const phone = document.getElementById('swal-phone').value;
+        const email = userInfo.email;
+        
+        if (!name || !phone) {
+          Swal.showValidationMessage('Please fill all fields');
+          return false;
         }
+        return { name, phone, email };
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    });
+
+    if (formData) {
+      try {
+        setLoading(true);
+        const res = await axios.put(
+          'http://localhost:4000/api/users/me',
+          formData,
+          { headers: getAuthHeader() }
+        );
+        
+        const updatedUser = res.data.user || res.data;
+        setUserInfo({
+          name: updatedUser.name || userInfo.name,
+          phone: updatedUser.phone || userInfo.phone,
+          email: updatedUser.email || userInfo.email
+        });
+        
+        // Update address form with new user info
+        setAddressForm(prev => ({
+          ...prev,
+          name: updatedUser.name || '',
+          phone: updatedUser.phone || ''
+        }));
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Updated!',
+          text: 'Your contact information has been updated.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error('Update user info error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.response?.data?.message || 'Failed to update info',
+        });
       } finally {
         setLoading(false);
       }
-    };
+    }
+  };
 
-    fetchProducts();
-  }, []);
-
-  const loadMore = useCallback(() => {
-    if (loadingMore || !hasMore) return;
-    
-    setLoadingMore(true);
-    
-    setTimeout(() => {
-      const newCount = visibleCount + 8;
-      setVisibleCount(newCount);
-      setDisplayedProducts(allProducts.slice(0, newCount));
-      setHasMore(allProducts.length > newCount);
-      setLoadingMore(false);
-    }, 500);
-  }, [allProducts, loadingMore, hasMore, visibleCount]);
-
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    if (!hasMore || loading || loadingMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          loadMore();
-        }
-      },
-      { threshold: 0.5, rootMargin: '100px' }
-    );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
+  // Proceed to payment
+  const handleProceedToPayment = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      Swal.fire({ 
+        icon: 'warning', 
+        title: 'Authentication Required', 
+        text: 'Please log in to continue.' 
+      });
+      navigate('/login');
+      return;
     }
 
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [hasMore, loading, loadingMore, loadMore]);
+    if (!quoteData || quoteData.total <= 0) {
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'Order Error', 
+        text: 'Cannot proceed to payment. Order data missing or total is zero.' 
+      });
+      return;
+    }
+    
+    if (!selectedAddress) {
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'Shipping Address Required', 
+        text: 'Please select or add a shipping address.' 
+      });
+      return;
+    }
 
-  // Window scroll listener (alternative method)
-  useEffect(() => {
-    if (!hasMore || loading || loadingMore) return;
-
-    const handleScroll = () => {
-      const scrollTop = document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight;
+    setLoading(true);
+    try {
+      await Swal.fire({ 
+        title: 'Processing Order...', 
+        html: 'Preparing your order for payment', 
+        allowOutsideClick: false, 
+        timer: 1000, 
+        didOpen: () => Swal.showLoading() 
+      });
       
-      // Load more when 300px from bottom
-      if (scrollTop + clientHeight >= scrollHeight - 300) {
-        loadMore();
-      }
-    };
+      navigate(`/payment/?username=${userInfo.name}/&productName=${encodeURIComponent(quoteData.orderedItems[0].productName)}`, {
+        state: { 
+          orderData: { 
+            ...quoteData, 
+            items: quoteData.orderedItems, 
+            timestamp: new Date().toISOString(), 
+            orderId: `ORD-${Date.now().toString().slice(-8)}-${Math.floor(Math.random()*1000)}`, 
+            shippingAddress: selectedAddress, 
+            userInfo: userInfo 
+          } 
+        }
+      });
+    } catch (error) {
+      console.error('Proceed to payment error:', error);
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'Processing Failed', 
+        text: 'There was an error processing your order.' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loading, loadingMore, loadMore]);
-
-  if (loading && displayedProducts.length === 0) {
-    return (
-      <div className="min-h-screen p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
-      </div>
-    );
-  }
+  const handleGoToCart = () => {
+    navigate('/viewcart');
+  };
 
   return (
-    <div className="min-h-screen">
-
-      
-      
-        <div className="">
-
-
- <NewAdsTitles direction="left" speed={100}>
-  <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-    <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-    <span className="mr-8">🔥 Hot Deals Today!</span>
-      <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-    <span className="mr-8">🔥 Hot Deals Today!</span>
-  <span className="mr-8">🚀 Free Shipping!</span>
-  <span className="mr-8">🎉 Big Savings!</span>
-  <span className="mr-8">🎁 Limited Time Offers!</span>
-  <span className="mr-8">✨ New Arrivals!</span>
-    <span className="mr-8">🔥 Hot Deals Today!</span>
-
-
-
-</NewAdsTitles>
-
-
-
-
-
-
-
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={handleGoToCart}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Back to Cart
+          </button>
           
-        </div>
-      <div className="p-4 md:p-8">
-
-{/*banners casorle here */}
-
-        <div className="mt-2">
-          <Banners images={[]} />
-        </div>
-
-
-
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {displayedProducts.map((product) => (
-            <Card
-              key={product._id || product.productId}
-              productId={product.productId}
-              productName={product.productName}
-              lastPrices={product.lastPrices}
-              price={product.price}
-              images={product.images}
-            />
-          ))}
-        </div>
-
-        {/* Loading indicator */}
-        {loadingMore && (
-          <div className="text-center py-8">
-            <div className="inline-flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mr-3"></div>
-              <span className="text-teal-600">Loading more products...</span>
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="p-2 bg-blue-500 rounded-lg">
+              <Truck className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Shipping & Order Confirmation</h1>
+              <p className="text-gray-600">Review your order and shipping details before payment</p>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Observer target for Intersection Observer */}
-        <div ref={observerTarget} className="h-10"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Order Summary & Shipping */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Shipping Address Card */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <MapPin className="h-5 w-5 mr-2 text-blue-500" />
+                  Shipping Address
+                </h2>
+                <button
+                  onClick={() => {
+                    setAddressForm({
+                      type: 'Home',
+                      name: userInfo.name,
+                      phone: userInfo.phone,
+                      addressLine1: '',
+                      addressLine2: '',
+                      city: '',
+                      province: '',
+                      postalCode: '',
+                      isDefault: false
+                    });
+                    setEditingAddressIndex(null);
+                    setShowAddressForm(true);
+                  }}
+                  className="flex items-center text-sm text-blue-600 hover:text-blue-700"
+                  disabled={loading}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add New Address
+                </button>
+              </div>
 
-        {/* Show load more button as fallback */}
-        {hasMore && !loadingMore && (
-          <div className="text-center py-8">
-            <div className="mb-4 text-gray-600 text-sm">
-              Scroll down to load more or click below
+              {/* Contact Information */}
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-gray-800 flex items-center">
+                    <User className="h-4 w-4 mr-2" />
+                    Contact Information
+                  </h3>
+                  <button
+                    onClick={handleUserInfoUpdate}
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                    disabled={loading}
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-600">Name</p>
+                    <p className="font-medium">{userInfo.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Phone</p>
+                    <p className="font-medium">{userInfo.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Email</p>
+                    <p className="font-medium">{userInfo.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Selection */}
+              {showAddressForm ? (
+                <div className="bg-gray-50 p-6 rounded-lg mb-4">
+                  <h3 className="font-bold text-gray-800 mb-4">
+                    {editingAddressIndex !== null ? 'Edit Address' : 'Add New Address'}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Type
+                      </label>
+                      <select
+                        name="type"
+                        value={addressForm.type}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={loading}
+                      >
+                        <option value="Home">Home</option>
+                        <option value="Work">Work</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={addressForm.name}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={addressForm.phone}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Line 1 *
+                      </label>
+                      <input
+                        type="text"
+                        name="addressLine1"
+                        value={addressForm.addressLine1}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Line 2
+                      </label>
+                      <input
+                        type="text"
+                        name="addressLine2"
+                        value={addressForm.addressLine2}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={addressForm.city}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Province
+                      </label>
+                      <input
+                        type="text"
+                        name="province"
+                        value={addressForm.province}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Postal Code
+                      </label>
+                      <input
+                        type="text"
+                        name="postalCode"
+                        value={addressForm.postalCode}
+                        onChange={handleAddressFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center mb-4">
+                    <input
+                      type="checkbox"
+                      name="isDefault"
+                      checked={addressForm.isDefault}
+                      onChange={handleAddressFormChange}
+                      className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                      id="defaultAddress"
+                      disabled={loading}
+                    />
+                    <label htmlFor="defaultAddress" className="ml-2 text-sm text-gray-700">
+                      Set as default shipping address
+                    </label>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleSaveAddress}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={loading}
+                    >
+                      {loading ? 'Saving...' : (editingAddressIndex !== null ? 'Update Address' : 'Save Address')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddressForm(false);
+                        setEditingAddressIndex(null);
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {addresses.length > 0 ? (
+                    addresses.map((address, index) => (
+                      <div
+                        key={address.id || index}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedAddress?.id === address.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedAddress(address)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center">
+                            <div className={`p-1 rounded mr-2 ${
+                              address.type === 'Home' ? 'bg-green-100 text-green-800' :
+                              address.type === 'Work' ? 'bg-blue-100 text-blue-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              <span className="text-xs font-medium">{address.type || 'Home'}</span>
+                            </div>
+                            {address.isDefault && (
+                              <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditAddress(index);
+                              }}
+                              className="p-1 text-gray-500 hover:text-blue-600"
+                              disabled={loading}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteAddress(index);
+                              }}
+                              className="p-1 text-gray-500 hover:text-red-600"
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-sm">
+                          <p className="font-medium">{address.name}</p>
+                          <p className="text-gray-600">{address.phone}</p>
+                          <p className="mt-2">{address.addressLine1}</p>
+                          {address.addressLine2 && (
+                            <p>{address.addressLine2}</p>
+                          )}
+                          <p>{address.city}{address.province ? `, ${address.province}` : ''} {address.postalCode || ''}</p>
+                        </div>
+                        <div className="mt-3 flex space-x-2">
+                          {!address.isDefault && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetDefaultAddress(index);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                              disabled={loading}
+                            >
+                              Set as Default
+                            </button>
+                          )}
+                          {selectedAddress?.id === address.id && (
+                            <span className="text-xs text-green-600 flex items-center">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">No addresses saved yet.</p>
+                      <p className="text-sm text-gray-400 mt-1">Add an address to continue</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <button
-              onClick={loadMore}
-              className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
-            >
-              Load More ({allProducts.length - displayedProducts.length} remaining)
-            </button>
-          </div>
-        )}
 
-        {/* All loaded message */}
-        {!hasMore && allProducts.length > 0 && (
-          <div className="text-center py-8">
-            <div className="inline-block px-6 py-3 bg-green-100 text-green-800 rounded-full">
-              🎉 All {allProducts.length} products loaded!
+            {/* Order Summary Card */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <Package className="h-5 w-5 mr-2 text-amber-500" />
+                  Order Summary
+                </h2>
+                <span className="text-sm font-medium text-gray-500">
+                  {quoteData?.orderedItems?.length || 0} item(s)
+                </span>
+              </div>
+
+              {quoteData ? (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Amount</p>
+                        <p className="text-2xl font-bold text-gray-900">Rs. {quoteData.total?.toFixed(2)}</p>
+                        {quoteData.discount > 0 && (
+                          <p className="text-sm text-green-600 mt-1">
+                            You saved Rs. {quoteData.discount?.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="p-3 bg-white rounded-lg shadow-sm">
+                        <CreditCard className="h-8 w-8 text-amber-500" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span>Rs. {quoteData.labeledTotal?.toFixed(2)}</span>
+                    </div>
+                    {quoteData.discount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount</span>
+                        <span>- Rs. {quoteData.discount?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Shipping</span>
+                      <span className="text-green-600">FREE</span>
+                    </div>
+                    <div className="border-t pt-3 flex justify-between font-semibold">
+                      <span>Total</span>
+                      <span className="text-lg">Rs. {quoteData.total?.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <h3 className="font-semibold text-gray-800 mb-4">Order Items:</h3>
+                    <div className="space-y-3">
+                      {quoteData.orderedItems?.map((item, index) => (
+                        <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            {item.image ? (
+                              <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
+                            ) : (
+                              <Package className="h-6 w-6 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-800">{item.productName}</h4>
+                            <p className="text-sm text-gray-600">Quantity: {item.qty}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900">
+                              Rs. {(item.lastPrice * item.qty).toFixed(2)}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Rs. {item.lastPrice.toFixed(2)} each
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Package className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500">No order data found. Please return to cart.</p>
+                  <button
+                    onClick={handleGoToCart}
+                    className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                  >
+                    Go to Cart
+                  </button>
+                </div>
+              )}
             </div>
-            <p className="text-gray-500 text-sm mt-2">
-              You've reached the end of our products
-            </p>
           </div>
-        )}
 
-        {/* Scroll indicator for mobile */}
-        {hasMore && displayedProducts.length > 8 && (
-          <div className="fixed bottom-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-full shadow-lg text-sm animate-bounce lg:hidden">
-            ↓ Scroll for more
+          {/* Right Column - Order Confirmation & Payment Button */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Payment Methods Preview */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                <CreditCard className="h-5 w-5 mr-2 text-purple-500" />
+                Payment Options
+              </h3>
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
+                  <CreditCard className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-gray-700">Credit/Debit Card</p>
+                    <p className="text-xs text-gray-500 mt-1">Visa, MasterCard, American Express</p>
+                  </div>
+                </li>
+                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
+                  <svg className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                  <div>
+                    <p className="font-medium text-gray-700">Digital Wallets</p>
+                    <p className="text-xs text-gray-500 mt-1">Apple Pay, Google Pay, Samsung Pay</p>
+                  </div>
+                </li>
+                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
+                  <svg className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                  <div>
+                    <p className="font-medium text-gray-700">Bank Transfer</p>
+                    <p className="text-xs text-gray-500 mt-1">Direct bank payment</p>
+                  </div>
+                </li>
+                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
+                  <Truck className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-gray-700">Cash on Delivery</p>
+                    <p className="text-xs text-gray-500 mt-1">Pay when you receive</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* Security Info */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                <Shield className="h-5 w-5 mr-2 text-green-500" />
+                Secure Checkout
+              </h3>
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>256-bit SSL encryption</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>PCI DSS compliant</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>Your data is protected</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Order Confirmation Button */}
+            <div className="sticky top-8">
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                <h3 className="font-bold text-gray-800 mb-4">Ready to Pay</h3>
+                
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-gray-600">Amount to Pay</p>
+                    <p className="text-xs text-gray-500">Order #{quoteData ? `ORD-${Date.now().toString().slice(-6)}` : '-----'}</p>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    Rs. {quoteData?.total?.toFixed(2) || '0.00'}
+                  </p>
+                  {quoteData?.discount > 0 && (
+                    <p className="text-sm text-green-600 mt-1">
+                      You saved Rs. {quoteData.discount.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Payment Button */}
+                <button
+                  onClick={handleProceedToPayment}
+                  disabled={!quoteData || quoteData.total <= 0 || loading || !selectedAddress}
+                  className={`w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 ${
+                    quoteData && quoteData.total > 0 && !loading && selectedAddress
+                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Preparing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-5 w-5" />
+                      <span>Proceed to Payment</span>
+                    </>
+                  )}
+                </button>
+
+                <p className="text-xs text-gray-500 text-center mt-4">
+                  By proceeding, you agree to our{' '}
+                  <button className="text-purple-600 hover:text-purple-700">Terms & Conditions</button>
+                </p>
+              </div>
+
+              {/* Help Text */}
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-500">
+                  Need help?{' '}
+                  <button className="text-purple-600 hover:text-purple-700 font-medium">
+                    Contact Support
+                  </button>
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 ````
 
-## File: src/components/Navbar.jsx
-````javascript
-import { jwtDecode } from "jwt-decode";
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { HiMenu, HiX } from "react-icons/hi";
-
-export default function Navbar() {
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
-
-  const authcheck = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setUser(null);
-      setIsAdmin(false);
-      return;
-    }
-    try {
-      const decoded = jwtDecode(token);
-      setUser(decoded);
-      setIsAdmin(decoded.role === "admin"); // Check if user is admin
-    } catch {
-      setUser(null);
-      setIsAdmin(false);
-    }
-  };
-
-  useEffect(() => {
-    authcheck();
-    window.addEventListener("authChange", authcheck);
-    return () => window.removeEventListener("authChange", authcheck);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-    setIsAdmin(false);
-    window.dispatchEvent(new Event("authChange"));
-    navigate("/login");
-  };
-
-  return (
-    <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
-      <div className="flex justify-between items-center">
-        {/* Brand */}
-        <Link
-          to="/"
-          className="text-xl font-bold text-gray-800 hover:text-blue-600 transition"
-        >
-          MyBrand
-        </Link>
-
-        {/* Desktop Nav */}
-        <div className="hidden md:flex gap-6 items-center">
-          <Link to="/" className="text-gray-700 hover:text-blue-600 transition">
-            Home
-          </Link>
-          <Link
-            to="/about"
-            className="text-gray-700 hover:text-blue-600 transition"
-          >
-            About
-          </Link>
-          <Link
-            to="/contact"
-            className="text-gray-700 hover:text-blue-600 transition"
-          >
-            Contact
-          </Link>
-          <Link
-            to="/service"
-            className="text-gray-700 hover:text-blue-600 transition"
-          >
-            Service
-          </Link>
-
-          <Link
-            to={`/viewcart?userId=${user ? user.id : ""}`}
-            className="text-gray-700 hover:text-blue-600 transition"
-          >
-            Cart
-          </Link>
-
-          <Link
-            to={`/orders?userId=${user ? user.id : ""}`}
-            className="text-gray-700 hover:text-blue-600 transition"
-          >
-            Orders
-          </Link>
-
-          {/* Show Notification link only for admins */}
-          {isAdmin && (
-            <Link
-              to="/admin/dashboard"
-              className="text-gray-700 hover:text-blue-600 transition"
-            >
-              Admin Dashboard
-            </Link>
-          )}
-
-          {/* Auth Section */}
-          {user ? (
-            <div className="flex items-center gap-4">
-              <img
-                src={user.profileImage || "/default-avatar.png"}
-                alt={user.name || "User profile"}
-                className="w-10 h-10 rounded-full object-cover border shadow-sm"
-              />
-              <Link
-                to={`/profile?userId=${user.id}`}
-                className="text-gray-700 hover:text-blue-600 font-medium transition"
-              >
-                Profile
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-4">
-              <Link
-                to="/login"
-                className="text-gray-700 hover:text-blue-600 font-medium transition"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="text-gray-700 hover:text-blue-600 font-medium transition"
-              >
-                Register
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Hamburger */}
-        <button
-          className="md:hidden text-2xl text-gray-700"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <HiX /> : <HiMenu />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="md:hidden mt-4 flex flex-col gap-4 bg-white p-4 rounded shadow-md">
-          <Link to="/" onClick={() => setMenuOpen(false)}>
-            Home
-          </Link>
-          <Link to="/about" onClick={() => setMenuOpen(false)}>
-            About
-          </Link>
-          <Link to="/contact" onClick={() => setMenuOpen(false)}>
-            Contact
-          </Link>
-          <Link to="/service" onClick={() => setMenuOpen(false)}>
-            Service
-          </Link>
-          <Link to="/viewcart" onClick={() => setMenuOpen(false)}>
-            Cart
-          </Link>
-
-          {/* Show Admin Dashboard link only for admins in mobile */}
-          {isAdmin && (
-            <Link to="/notification" onClick={() => setMenuOpen(false)}>
-              Admin Dashboard
-            </Link>
-          )}
-
-          {user ? (
-            <>
-              <Link to="/profile" onClick={() => setMenuOpen(false)}>
-                Profile
-              </Link>
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setMenuOpen(false);
-                }}
-                className="px-4 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" onClick={() => setMenuOpen(false)}>
-                Login
-              </Link>
-              <Link to="/register" onClick={() => setMenuOpen(false)}>
-                Register
-              </Link>
-            </>
-          )}
-        </div>
-      )}
-    </nav>
-  );
+## File: package.json
+````json
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@supabase/supabase-js": "^2.86.0",
+    "@tailwindcss/vite": "^4.1.17",
+    "axios": "^1.13.2",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.556.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.9.6",
+    "sweetalert2": "^11.26.10",
+    "tailwindcss": "^4.1.17",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4"
+  }
 }
 ````
 
@@ -12382,849 +11289,6 @@ export default function AddProducts() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-````
-
-## File: src/components/pages/admin/dashboard.jsx
-````javascript
-import React, { useEffect, useState } from "react";
-import { 
-  RxHamburgerMenu, 
-  RxDashboard, 
-  RxPerson, 
-  RxExit 
-} from "react-icons/rx";
-import { 
-  MdOutlineGridView, 
-  MdAddBox, 
-  MdEdit, 
-  MdNotifications,
-  MdShoppingCart,
-  MdBarChart,
-  MdSettings,
-  MdChevronRight,
-  MdChevronLeft
-} from "react-icons/md";
-import { 
-  FiUsers, 
-  FiPackage, 
-  FiDollarSign, 
-  FiTrendingUp 
-} from "react-icons/fi";
-import { Link, Route, Routes, useNavigate, Navigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import AddProducts from "./addProducts";
-import AdminAllProductView from "./AdminAllProductView";
-import EditProducts from "./EditProducts";
-import Notification from "./notification";
-import Swal from "sweetalert2";
-
-export default function Dashboard() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  // Stats for dashboard
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    totalOrders: 0,
-    totalRevenue: 0,
-    newUsers: 0,
-  });
-
-  // Auth check
-  const authcheck = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setUser(null);
-      navigate("/login");
-      return;
-    }
-    try {
-      const decoded = jwtDecode(token);
-      if (decoded.role !== "admin") {
-        Swal.fire({
-          icon: 'error',
-          title: 'Access Denied',
-          text: 'Only administrators can access this dashboard',
-          confirmButtonColor: '#d33',
-        }).then(() => {
-          navigate("/");
-        });
-        return;
-      }
-      setUser(decoded);
-    } catch {
-      localStorage.removeItem("token");
-      setUser(null);
-      navigate("/login");
-    }
-  };
-
-  // Fetch dashboard stats
-  const fetchStats = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      // Mock data for now
-      setStats({
-        totalProducts: 128,
-        totalOrders: 45,
-        totalRevenue: 12500,
-        newUsers: 12,
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    }
-  };
-
-  useEffect(() => {
-    authcheck();
-    fetchStats();
-    window.addEventListener("authChange", authcheck);
-    setLoading(false);
-    return () => window.removeEventListener("authChange", authcheck);
-  }, []);
-
-  const handleLogout = () => {
-    Swal.fire({
-      title: 'Logout?',
-      text: "Are you sure you want to logout?",
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, logout!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        localStorage.removeItem("token");
-        window.dispatchEvent(new Event("authChange"));
-        navigate("/login");
-      }
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-gray-600">Loading Dashboard...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Mobile Top Bar - Only on Mobile */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-teal-500 p-4 flex justify-between items-center z-50 shadow-lg">
-        <div className="flex items-center">
-          <button 
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="mr-4 text-white"
-          >
-            <RxHamburgerMenu size={28} />
-          </button>
-          <h1 className="text-white text-xl font-bold">Dashboard</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="text-right hidden sm:block">
-            <div className="text-sm text-blue-100">Welcome</div>
-            <div className="text-white font-semibold">{user?.name || "Admin"}</div>
-          </div>
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold">
-              {user?.name?.charAt(0) || "A"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* SIDEBAR - Always visible on desktop, collapsible on mobile */}
-      <div
-        className={`fixed lg:sticky top-0 left-0 h-screen w-72 bg-white border-r border-gray-200 shadow-xl z-40 transition-transform duration-300
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-      >
-        {/* Logo Section */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <Link to="/admin/dashboard" className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-teal-500 rounded-lg flex items-center justify-center mr-3">
-              <RxDashboard className="text-white text-xl" />
-            </div>
-            <span className="text-2xl font-bold text-gray-800">AdminPanel</span>
-          </Link>
-        </div>
-
-        {/* User Info */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-teal-400 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">
-              {user?.name?.charAt(0) || "A"}
-            </div>
-            <div>
-              <div className="font-semibold text-gray-800">{user?.name || "Admin User"}</div>
-              <div className="text-sm text-gray-500">{user?.email || "admin@example.com"}</div>
-              <div className="text-xs mt-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full inline-block">
-                Administrator
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 px-4">
-          <div className="space-y-2">
-            {/* Main Navigation */}
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 px-2">
-              Navigation
-            </div>
-
-            <Link
-              to="/admin/dashboard"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-              onClick={() => setMobileOpen(false)}
-            >
-              <div className="text-blue-600">
-                <RxDashboard size={20} />
-              </div>
-              <span>Overview</span>
-            </Link>
-
-            <Link
-              to="/admin/dashboard/adminviewproducts"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-              onClick={() => setMobileOpen(false)}
-            >
-              <div className="text-green-600">
-                <MdOutlineGridView size={20} />
-              </div>
-              <span>View Products</span>
-            </Link>
-
-            <Link
-              to="/admin/dashboard/addproducts"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-              onClick={() => setMobileOpen(false)}
-            >
-              <div className="text-purple-600">
-                <MdAddBox size={20} />
-              </div>
-              <span>Add Product</span>
-            </Link>
-
-
-                        <Link
-              to="/admin/dashboard/addproducts"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-              onClick={() => setMobileOpen(false)}
-            >
-              <div className="text-purple-600">
-                <MdAddBox size={20} />
-              </div>
-              <span>Ads Managements</span>
-            </Link>
-
-            <Link
-              to="/admin/dashboard/notification"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition group"
-              onClick={() => setMobileOpen(false)}
-            >
-              <div className="text-red-600 relative">
-                <MdNotifications size={20} />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </div>
-              <span>Notifications</span>
-              <span className="ml-auto bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
-                3 new
-              </span>
-            </Link>
-
-            {/* Additional Sections */}
-            <>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider my-4 px-2">
-                Analytics
-              </div>
-
-              <Link
-                to="/admin/dashboard/orders"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition"
-                onClick={() => setMobileOpen(false)}
-              >
-                <div className="text-indigo-600">
-                  <MdShoppingCart size={20} />
-                </div>
-                <span>Orders</span>
-                <span className="ml-auto bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full">45</span>
-              </Link>
-
-              <Link
-                to="/admin/dashboard/users"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition"
-                onClick={() => setMobileOpen(false)}
-              >
-                <div className="text-teal-600">
-                  <FiUsers size={20} />
-                </div>
-                <span>Users</span>
-              </Link>
-
-              <Link
-                to="/admin/dashboard/analytics"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition"
-                onClick={() => setMobileOpen(false)}
-              >
-                <div className="text-amber-600">
-                  <MdBarChart size={20} />
-                </div>
-                <span>Analytics</span>
-              </Link>
-
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider my-4 px-2">
-                Settings
-              </div>
-
-              <Link
-                to="/admin/dashboard/settings"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium hover:bg-blue-50 hover:text-blue-700 transition"
-                onClick={() => setMobileOpen(false)}
-              >
-                <div className="text-gray-600">
-                  <MdSettings size={20} />
-                </div>
-                <span>Settings</span>
-              </Link>
-            </>
-          </div>
-        </nav>
-
-        {/* Logout Button */}
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-xl text-base font-medium bg-red-50 text-red-600 hover:bg-red-100 transition group"
-          >
-            <RxExit size={20} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
-
-      {/* MAIN CONTENT AREA */}
-      <div className=" w-full lg:ml-10">
-        {/* Overlay for mobile sidebar */}
-        {mobileOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-        )}
-
-        {/* Dashboard Header */}
-        <div className="p-4 lg:p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
-                Welcome back, {user?.name?.split(' ')[0] || "Admin"}!
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Here's what's happening with your store today.
-              </p>
-            </div>
-            <div className="mt-2 lg:mt-0">
-              <div className="text-sm text-gray-500">Last updated</div>
-              <div className="text-md font-semibold text-gray-700">
-                {new Date().toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              { 
-                title: "Total Products", 
-                value: stats.totalProducts, 
-                icon: <FiPackage className="text-blue-600" size={24} />, 
-                change: "+12%", 
-                color: "bg-blue-50", 
-                textColor: "text-blue-600" 
-              },
-              { 
-                title: "Total Orders", 
-                value: stats.totalOrders, 
-                icon: <MdShoppingCart className="text-green-600" size={24} />, 
-                change: "+8%", 
-                color: "bg-green-50", 
-                textColor: "text-green-600" 
-              },
-              { 
-                title: "Total Revenue", 
-                value: `$${stats.totalRevenue.toLocaleString()}`, 
-                icon: <FiDollarSign className="text-purple-600" size={24} />, 
-                change: "+23%", 
-                color: "bg-purple-50", 
-                textColor: "text-purple-600" 
-              },
-              { 
-                title: "New Users", 
-                value: stats.newUsers, 
-                icon: <FiUsers className="text-orange-600" size={24} />, 
-                change: "+5%", 
-                color: "bg-orange-50", 
-                textColor: "text-orange-600" 
-              },
-            ].map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl shadow p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className={`p-3 rounded-lg ${stat.color}`}>
-                    {stat.icon}
-                  </div>
-                  <div className={`text-sm font-semibold ${stat.textColor}`}>
-                    {stat.change}
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-2xl font-bold text-gray-800">{stat.value}</div>
-                  <div className="text-gray-500 text-sm">{stat.title}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CENTERED CONTENT AREA */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full max-w-7xl">
-            <div className="bg-white rounded-2xl shadow-lg p-6 min-h-[500px] flex flex-col">
-              <Routes>
-                <Route index element={
-                  <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <div className="text-6xl mb-6">📊</div>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-4">Dashboard Overview</h2>
-                    <p className="text-gray-600 max-w-2xl mb-8">
-                      Select a section from the sidebar to manage products, view notifications, or access other admin features.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
-                      <div className="p-6 bg-blue-50 border border-blue-100 rounded-xl text-center">
-                        <div className="text-blue-600 font-bold text-lg mb-2">📦 Products</div>
-                        <div className="text-gray-600 text-sm">Manage your product inventory</div>
-                      </div>
-                      <div className="p-6 bg-green-50 border border-green-100 rounded-xl text-center">
-                        <div className="text-green-600 font-bold text-lg mb-2">🛒 Orders</div>
-                        <div className="text-gray-600 text-sm">View and manage customer orders</div>
-                      </div>
-                      <div className="p-6 bg-purple-50 border border-purple-100 rounded-xl text-center">
-                        <div className="text-purple-600 font-bold text-lg mb-2">📈 Analytics</div>
-                        <div className="text-gray-600 text-sm">Track store performance</div>
-                      </div>
-                    </div>
-                  </div>
-                } />
-                <Route path="adminviewproducts" element={<AdminAllProductView />} />
-                <Route path="addproducts" element={<AddProducts />} />
-                <Route path="editproducts" element={<EditProducts />} />
-                <Route path="notification" element={<Notification />} />
-                <Route path="*" element={
-                  <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <div className="text-6xl mb-6">🔍</div>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-4">Page Not Found</h2>
-                    <p className="text-gray-600 max-w-md mb-8">
-                      The page you're looking for doesn't exist in the admin dashboard.
-                    </p>
-                    <button 
-                      onClick={() => navigate('/admin/dashboard')}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                    >
-                      Return to Dashboard
-                    </button>
-                  </div>
-                } />
-              </Routes>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 text-center text-gray-500 text-sm border-t border-gray-200">
-          <p>Admin Dashboard v1.0 • © {new Date().getFullYear()} Your Company</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-````
-
-## File: src/components/pages/Login.jsx
-````javascript
-import axios from "axios";
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      alert("Please enter email and password");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await axios.post(
-        "http://localhost:4000/api/users/login",
-        { email, password }
-      );
-
-      // Save token
-      localStorage.setItem("token", response.data.token);
-      window.dispatchEvent(new Event("authChange"));
-
-      // Navigate
-      if (response.data.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Invalid username or password");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !loading) {
-      handleLogin();
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
-
-      <div className="w-full max-w-md mx-auto">
-        {/* Header - Centered properly */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              ></path>
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-gray-600">
-            Sign in to continue to your account
-          </p>
-        </div>
-
-        {/* Login Card - Proper padding and spacing */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 md:p-8 border border-white/20">
-          <div className="space-y-5">
-            {/* Email Input */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-                    ></path>
-                  </svg>
-                </div>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  type="email"
-                  placeholder="Enter your email"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-white/50 text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    ></path>
-                  </svg>
-                </div>
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-white/50 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <svg
-                      className="h-5 w-5 text-gray-400 hover:text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                      ></path>
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-gray-400 hover:text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      ></path>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      ></path>
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Forgot Password - Proper alignment */}
-            <div className="flex justify-end mb-2">
-              <button
-                onClick={() =>
-                  alert("Forgot password functionality would go here")
-                }
-                className="text-sm text-amber-600 hover:text-amber-700 font-medium transition-colors"
-              >
-                Forgot your password?
-              </button>
-            </div>
-
-            {/* Login Button - Full width and centered content */}
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-lg font-semibold hover:from-amber-600 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin mr-2 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Signing In...
-                </div>
-              ) : (
-                <div className="flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                    ></path>
-                  </svg>
-                  Sign In
-                </div>
-              )}
-            </button>
-
-            {/* Divider - Better alignment */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center">
-                <span className="px-3 bg-white text-sm text-gray-500">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            {/* Social Login Buttons - Proper spacing */}
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                onClick={() => alert("Google login would go here")}
-                className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-              >
-                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  ></path>
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  ></path>
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  ></path>
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  ></path>
-                </svg>
-                <span className="text-sm font-medium">Continue with Google</span>
-              </button>
-            </div>
-
-            {/* Sign Up Link - Centered */}
-            <div className="text-center pt-4 border-t border-gray-200">
-              <p className="text-gray-600 text-sm">
-                Don't have an account?{" "}
-                <button
-                  onClick={() => navigate("/register")}
-                  className="text-amber-600 hover:text-amber-700 font-semibold transition-colors"
-                >
-                  Sign up now
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer - Centered */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            By signing in, you agree to our{" "}
-            <button className="text-amber-600 hover:text-amber-700">
-              Terms
-            </button>{" "}
-            and{" "}
-            <button className="text-amber-600 hover:text-amber-700">
-              Privacy Policy
-            </button>
-          </p>
-        </div>
-      </div>
-
-      {/* Add CSS for blob animation */}
-      <style jsx>{`
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   );
 }
@@ -13710,6 +11774,376 @@ export default function ViewCart() {
 }
 ````
 
+## File: src/components/pages/HomeContainer.jsx
+````javascript
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import Card from "@/components/Card";
+import axios from "axios";
+import NewAdsTitles from "@/components/newadds";
+import Banners from "@/components/Banners";
+
+export default function HomeContainer() {
+  const [allProducts, setAllProducts] = useState([]);
+  const [displayedProducts, setDisplayedProducts] = useState([]);
+  const [loading, setLoading] = useState(true); // Initial fetch loading state
+  const [loadingMore, setLoadingMore] = useState(false); // Infinite scroll/button loading state
+  const [error, setError] = useState(null); // <--- NEW: State to store fetch error
+  const [visibleCount, setVisibleCount] = useState(8);
+  const [hasMore, setHasMore] = useState(true);
+  const observerTarget = useRef(null);
+
+  // --- 1. Initial Data Fetch ---
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError(null); // Clear previous errors
+      try {
+        const response = await axios.get("http://localhost:4000/api/products");
+        if (Array.isArray(response.data)) {
+          const products = response.data;
+          setAllProducts(products);
+          setDisplayedProducts(products.slice(0, visibleCount));
+          setHasMore(products.length > visibleCount);
+        } else {
+          setAllProducts([]);
+          setDisplayedProducts([]);
+          setHasMore(false);
+          // Optional: Set a specific error if data format is unexpected
+          // setError("Received data in an unexpected format.");
+        }
+      } catch (e) {
+        console.error("Error fetching products:", e);
+        // <--- UPDATED: Set the error state on failure
+        setError("Failed to fetch products. Please check the server connection (http://localhost:4000).");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // --- 2. Load More Logic (No change needed here) ---
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+
+    setTimeout(() => {
+      const newCount = visibleCount + 8;
+      setVisibleCount(newCount);
+      setDisplayedProducts(allProducts.slice(0, newCount));
+      setHasMore(allProducts.length > newCount);
+      setLoadingMore(false);
+    }, 500);
+  }, [allProducts, loadingMore, hasMore, visibleCount]);
+
+  // --- 3. Intersection Observer (No change needed here) ---
+  useEffect(() => {
+    // Only observe if there is more data and no loading is currently active
+    if (!hasMore || loading || loadingMore || error) return; // <--- Check for error
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.5, rootMargin: "100px" }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, loading, loadingMore, loadMore, error]); // <--- Added error dependency
+
+  // --- 4. Initial Load Spinner UI ---
+  // A. Show spinner while fetching
+  if (loading && displayedProducts.length === 0) {
+    return (
+      <div className="min-h-screen p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+        <span className="ml-3 text-teal-600">Fetching initial products...</span>
+      </div>
+    );
+  }
+
+  // B. Show persistent error message if fetch failed
+  if (error) {
+    return (
+      <div className="min-h-screen p-8 flex flex-col justify-center items-center bg-red-50">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mb-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        </svg>
+        <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Data</h2>
+        <p className="text-red-600 text-center max-w-lg">{error}</p>
+        <p className="text-gray-500 text-sm mt-4">Check your console for more details on the fetch error.</p>
+      </div>
+    );
+  }
+
+  // --- 5. Main Render ---
+  return (
+    <div className="min-h-screen">
+      <div className="">
+        <NewAdsTitles direction="left" speed={100}>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+          <span className="mr-8">🚀 Free Shipping!</span>
+          <span className="mr-8">🎉 Big Savings!</span>
+          <span className="mr-8">🎁 Limited Time Offers!</span>
+          <span className="mr-8">✨ New Arrivals!</span>
+          <span className="mr-8">🔥 Hot Deals Today!</span>
+        </NewAdsTitles>
+      </div>
+      <div className="p-4 md:p-8">
+        {/*banners casorle here */}
+
+        <div className="mt-2">
+          <Banners images={[]} />
+        </div>
+
+        {/* Product Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {displayedProducts.map((product) => (
+            <Card
+              key={product._id || product.productId}
+              productId={product.productId}
+              productName={product.productName}
+              lastPrices={product.lastPrices}
+              price={product.price}
+              images={product.images}
+            />
+          ))}
+        </div>
+
+        {/* --- 6. Loading More Indicator UI --- */}
+        {loadingMore && (
+          <div className="text-center py-8">
+            <div className="inline-flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mr-3"></div>
+              <span className="text-teal-600">Loading more products...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Observer target for Intersection Observer */}
+        {/* Only visible when there's a chance of loading more */}
+        {hasMore && <div ref={observerTarget} className="h-10"></div>}
+
+
+        {/* --- 7. Fallback "Load More" Button UI --- */}
+        {hasMore && !loadingMore && (
+          <div className="text-center py-8">
+            <div className="mb-4 text-gray-600 text-sm">
+              Scroll down to load more or click below
+            </div>
+            <button
+              onClick={loadMore}
+              className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
+            >
+              Load More ({allProducts.length - displayedProducts.length}{" "}
+              remaining)
+            </button>
+          </div>
+        )}
+
+        {/* --- 8. All Loaded Message UI --- */}
+        {!hasMore && allProducts.length > 0 && (
+          <div className="text-center py-8">
+            <div className="inline-block px-6 py-3 bg-green-100 text-green-800 rounded-full">
+              🎉 All {allProducts.length} products loaded!
+            </div>
+            <p className="text-gray-500 text-sm mt-2">
+              You've reached the end of our products
+            </p>
+          </div>
+        )}
+
+        {/* Scroll indicator for mobile */}
+        {hasMore && displayedProducts.length > 8 && (
+          <div className="fixed bottom-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-full shadow-lg text-sm animate-bounce lg:hidden">
+            ↓ Scroll for more
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/Login.jsx
+````javascript
+import axios from "axios";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await axios.post(
+        "http://localhost:4000/api/users/login",
+        { email, password }
+      );
+
+      // Save token
+      localStorage.setItem("token", response.data.token);
+      window.dispatchEvent(new Event("authChange"));
+
+      // Navigate
+      if (response.data.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Invalid username or password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !loading) {
+      handleLogin();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Sign In</h1>
+            <p className="text-gray-600 mt-1">Enter your credentials to continue</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyPress={handleKeyPress}
+                type="email"
+                placeholder="Enter your email"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? (
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button className="text-sm text-blue-600 hover:text-blue-500">
+                Forgot password?
+              </button>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing in...
+                </div>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{" "}
+                <button
+                  onClick={() => navigate("/register")}
+                  className="text-blue-600 hover:text-blue-500 font-medium"
+                >
+                  Sign up
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
+
 ## File: src/components/pages/productoverview.jsx
 ````javascript
 import axios from "axios";
@@ -13717,8 +12151,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ImageSlider from "@/components/imageSlider";
 import { addToCart } from "../utils/cart";
-import { FiShoppingCart, FiPackage, FiTag, FiInfo, FiArrowLeft, FiStar, FiTruck, FiShield } from "react-icons/fi";
-import { MdLocalOffer, MdOutlineInventory2 } from "react-icons/md";
+import { FiShoppingCart, FiTag, FiInfo, FiArrowLeft, FiTruck, FiShield } from "react-icons/fi";
+import { MdOutlineInventory2 } from "react-icons/md";
 import Swal from "sweetalert2";
 
 export default function ProductOverview() {
@@ -13727,7 +12161,6 @@ export default function ProductOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState([]);
   const [addingToCart, setAddingToCart] = useState(false);
   const navigate = useNavigate();
 
@@ -13741,9 +12174,6 @@ export default function ProductOverview() {
         
         if (response.data && response.data.product) {
           setProduct(response.data);
-          
-          // Fetch related products (same category)
-          fetchRelatedProducts(response.data.product.category, response.data.product.productId);
         } else {
           setError("Product data not found");
         }
@@ -13758,27 +12188,19 @@ export default function ProductOverview() {
     fetchProduct();
   }, [productId]);
 
-  const fetchRelatedProducts = async (category, currentProductId) => {
-    try {
-      const response = await axios.get(`http://localhost:4000/api/products/category/${category}`);
-      if (Array.isArray(response.data)) {
-        // Filter out current product and limit to 4 related products
-        const filtered = response.data
-          .filter(p => p.productId !== currentProductId)
-          .slice(0, 4);
-        setRelatedProducts(filtered);
-      }
-    } catch (err) {
-      console.error("Error fetching related products:", err);
-    }
-  };
-
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
     if (newQuantity >= 1 && newQuantity <= (product?.product?.stock || 10)) {
       setQuantity(newQuantity);
     }
   };
+
+
+
+
+
+
+  
 
   const handleBuyNow = () => {
     if (!product?.product || product.product.stock <= 0) return;
@@ -13815,6 +12237,20 @@ export default function ProductOverview() {
       }
     });
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   const handleAddToCart = async () => {
     if (!product?.product || product.product.stock <= 0) return;
@@ -13937,41 +12373,8 @@ export default function ProductOverview() {
                   <MdOutlineInventory2 className="text-purple-600" />
                   <span className="text-sm font-medium">In Stock: {data.stock}</span>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg">
-                  <FiPackage className="text-amber-600" />
-                  <span className="text-sm font-medium">Easy Returns</span>
-                </div>
               </div>
             </div>
-
-            {/* Related Products */}
-            {relatedProducts.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <FiStar className="text-amber-500" />
-                  Related Products
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {relatedProducts.map((related) => (
-                    <div 
-                      key={related.productId}
-                      className="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/productoverview/${related.productId}`)}
-                    >
-                      <img 
-                        src={related.images?.[0] || '/placeholder-image.jpg'} 
-                        alt={related.productName}
-                        className="w-full h-24 object-cover rounded mb-2"
-                      />
-                      <p className="text-sm font-medium text-gray-800 truncate">{related.productName}</p>
-                      <p className="text-green-600 font-bold text-sm">
-                        {formatPrice(related.lastPrices || related.price)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Column - Product Details */}
@@ -13991,27 +12394,12 @@ export default function ProductOverview() {
                 {data.productName}
               </h1>
 
-              {/* Alternate Names */}
-              {data.altNames && data.altNames.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-500 mb-1">Also known as:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.altNames.map((name, index) => (
-                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Price Section */}
               <div className="mb-6">
                 <div className="flex items-center gap-4 mb-2">
                   <span className="text-4xl font-bold text-green-600">
                     {formatPrice(data.lastPrices)}
                   </span>
-                  
                   {hasDiscount && (
                     <>
                       <span className="text-2xl text-gray-400 line-through">
@@ -14023,15 +12411,6 @@ export default function ProductOverview() {
                     </>
                   )}
                 </div>
-                
-                {/* Price per unit */}
-                <p className="text-sm text-gray-500">
-                  {quantity > 1 && (
-                    <>
-                      {formatPrice(data.lastPrices)} each • Total: {formatPrice(data.lastPrices * quantity)}
-                    </>
-                  )}
-                </p>
               </div>
 
               {/* Stock Status */}
@@ -14150,6 +12529,296 @@ export default function ProductOverview() {
 }
 ````
 
+## File: src/components/Navbar.jsx
+````javascript
+import { jwtDecode } from "jwt-decode";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { HiMenu, HiX } from "react-icons/hi";
+import NotificationsDropdown from "@/components/utils/notificationDrop";
+
+export default function Navbar() {
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // 🔐 Auth check
+  const authCheck = () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser(null);
+      setIsAdmin(false);
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      setUser(decoded);
+      setIsAdmin(decoded.role === "admin");
+    } catch {
+      setUser(null);
+      setIsAdmin(false);
+    }
+  };
+
+  useEffect(() => {
+    authCheck();
+    window.addEventListener("authChange", authCheck);
+    return () => window.removeEventListener("authChange", authCheck);
+  }, []);
+
+  // 🚪 Logout
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    setIsAdmin(false);
+    window.dispatchEvent(new Event("authChange"));
+    navigate("/login");
+  };
+
+  const userId = user?.id || "";
+
+  return (
+    <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
+      <div className="flex justify-between items-center">
+        {/* Brand */}
+        <Link to="/" className="text-xl font-bold text-gray-800">
+          MyBrand
+        </Link>
+
+        {/* Desktop Menu */}
+        <div className="hidden md:flex gap-6 items-center">
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
+          <Link to="/contact">Contact</Link>
+          <Link to="/service">Service</Link>
+
+          {user && (
+            <>
+              <Link to={`/viewcart?userId=${userId}`}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`}>Orders</Link>
+            </>
+          )}
+
+          {/* Admin notifications */}
+          {isAdmin && <NotificationsDropdown />}
+          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
+
+          {user ? (
+            <div className="flex items-center gap-3">
+              <img
+                src={user.profileImage || "/default-avatar.png"}
+                alt="profile"
+                className="w-9 h-9 rounded-full"
+              />
+              <Link to={`/profile?userId=${userId}`}>Profile</Link>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-3 py-1 rounded"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Toggle */}
+        <button
+          className="md:hidden text-2xl"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <HiX /> : <HiMenu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden mt-4 flex flex-col gap-4 bg-white p-4 rounded shadow">
+          <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
+          <Link to="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
+          <Link to="/service" onClick={() => setMenuOpen(false)}>Service</Link>
+
+          {user && (
+            <>
+              <Link to={`/viewcart?userId=${userId}`} onClick={() => setMenuOpen(false)}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`} onClick={() => setMenuOpen(false)}>Orders</Link>
+            </>
+          )}
+
+          {isAdmin && (
+            <Link to="/admin/dashboard/notification" onClick={() => setMenuOpen(false)}>
+              Notifications
+            </Link>
+          )}
+          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
+
+          {user ? (
+            <>
+              <Link to={`/profile?userId=${userId}`}>Profile</Link>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-3 py-1 rounded"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+            </>
+          )}
+        </div>
+      )}
+    </nav>
+  );
+}
+````
+
+## File: src/components/pages/admin/notification.jsx
+````javascript
+import axios from "axios";
+import React, { useEffect, useState, useRef } from "react";
+import Swal from "sweetalert2";
+
+export default function Notification() {
+  const [notifications, setNotifications] = useState([]);
+  const pollingIntervalRef = useRef(null);
+
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Start polling for real-time updates
+    startPolling();
+    
+    return () => {
+      // Cleanup polling on unmount
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const startPolling = () => {
+    // Poll every 3 seconds for real-time updates
+    pollingIntervalRef.current = setInterval(() => {
+      fetchNotifications();
+    }, 3000);
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      setNotifications(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await axios.post(`http://localhost:4000/api/notifications/markRead/${id}`);
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // View notification using SweetAlert2 with Reply button
+  const viewNotification = (notification) => {
+    Swal.fire({
+      title: "Notification",
+      html: `<p><strong>Message:</strong> ${notification.message}</p>
+             <p><strong>Sent At:</strong> ${new Date(notification.sentAt).toLocaleString()}</p>
+             <p><strong>Status:</strong> ${notification.isRead ? "Read" : "Unread"}</p>`,
+      showCancelButton: true,
+      confirmButtonText: "Reply",
+      cancelButtonText: "Close",
+      preConfirm: async () => {
+        const { value: reply } = await Swal.fire({
+          title: "Reply to Notification",
+          input: "textarea",
+          inputLabel: "Your reply",
+          inputPlaceholder: "Type your reply here...",
+          showCancelButton: true,
+          confirmButtonText: "Send",
+        });
+
+        if (reply) {
+          try {
+            // Replace with your API endpoint
+            await axios.post(`http://localhost:4000/api/notifications/reply/${notification.userId}`, {
+              message: reply,
+            });
+            Swal.fire("Sent!", "Your reply has been sent.", "success");
+          } catch (err) {
+            console.error(err);
+            Swal.fire("Error", "Failed to send reply.", "error");
+          }
+        }
+      },
+    });
+  };
+
+  return (
+    <div className="p-4">
+      {notifications.length === 0 && <p className="text-gray-500">No Notifications</p>}
+
+      {notifications.length > 0 && (
+        <table className="min-w-full border border-gray-300 text-left">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 border-b">Message ID</th>
+              <th className="px-4 py-2 border-b">User ID</th>
+              <th className="px-4 py-2 border-b">Message</th>
+              <th className="px-4 py-2 border-b">Read Status</th>
+              <th className="px-4 py-2 border-b">Sent At</th>
+              <th className="px-4 py-2 border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {notifications.map((notification) => (
+              <tr key={notification._id} className={notification.isRead ? "" : "bg-yellow-50"}>
+                <td className="px-4 py-2 border-b">{notification._id}</td>
+                <td className="px-4 py-2 border-b">{notification.userId}</td>
+                <td className="px-4 py-2 border-b">{notification.message}</td>
+                <td className="px-4 py-2 border-b">{notification.isRead ? "Read" : "Unread"}</td>
+                <td className="px-4 py-2 border-b">{new Date(notification.sentAt).toLocaleString()}</td>
+                <td className="px-4 py-2 border-b">
+                  <button
+                    onClick={() => viewNotification(notification)}
+                    className="bg-blue-500 text-white px-2 py-1 rounded mr-2 hover:bg-blue-600"
+                  >
+                    View
+                  </button>
+                  {!notification.isRead && (
+                    <button
+                      onClick={() => markAsRead(notification._id)}
+                      className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+                    >
+                      Mark as Read
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+````
+
 ## File: src/components/pages/Homepage.jsx
 ````javascript
 import React, { useEffect, useState } from "react";
@@ -14157,7 +12826,7 @@ import Navbar from "../Navbar";
 import { Route, Routes } from "react-router-dom";
 import HomeContainer from "@/components/pages/HomeContainer";
 import Login from "./Login";
-import Dashboard from "@/components/pages/admin/dashboard";
+import Dashboard from "@/components/pages/admin/Dashboard/dashboard";
 import NotFound from "@/components/pages/NotFound";
 import Signup from "@/components/pages/singUp";
 import Productoverview from "./productoverview";
@@ -14166,7 +12835,7 @@ import ShipingPage from "@/components/pages/shipping";
 import AboutPage from "@/components/pages/about.jsx";
 import ServicePage from "@/components/pages/service.jsx";
 import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
-import AiChatBot from "@/components/pages/AiChatBot";
+import AiChatBot from "@/components/aiChatBot";
 import PaymentPage from "@/components/pages/admin/payment";
 import OrderPage from "@/components/pages/orderpage.jsx";
 import ProfilePage from "@/components/pages/ProfilePage.jsx";
@@ -14212,25 +12881,646 @@ export default function Homepage() {
           <Route path="/contact" element={<h1>Contact</h1>} />
           <Route path="/login" element={<Login />} />
           <Route path="/singup" element={<Signup />} />
-           <Route path="/orders" element={< OrderPage/>} />
-             <Route path="/profile" element={< ProfilePage/>} />
-
-
+          <Route path="/orders" element={<OrderPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
 
           <Route path="/payment" element={<PaymentPage />} />
 
           <Route path="/admin/dashboard/*" element={<Dashboard />} />
+
           <Route path="*" element={<NotFound />} />
+
+
+          
           <Route
             path="/productoverview/:productId"
             element={<Productoverview />}
           />
+
+
         </Routes>
       </div>
 
       {/* Show chatbot only for customer */}
       {user === "customer" && <AiChatBot />}
     </div>
+  );
+}
+````
+
+## File: src/components/aiChatBot.jsx
+````javascript
+import React, { useEffect, useState, useRef } from "react";
+import axios from "axios";
+import Swal from "sweetalert2";
+import { Send, Mic, MicOff, X, Volume2, VolumeX, Paperclip, Smile } from "lucide-react";
+
+export default function AiChatbot() {
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [messages, setMessages] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [aiTypingMessage, setAiTypingMessage] = useState("");
+  const [showNotification, setShowNotification] = useState(false);
+  const [adminMessageCount, setAdminMessageCount] = useState(0);
+
+  const messagesEndRef = useRef(null);
+  const recognition = useRef(null);
+  const inputRef = useRef(null);
+  const notificationSoundRef = useRef(null);
+  const chatContainerRef = useRef(null);
+
+  /* 📥 Fetch messages */
+  const fetchMessages = async () => {
+    const currentToken = localStorage.getItem("token");
+    if (!currentToken) return setMessages([]);
+
+    try {
+      const res = await axios.get(
+        "http://localhost:4000/api/messages/getMessages",
+        { headers: { Authorization: `Bearer ${currentToken}` } }
+      );
+
+      const fetchedMessages = res.data.messages || [];
+      setMessages(fetchedMessages);
+
+      const lastMsg = fetchedMessages.at(-1);
+      if (lastMsg?.sender === "admin" && !open) {
+        triggerAdminNotification();
+      }
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+    }
+  };
+
+  /* 🔐 Auth listeners */
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setToken(localStorage.getItem("token"));
+      fetchMessages();
+    };
+    const handleLogout = () => {
+      setMessages([]);
+      setToken(null);
+    };
+
+    window.addEventListener("authChange", handleAuthChange);
+    window.addEventListener("logout", handleLogout);
+
+    fetchMessages();
+
+    return () => {
+      window.removeEventListener("authChange", handleAuthChange);
+      window.removeEventListener("logout", handleLogout);
+    };
+  }, [open]);
+
+  /* 🎤 Speech recognition */
+  useEffect(() => {
+    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition.current = new SpeechRecognition();
+    recognition.current.continuous = false;
+    recognition.current.lang = "en-US";
+
+    recognition.current.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setInput(transcript);
+      setListening(false);
+      stopSpeaking();
+      sendHandle(transcript, true);
+    };
+
+    recognition.current.onend = () => setListening(false);
+  }, []);
+
+  /* ⬇ Auto scroll */
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, aiTypingMessage]);
+
+  /* 🎯 Focus input */
+  useEffect(() => {
+    if (open && inputRef.current) {
+      setTimeout(() => inputRef.current.focus(), 100);
+    }
+  }, [open]);
+
+  /* 🔔 Enhanced Notifications */
+  const triggerAdminNotification = () => {
+    setAdminMessageCount((p) => p + 1);
+    setShowNotification(true);
+    notificationSoundRef.current?.play().catch(() => {});
+    
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+      if (showNotification) {
+        setShowNotification(false);
+      }
+    }, 8000);
+  };
+
+  const closeNotification = () => {
+    setShowNotification(false);
+    setAdminMessageCount(0);
+  };
+
+  /* 🎙 Voice controls */
+  const handleVoice = () => {
+    if (!recognition.current) return;
+    if (listening) {
+      recognition.current.stop();
+    } else {
+      recognition.current.start();
+      stopSpeaking();
+    }
+    setListening(!listening);
+  };
+
+  /* 🔊 Speech synthesis */
+  const speakText = (text) => {
+    if (!("speechSynthesis" in window)) return;
+
+    speechSynthesis.cancel();
+    setSpeaking(true);
+
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.rate = 1;
+    utter.pitch = 1.1;
+    utter.volume = 1;
+
+    const setVoice = () => {
+      const voices = speechSynthesis.getVoices();
+      const female =
+        voices.find(
+          (v) => v.lang.startsWith("en") && /female|zira|aria|susan|woman/i.test(v.name)
+        ) || voices.find((v) => v.lang.startsWith("en"));
+      if (female) utter.voice = female;
+      speechSynthesis.speak(utter);
+    };
+
+    utter.onend = () => setSpeaking(false);
+    utter.onerror = () => setSpeaking(false);
+
+    if (speechSynthesis.getVoices().length === 0) speechSynthesis.onvoiceschanged = setVoice;
+    else setVoice();
+  };
+
+  const stopSpeaking = () => {
+    if (speechSynthesis.speaking) {
+      speechSynthesis.cancel();
+      setSpeaking(false);
+    }
+  };
+
+  const toggleSpeech = () => {
+    if (speaking) {
+      stopSpeaking();
+    } else if (messages.length > 0) {
+      const lastAiMessage = [...messages].reverse().find(m => m.sender === 'ai');
+      if (lastAiMessage) {
+        speakText(lastAiMessage.text);
+      }
+    }
+  };
+
+  /* 🤖 AI reply */
+  const fetchAiReply = async (userText) => {
+    try {
+      setIsTyping(true);
+      const res = await axios.post(
+        "http://localhost:4000/api/admin/reply",
+        { query: userText },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+      setIsTyping(false);
+      return res.data.reply || "No response from AI.";
+    } catch {
+      setIsTyping(false);
+      return "Sorry, I couldn't find an answer.";
+    }
+  };
+
+  /* ⌨ Typing animation */
+  const typeAiMessage = (fullText) => {
+    setAiTypingMessage("");
+    let i = 0;
+    const interval = setInterval(() => {
+      setAiTypingMessage((p) => p + fullText[i]);
+      i++;
+      if (i >= fullText.length) clearInterval(interval);
+    }, 30);
+  };
+
+  /* 📤 Send message */
+  const sendHandle = async (voiceInput = null, isVoice = false) => {
+    const text = voiceInput || input;
+    if (!text.trim()) return;
+
+    const isAdmin = text.toLowerCase().includes("@admin");
+    const adminText = isAdmin ? text.split("@admin")[1]?.trim() : null;
+
+    if (isAdmin && !adminText) {
+      const warn = {
+        _id: Date.now(),
+        sender: "ai",
+        text: "⚠️ Please type a message after @admin.",
+        timestamp: new Date(),
+      };
+      setMessages((p) => [...p, warn]);
+      if (isVoice) speakText(warn.text);
+      return;
+    }
+
+    const userMsg = {
+      _id: Date.now(),
+      sender: "user",
+      text,
+      timestamp: new Date(),
+    };
+    setMessages((p) => [...p, userMsg]);
+    setInput("");
+
+    if (isAdmin) {
+      await axios.post(
+        "http://localhost:4000/api/admin/message",
+        { message: adminText },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const confirm = {
+        _id: Date.now() + 1,
+        sender: "ai",
+        text: "✅ Your message has been sent to the admin.",
+        timestamp: new Date(),
+      };
+      setMessages((p) => [...p, confirm]);
+      if (isVoice) speakText(confirm.text);
+      return;
+    }
+
+    // Send user message to backend
+    await axios.post(
+      "http://localhost:4000/api/messages/sendMessages",
+      { text, sender: "user" },
+      { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+    );
+
+    // Get AI reply
+    const aiText = await fetchAiReply(text);
+    typeAiMessage(aiText);
+    if (isVoice) speakText(aiText);
+
+    setTimeout(() => {
+      setMessages((p) => [
+        ...p,
+        {
+          _id: Date.now() + 2,
+          sender: "ai",
+          text: aiText,
+          timestamp: new Date(),
+        },
+      ]);
+      setAiTypingMessage("");
+    }, aiText.length * 30 + 50);
+  };
+
+  /* 💬 Quick suggestions */
+  const quickSuggestions = [
+    "Hello! 👋",
+    "How can you help me?",
+    "What can you do?",
+    "Tell me about features"
+  ];
+
+  const handleQuickSuggestion = (text) => {
+    setInput(text);
+  };
+
+  return (
+    <>
+      <audio ref={notificationSoundRef} src="/notification.mp3" preload="auto" />
+
+      {/* Enhanced Notification */}
+      {showNotification && !open && (
+        <div className="fixed top-6 right-6 z-50 animate-fade-in">
+          <div className="relative group">
+            <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-lg border border-white/30 flex items-center gap-3 font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+              <div className="relative">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                  🔔
+                </div>
+                {adminMessageCount > 1 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-lg">
+                    {adminMessageCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">New message from admin</p>
+                <p className="text-white/80 text-sm">Click to open chat</p>
+              </div>
+              <button
+                onClick={closeNotification}
+                className="text-white/70 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gradient-to-r from-purple-600 to-blue-600 rotate-45 rounded-sm"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Floating Button */}
+      {!open && (
+        <button
+          onClick={() => {
+            if (!token) {
+              Swal.fire({
+                icon: "warning",
+                title: "Not Logged In",
+                text: "Please log in first",
+                background: '#1f2937',
+                color: '#fff',
+                confirmButtonColor: '#3b82f6',
+              });
+              return;
+            }
+            setOpen(true);
+            closeNotification();
+          }}
+          className="fixed bottom-8 right-8 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 flex flex-col items-center justify-center z-40 hover:scale-110 active:scale-95 group animate-float"
+          aria-label="Open AI Assistant"
+        >
+          <div className="relative">
+            <div className="text-3xl">🤖</div>
+            {showNotification && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping"></div>
+            )}
+          </div>
+          <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+            AI Assistant
+          </span>
+        </button>
+      )}
+
+      {/* Enhanced Chat Window */}
+      {open && (
+        <div 
+          ref={chatContainerRef}
+          className="fixed bottom-8 right-8 w-[420px] h-[600px] rounded-3xl overflow-hidden backdrop-blur-xl bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 border border-white/20 shadow-2xl flex flex-col z-40 transition-all duration-300"
+        >
+          {/* Enhanced Header */}
+          <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-5 flex justify-between items-center border-b border-white/20">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <div className="text-xl">🤖</div>
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">AI Assistant</h2>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-white/80">Online</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSpeech}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                title={speaking ? "Stop speech" : "Read last message"}
+              >
+                {speaking ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Enhanced Messages Area */}
+          <div className="flex-1 p-5 overflow-y-auto bg-gradient-to-b from-transparent to-gray-900/50">
+            <div className="space-y-4">
+              {messages.map((m) => (
+                <div
+                  key={m._id}
+                  className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"} animate-slide-in`}
+                >
+                  <div className={`flex flex-col max-w-[85%] ${m.sender === "user" ? "items-end" : "items-start"}`}>
+                    {/* Sender Badge */}
+                    {m.sender !== "user" && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1 ${
+                          m.sender === "ai"
+                            ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                            : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        }`}>
+                          {m.sender === "ai" ? "🤖 AI Assistant" : "👨‍💼 Admin"}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Message Bubble */}
+                    <div className={`relative px-5 py-3 rounded-2xl text-sm font-medium backdrop-blur-sm ${
+                      m.sender === "user"
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-none shadow-lg"
+                        : m.sender === "admin"
+                        ? "bg-gradient-to-r from-purple-500/20 to-fuchsia-600/20 text-white border border-purple-500/30 rounded-bl-none"
+                        : "bg-white/10 text-gray-200 border border-white/20 rounded-tl-none"
+                    }`}>
+                      {m.text}
+                      {/* Message tail */}
+                      <div className={`absolute top-0 w-3 h-3 ${
+                        m.sender === "user"
+                          ? "-right-3 bg-blue-500"
+                          : m.sender === "admin"
+                          ? "-left-3 bg-purple-500/20 border-l border-t border-purple-500/30"
+                          : "-left-3 bg-white/10 border-l border-t border-white/20"
+                      }`} style={{
+                        clipPath: m.sender === "user" 
+                          ? 'polygon(0 0, 100% 0, 0 100%)'
+                          : 'polygon(100% 0, 100% 100%, 0 0)'
+                      }}></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Enhanced Typing Indicator */}
+              {aiTypingMessage ? (
+                <div className="flex justify-start animate-slide-in">
+                  <div className="flex flex-col max-w-[85%]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1 bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        🤖 AI Assistant
+                      </span>
+                    </div>
+                    <div className="px-5 py-3 bg-white/10 text-gray-200 backdrop-blur-sm border border-white/20 rounded-2xl rounded-tl-none text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="flex space-x-1">
+                          <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+                          <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                          <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                        </div>
+                        <span className="text-blue-300">Typing...</span>
+                      </div>
+                      <div className="mt-2 text-gray-300">{aiTypingMessage}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : isTyping ? (
+                <div className="flex justify-start">
+                  <div className="px-5 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl rounded-tl-none">
+                    <div className="flex items-center gap-3">
+                      <div className="flex space-x-1">
+                        <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+                        <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                        <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                      </div>
+                      <span className="text-sm text-blue-300 font-medium">AI is thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Quick Suggestions */}
+              {messages.length === 0 && (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+                    <div className="text-2xl">✨</div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Welcome to AI Assistant!</h3>
+                  <p className="text-gray-400 text-sm mb-4">How can I help you today?</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {quickSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleQuickSuggestion(suggestion)}
+                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm text-gray-300 transition-all hover:scale-105"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Enhanced Input Area */}
+          <div className="p-4 border-t border-white/10 bg-gradient-to-t from-gray-900 to-transparent">
+            <div className="flex gap-3 items-end">
+              <button
+                onClick={handleVoice}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  listening
+                    ? "bg-gradient-to-r from-red-500 to-pink-600 text-white animate-pulse shadow-lg"
+                    : "bg-white/10 hover:bg-white/20 text-gray-300 hover:scale-105"
+                }`}
+                aria-label={listening ? "Stop listening" : "Start voice input"}
+              >
+                {listening ? <MicOff size={20} /> : <Mic size={20} />}
+              </button>
+              
+              <div className="flex-1 relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <Smile size={20} className="text-gray-500" />
+                </div>
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendHandle()}
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-12 py-3.5 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent text-sm transition-all"
+                  placeholder="Type your message here..."
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Paperclip size={20} className="text-gray-500 hover:text-gray-400 cursor-pointer" />
+                </div>
+              </div>
+              
+              <button
+                onClick={() => sendHandle()}
+                disabled={!input.trim()}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  input.trim()
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:scale-105"
+                    : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                <Send size={20} />
+              </button>
+            </div>
+            <div className="mt-3 text-xs text-gray-500 text-center">
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                Press Enter to send • Use @admin to contact support
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Custom Styles */}
+      <style jsx>{`
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+          100% { transform: translateY(0px); }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+          border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #2563eb, #7c3aed);
+        }
+      `}</style>
+    </>
   );
 }
 ````

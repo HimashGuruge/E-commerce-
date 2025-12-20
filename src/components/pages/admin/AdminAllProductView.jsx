@@ -41,7 +41,7 @@ export default function AdminAllProductView() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("http://localhost:4000/api/products", {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const productsData = res.data?.data || res.data || [];
@@ -148,7 +148,7 @@ export default function AdminAllProductView() {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/products/${productId}`, {
+        await axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -200,7 +200,7 @@ export default function AdminAllProductView() {
     if (result.isConfirmed) {
       try {
         const deletePromises = Array.from(selectedProducts).map(productId =>
-          axios.delete(`http://localhost:4000/api/products/${productId}`, {
+          axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`, {
             headers: { Authorization: `Bearer ${token}` },
           })
         );
