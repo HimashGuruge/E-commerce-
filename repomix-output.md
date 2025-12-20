@@ -86,6 +86,7 @@ src/components/utils/voice.jsx
 src/index.css
 src/main.jsx
 text.text
+vercel.json
 vite.config.js
 ```
 
@@ -1084,34 +1085,6 @@ If you are developing a production application, we recommend using TypeScript wi
 
 ````
 
-## File: src/App.jsx
-````javascript
-import Homepage from "@/components/pages/Homepage";
-import NotFound from "@/components/pages/NotFound"; // import new page
-import { useState } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import "./App.css";
-
-import Uploadmedia from "@/components/utils/mediaUpload";
-
-function App() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <div>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/*" element={<Homepage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
-  );
-}
-
-export default App;
-````
-
 ## File: src/assets/react.svg
 ````xml
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
@@ -1371,49 +1344,6 @@ export default function Dashboard() {
         <Footer />
       </div>
     </div>
-  );
-}
-````
-
-## File: src/components/pages/admin/Dashboard/DashboardRoutes.jsx
-````javascript
-// DashboardRoutes.jsx
-import React from "react";
-import { Routes, Route } from "react-router-dom";
-import AddProducts from "@/components/pages/admin/AddProducts";
-import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
-import EditProducts from "@/components/pages/admin/EditProducts";
-import Notification from "@/components/pages/admin/Notification";
-import StatCard from "@/components/pages/admin/Dashboard/StatCard";
-import { FiPackage, FiUsers, FiDollarSign } from "react-icons/fi";
-import { MdShoppingCart } from "react-icons/md";
-
-export default function DashboardRoutes({ stats }) {
-  return (
-    <Routes>
-      <Route
-        index
-        element={
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="text-6xl mb-6">📊</div>
-            <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-4">Dashboard Overview</h2>
-            <p className="text-gray-600 max-w-2xl mb-8">
-              Select a section from the sidebar to manage products, view notifications, or access other admin features.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 w-full max-w-4xl">
-              <StatCard icon={<FiPackage size={24} />} title="Total Products" value={stats.totalProducts} color="text-green-600" />
-              <StatCard icon={<MdShoppingCart size={24} />} title="Total Orders" value={stats.totalOrders} color="text-indigo-600" />
-              <StatCard icon={<FiDollarSign size={24} />} title="Total Revenue" value={`$${stats.totalRevenue.toLocaleString()}`} color="text-amber-600" />
-              <StatCard icon={<FiUsers size={24} />} title="New Users" value={stats.newUsers} color="text-teal-600" />
-            </div>
-          </div>
-        }
-      />
-      <Route path="adminviewproducts" element={<AdminAllProductView />} />
-      <Route path="addproducts" element={<AddProducts />} />
-      <Route path="editproducts/:id" element={<EditProducts />} />
-      <Route path="notification" element={<Notification />} />
-    </Routes>
   );
 }
 ````
@@ -5229,688 +5159,6 @@ export default function NotFound() {
 }
 ````
 
-## File: src/components/pages/ProfilePage.jsx
-````javascript
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Lock, 
-  Edit, 
-  Save,
-  X,
-  Package,
-  ShoppingBag,
-  Calendar,
-  Shield,
-  LogOut,
-  CreditCard,
-  Truck,
-  CheckCircle
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
-
-export default function ProfilePage() {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    lastname: '',
-    email: '',
-    phone: '',
-    address: ''
-  });
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  // Fetch user profile and orders
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch user profile
-        const userRes = await axios.get('http://localhost:4000/api/users/me', {
-          headers: getAuthHeader()
-        });
-
-        if (userRes.data && userRes.data.user) {
-          const userData = userRes.data.user;
-          setUser(userData);
-          setEditForm({
-            name: userData.name || '',
-            lastname: userData.lastname || '',
-            email: userData.email || '',
-            phone: userData.phone || '',
-            address: userData.address || ''
-          });
-        }
-
-        // Fetch user orders
-        try {
-          const ordersRes = await axios.get('http://localhost:4000/api/orders/my-orders', {
-            headers: getAuthHeader()
-          });
-          
-          if (ordersRes.data.success) {
-            setOrders(ordersRes.data.orders || []);
-          }
-        } catch (orderError) {
-          console.log('Could not fetch orders:', orderError.message);
-        }
-
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to load profile. Please try again.',
-        }).then(() => {
-          navigate('/login');
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [navigate]);
-
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSaveProfile = async () => {
-    if (!editForm.name || !editForm.email) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Information',
-        text: 'Name and email are required fields.',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const res = await axios.put('http://localhost:4000/api/users/me', editForm, {
-        headers: getAuthHeader()
-      });
-
-      if (res.data) {
-        setUser(res.data.user || res.data);
-        Swal.fire({
-          icon: 'success',
-          title: 'Profile Updated!',
-          text: 'Your profile has been updated successfully.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-        setEditing(false);
-      }
-    } catch (error) {
-      console.error('Update error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Update Failed',
-        text: error.response?.data?.message || 'Failed to update profile.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    const { value: formValues } = await Swal.fire({
-      title: 'Change Password',
-      html: `
-        <input id="current-password" type="password" class="swal2-input" placeholder="Current Password">
-        <input id="new-password" type="password" class="swal2-input" placeholder="New Password">
-        <input id="confirm-password" type="password" class="swal2-input" placeholder="Confirm New Password">
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      preConfirm: () => {
-        const current = document.getElementById('current-password').value;
-        const newPass = document.getElementById('new-password').value;
-        const confirm = document.getElementById('confirm-password').value;
-
-        if (!current || !newPass || !confirm) {
-          Swal.showValidationMessage('Please fill all fields');
-          return false;
-        }
-
-        if (newPass !== confirm) {
-          Swal.showValidationMessage('New passwords do not match');
-          return false;
-        }
-
-        if (newPass.length < 6) {
-          Swal.showValidationMessage('Password must be at least 6 characters');
-          return false;
-        }
-
-        return { currentPassword: current, newPassword: newPass };
-      }
-    });
-
-    if (formValues) {
-      try {
-        setLoading(true);
-        // Note: You need to add a change password endpoint to your backend
-        // await axios.put('/api/users/change-password', formValues, {
-        //   headers: getAuthHeader()
-        // });
-        
-        Swal.fire({
-          icon: 'success',
-          title: 'Password Updated!',
-          text: 'Your password has been changed successfully.',
-          timer: 1500
-        });
-      } catch (error) {
-        console.error('Password change error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Update Failed',
-          text: error.response?.data?.message || 'Failed to change password.',
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleLogout = () => {
-    Swal.fire({
-      title: 'Logout',
-      text: 'Are you sure you want to logout?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, logout'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        localStorage.removeItem('token');
-        navigate('/login');
-      }
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'shipped': return 'bg-amber-100 text-amber-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTotalSpent = () => {
-    return orders
-      .filter(order => order.paymentStatus === 'paid')
-      .reduce((total, order) => total + (order.total || 0), 0);
-  };
-
-  const formatDate = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch (error) {
-      return 'N/A';
-    }
-  };
-
-  if (loading && !user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">No User Found</h2>
-          <p className="text-gray-600 mb-4">Please log in to view your profile.</p>
-          <button
-            onClick={() => navigate('/login')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-              <p className="text-gray-600">Manage your account and view your orders</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center text-red-600 hover:text-red-700 transition-colors"
-            >
-              <LogOut className="h-5 w-5 mr-2" />
-              Logout
-            </button>
-          </div>
-
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                  <ShoppingBag className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Total Orders</p>
-                  <p className="text-xl font-bold">{orders.length}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg mr-3">
-                  <CreditCard className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Total Spent</p>
-                  <p className="text-xl font-bold">Rs. {getTotalSpent().toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-amber-100 rounded-lg mr-3">
-                  <Truck className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Active Orders</p>
-                  <p className="text-xl font-bold">
-                    {orders.filter(o => !['delivered', 'cancelled'].includes(o.status)).length}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                  <CheckCircle className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Member Since</p>
-                  <p className="text-xl font-bold">{formatDate(user.createdAt)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile Info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Profile Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <User className="h-5 w-5 mr-2 text-blue-500" />
-                  Personal Information
-                </h2>
-                {!editing ? (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="flex items-center text-blue-600 hover:text-blue-700"
-                    disabled={loading}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </button>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={handleSaveProfile}
-                      className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      disabled={loading}
-                    >
-                      <Save className="h-4 w-4 mr-1" />
-                      Save
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditing(false);
-                        setEditForm({
-                          name: user.name || '',
-                          lastname: user.lastname || '',
-                          email: user.email || '',
-                          phone: user.phone || '',
-                          address: user.address || ''
-                        });
-                      }}
-                      className="flex items-center px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                      disabled={loading}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name *
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="name"
-                        value={editForm.name}
-                        onChange={handleEditChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    ) : (
-                      <p className="px-4 py-2 bg-gray-50 rounded-lg">{user.name || 'N/A'}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name *
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="lastname"
-                        value={editForm.lastname}
-                        onChange={handleEditChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    ) : (
-                      <p className="px-4 py-2 bg-gray-50 rounded-lg">{user.lastname || 'N/A'}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address *
-                  </label>
-                  {editing ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={editForm.email}
-                      onChange={handleEditChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                      disabled={loading}
-                    />
-                  ) : (
-                    <div className="flex items-center px-4 py-2 bg-gray-50 rounded-lg">
-                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{user.email || 'N/A'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  {editing ? (
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={editForm.phone}
-                      onChange={handleEditChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={loading}
-                    />
-                  ) : (
-                    <div className="flex items-center px-4 py-2 bg-gray-50 rounded-lg">
-                      <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{user.phone || 'N/A'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
-                  {editing ? (
-                    <textarea
-                      name="address"
-                      value={editForm.address}
-                      onChange={handleEditChange}
-                      rows="3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={loading}
-                      placeholder="Enter your address"
-                    />
-                  ) : (
-                    <div className="flex items-start px-4 py-2 bg-gray-50 rounded-lg">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2 mt-1 flex-shrink-0" />
-                      <span className="whitespace-pre-line">{user.address || 'No address provided'}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Security Section */}
-              <div className="mt-8 pt-6 border-t border-gray-200">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <Shield className="h-5 w-5 mr-2 text-green-500" />
-                  Security
-                </h3>
-                <button
-                  onClick={handleChangePassword}
-                  className="flex items-center text-blue-600 hover:text-blue-700"
-                  disabled={loading}
-                >
-                  <Lock className="h-4 w-4 mr-2" />
-                  Change Password
-                </button>
-              </div>
-            </div>
-
-            {/* Recent Orders */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <Package className="h-5 w-5 mr-2 text-amber-500" />
-                  Recent Orders
-                </h2>
-                <button
-                  onClick={() => navigate('/orders')}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  View All Orders
-                </button>
-              </div>
-
-              {orders.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Orders Yet</h3>
-                  <p className="text-gray-500 mb-4">You haven't placed any orders yet.</p>
-                  <button
-                    onClick={() => navigate('/')}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Start Shopping
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {orders.slice(0, 3).map((order) => (
-                    <div key={order._id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-semibold text-gray-800">{order.orderId}</h4>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(order.createdAt)} • {order.items?.length || 0} items
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</p>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                            {order.status?.charAt(0)?.toUpperCase() + order.status?.slice(1) || 'Unknown'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-600">
-                          {order.items?.slice(0, 2).map(item => item.productName).join(', ')}
-                          {order.items?.length > 2 && ` and ${order.items.length - 2} more`}
-                        </p>
-                      </div>
-                      <div className="mt-4 flex space-x-2">
-                        <button
-                          onClick={() => navigate('/orders')}
-                          className="text-sm text-blue-600 hover:text-blue-700"
-                        >
-                          View Details
-                        </button>
-                        {order.status === 'processing' && (
-                          <button
-                            onClick={() => navigate('/orders')}
-                            className="text-sm text-red-600 hover:text-red-700"
-                          >
-                            Cancel Order
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column - Account Info & Actions */}
-          <div className="space-y-6">
-            {/* Account Info */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Account Information</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">Account Type</p>
-                  <div className="flex items-center mt-1">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {user.role === 'admin' ? 'Administrator' : 'Customer'}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Member Since</p>
-                  <p className="font-medium">{formatDate(user.createdAt)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Last Updated</p>
-                  <p className="font-medium">{formatDate(user.updatedAt)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/orders')}
-                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center"
-                >
-                  <Package className="h-5 w-5 text-gray-600 mr-3" />
-                  <div>
-                    <p className="font-medium">View All Orders</p>
-                    <p className="text-sm text-gray-500">Check your order history</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => navigate('/addresses')}
-                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center"
-                >
-                  <MapPin className="h-5 w-5 text-gray-600 mr-3" />
-                  <div>
-                    <p className="font-medium">Manage Addresses</p>
-                    <p className="text-sm text-gray-500">Update shipping addresses</p>
-                  </div>
-                </button>
-                <button
-                  onClick={handleChangePassword}
-                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center"
-                >
-                  <Lock className="h-5 w-5 text-gray-600 mr-3" />
-                  <div>
-                    <p className="font-medium">Change Password</p>
-                    <p className="text-sm text-gray-500">Update your password</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Support */}
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-              <h3 className="font-bold mb-2">Need Help?</h3>
-              <p className="text-blue-100 mb-4">Our support team is here to help you</p>
-              <button
-                onClick={() => navigate('/chat')}
-                className="w-full px-4 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                Contact Support
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-````
-
 ## File: src/components/pages/service.jsx
 ````javascript
 import React from 'react';
@@ -6158,6 +5406,18 @@ createRoot(document.getElementById('root')).render(
     <App />
 
 )
+````
+
+## File: vercel.json
+````json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}
 ````
 
 ## File: .gitignore
@@ -6893,6 +6153,776 @@ export default function Marquee({
 }
 ````
 
+## File: src/components/pages/ProfilePage.jsx
+````javascript
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Lock, 
+  Edit, 
+  Save,
+  X,
+  Package,
+  ShoppingBag,
+  Calendar,
+  Shield,
+  LogOut,
+  CreditCard,
+  Truck,
+  CheckCircle
+} from 'lucide-react';
+import Swal from 'sweetalert2';
+import axios from 'axios';
+
+export default function ProfilePage() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    lastname: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // Fetch user profile and orders
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch user profile
+        const userRes = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/users/me', {
+          headers: getAuthHeader()
+        });
+
+        if (userRes.data && userRes.data.user) {
+          const userData = userRes.data.user;
+          setUser(userData);
+          setEditForm({
+            name: userData.name || '',
+            lastname: userData.lastname || '',
+            email: userData.email || '',
+            phone: userData.phone || '',
+            address: userData.address || ''
+          });
+        }
+
+        // Fetch user orders
+        try {
+          const ordersRes = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', {
+            headers: getAuthHeader()
+          });
+          
+          if (ordersRes.data.success) {
+            setOrders(ordersRes.data.orders || []);
+          }
+        } catch (orderError) {
+          console.log('Could not fetch orders:', orderError.message);
+        }
+
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to load profile. Please try again.',
+        }).then(() => {
+          navigate('/login');
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [navigate]);
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editForm.name || !editForm.email) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Information',
+        text: 'Name and email are required fields.',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await axios.put(import.meta.env.VITE_BACKEND_URL+'/api/users/me', editForm, {
+        headers: getAuthHeader()
+      });
+
+      if (res.data) {
+        setUser(res.data.user || res.data);
+        Swal.fire({
+          icon: 'success',
+          title: 'Profile Updated!',
+          text: 'Your profile has been updated successfully.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        setEditing(false);
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: error.response?.data?.message || 'Failed to update profile.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const { value: formValues } = await Swal.fire({
+      title: 'Change Password',
+      html: `
+        <input id="current-password" type="password" class="swal2-input" placeholder="Current Password">
+        <input id="new-password" type="password" class="swal2-input" placeholder="New Password">
+        <input id="confirm-password" type="password" class="swal2-input" placeholder="Confirm New Password">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      preConfirm: () => {
+        const current = document.getElementById('current-password').value;
+        const newPass = document.getElementById('new-password').value;
+        const confirm = document.getElementById('confirm-password').value;
+
+        if (!current || !newPass || !confirm) {
+          Swal.showValidationMessage('Please fill all fields');
+          return false;
+        }
+
+        if (newPass !== confirm) {
+          Swal.showValidationMessage('New passwords do not match');
+          return false;
+        }
+
+        if (newPass.length < 6) {
+          Swal.showValidationMessage('Password must be at least 6 characters');
+          return false;
+        }
+
+        return { currentPassword: current, newPassword: newPass };
+      }
+    });
+
+    if (formValues) {
+      try {
+        setLoading(true);
+        // Note: You need to add a change password endpoint to your backend
+        // await axios.put('/api/users/change-password', formValues, {
+        //   headers: getAuthHeader()
+        // });
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Password Updated!',
+          text: 'Your password has been changed successfully.',
+          timer: 1500
+        });
+      } catch (error) {
+        console.error('Password change error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: error.response?.data?.message || 'Failed to change password.',
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Logout',
+      text: 'Are you sure you want to logout?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, logout'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-amber-100 text-amber-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTotalSpent = () => {
+    return orders
+      .filter(order => order.paymentStatus === 'paid')
+      .reduce((total, order) => total + (order.total || 0), 0);
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
+  if (loading && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">No User Found</h2>
+          <p className="text-gray-600 mb-4">Please log in to view your profile.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+              <p className="text-gray-600">Manage your account and view your orders</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center text-red-600 hover:text-red-700 transition-colors"
+            >
+              <LogOut className="h-5 w-5 mr-2" />
+              Logout
+            </button>
+          </div>
+
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                  <ShoppingBag className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Orders</p>
+                  <p className="text-xl font-bold">{orders.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg mr-3">
+                  <CreditCard className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Spent</p>
+                  <p className="text-xl font-bold">Rs. {getTotalSpent().toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-amber-100 rounded-lg mr-3">
+                  <Truck className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Active Orders</p>
+                  <p className="text-xl font-bold">
+                    {orders.filter(o => !['delivered', 'cancelled'].includes(o.status)).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                  <CheckCircle className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Member Since</p>
+                  <p className="text-xl font-bold">{formatDate(user.createdAt)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Profile Info */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Profile Card */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <User className="h-5 w-5 mr-2 text-blue-500" />
+                  Personal Information
+                </h2>
+                {!editing ? (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center text-blue-600 hover:text-blue-700"
+                    disabled={loading}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </button>
+                ) : (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleSaveProfile}
+                      className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      disabled={loading}
+                    >
+                      <Save className="h-4 w-4 mr-1" />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditing(false);
+                        setEditForm({
+                          name: user.name || '',
+                          lastname: user.lastname || '',
+                          email: user.email || '',
+                          phone: user.phone || '',
+                          address: user.address || ''
+                        });
+                      }}
+                      className="flex items-center px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                      disabled={loading}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name *
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="name"
+                        value={editForm.name}
+                        onChange={handleEditChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={loading}
+                      />
+                    ) : (
+                      <p className="px-4 py-2 bg-gray-50 rounded-lg">{user.name || 'N/A'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name *
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="lastname"
+                        value={editForm.lastname}
+                        onChange={handleEditChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={loading}
+                      />
+                    ) : (
+                      <p className="px-4 py-2 bg-gray-50 rounded-lg">{user.lastname || 'N/A'}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
+                  {editing ? (
+                    <input
+                      type="email"
+                      name="email"
+                      value={editForm.email}
+                      onChange={handleEditChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                      disabled={loading}
+                    />
+                  ) : (
+                    <div className="flex items-center px-4 py-2 bg-gray-50 rounded-lg">
+                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                      <span>{user.email || 'N/A'}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  {editing ? (
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={editForm.phone}
+                      onChange={handleEditChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={loading}
+                    />
+                  ) : (
+                    <div className="flex items-center px-4 py-2 bg-gray-50 rounded-lg">
+                      <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                      <span>{user.phone || 'N/A'}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address
+                  </label>
+                  {editing ? (
+                    <textarea
+                      name="address"
+                      value={editForm.address}
+                      onChange={handleEditChange}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={loading}
+                      placeholder="Enter your address"
+                    />
+                  ) : (
+                    <div className="flex items-start px-4 py-2 bg-gray-50 rounded-lg">
+                      <MapPin className="h-4 w-4 text-gray-400 mr-2 mt-1 flex-shrink-0" />
+                      <span className="whitespace-pre-line">{user.address || 'No address provided'}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Security Section */}
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                  <Shield className="h-5 w-5 mr-2 text-green-500" />
+                  Security
+                </h3>
+                <button
+                  onClick={handleChangePassword}
+                  className="flex items-center text-blue-600 hover:text-blue-700"
+                  disabled={loading}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Change Password
+                </button>
+              </div>
+            </div>
+
+            {/* Recent Orders */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <Package className="h-5 w-5 mr-2 text-amber-500" />
+                  Recent Orders
+                </h2>
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  View All Orders
+                </button>
+              </div>
+
+              {orders.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Orders Yet</h3>
+                  <p className="text-gray-500 mb-4">You haven't placed any orders yet.</p>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Start Shopping
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.slice(0, 3).map((order) => (
+                    <div key={order._id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h4 className="font-semibold text-gray-800">{order.orderId}</h4>
+                          <p className="text-sm text-gray-500">
+                            {formatDate(order.createdAt)} • {order.items?.length || 0} items
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</p>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                            {order.status?.charAt(0)?.toUpperCase() + order.status?.slice(1) || 'Unknown'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600">
+                          {order.items?.slice(0, 2).map(item => item.productName).join(', ')}
+                          {order.items?.length > 2 && ` and ${order.items.length - 2} more`}
+                        </p>
+                      </div>
+                      <div className="mt-4 flex space-x-2">
+                        <button
+                          onClick={() => navigate('/orders')}
+                          className="text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          View Details
+                        </button>
+                        {order.status === 'processing' && (
+                          <button
+                            onClick={() => navigate('/orders')}
+                            className="text-sm text-red-600 hover:text-red-700"
+                          >
+                            Cancel Order
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Account Info & Actions */}
+          <div className="space-y-6">
+            {/* Account Info */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 mb-4">Account Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Account Type</p>
+                  <div className="flex items-center mt-1">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      user.role === 'admin' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {user.role === 'admin' ? 'Administrator' : 'Customer'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Member Since</p>
+                  <p className="font-medium">{formatDate(user.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Last Updated</p>
+                  <p className="font-medium">{formatDate(user.updatedAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center"
+                >
+                  <Package className="h-5 w-5 text-gray-600 mr-3" />
+                  <div>
+                    <p className="font-medium">View All Orders</p>
+                    <p className="text-sm text-gray-500">Check your order history</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => navigate('/addresses')}
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center"
+                >
+                  <MapPin className="h-5 w-5 text-gray-600 mr-3" />
+                  <div>
+                    <p className="font-medium">Manage Addresses</p>
+                    <p className="text-sm text-gray-500">Update shipping addresses</p>
+                  </div>
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center"
+                >
+                  <Lock className="h-5 w-5 text-gray-600 mr-3" />
+                  <div>
+                    <p className="font-medium">Change Password</p>
+                    <p className="text-sm text-gray-500">Update your password</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Support */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+              <h3 className="font-bold mb-2">Need Help?</h3>
+              <p className="text-blue-100 mb-4">Our support team is here to help you</p>
+              <button
+                onClick={() => navigate('/chat')}
+                className="w-full px-4 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Contact Support
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
+
+## File: text.text
+````
+import React from "react";
+import { Link, Route, Routes } from "react-router-dom";
+import AddProducts from "./addProducts";
+import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
+import EditProducts from "@/components/pages/admin/EditProducts";
+import { MdOutlineGridView, MdAddBox, MdEdit } from "react-icons/md";
+
+export default function Dashboard() {
+  const [hamburgerOpen, setHamburgerOpen] = useState(false);
+
+  return (
+    <div className="w-full h-screen flex">
+      {/* Sidebar (always visible) */}
+      <div className="w-64 h-full bg-white text-gray-700 flex flex-col shadow-md border-r border-gray-200">
+        <div className="py-6 flex justify-center border-b border-gray-200 px-4">
+          <Link
+            to="/admin/dashboard"
+            className="text-2xl font-bold text-blue-600 tracking-wide"
+          >
+            Dashboard
+          </Link>
+        </div>
+
+        <nav className="flex flex-col gap-2 px-4 mt-6">
+          <Link
+            to="adminviewproducts"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
+          >
+            <MdOutlineGridView className="text-xl" /> View Products
+          </Link>
+
+          <Link
+            to="products"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
+          >
+            <MdAddBox className="text-xl" /> Add Product
+          </Link>
+
+          <Link
+            to="editproducts"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
+          >
+            <MdEdit className="text-xl" /> Edit Product
+          </Link>
+        </nav>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 bg-gray-100 p-10 overflow-y-auto">
+        <h1 className="text-3xl font-semibold text-gray-800 mb-6">
+          Welcome to your dashboard
+        </h1>
+
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+          <Routes>
+            <Route path="products" element={<AddProducts />} />
+            <Route path="adminviewproducts" element={<AdminAllProductView />} />
+            <Route path="editproducts" element={<EditProducts />} />
+          </Routes>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
+
+## File: vite.config.js
+````javascript
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  server: {
+    port: 3001,
+  },
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
+  },
+});
+````
+
 ## File: src/components/pages/admin/payment.jsx
 ````javascript
 import React, { useState, useEffect } from 'react';
@@ -7053,7 +7083,7 @@ export default function Payment() {
   try {
     // Send order to backend
     const response = await axios.post(
-      'http://localhost:4000/api/orders/payment', // your backend route
+      import.meta.env.VITE_BACKEND_URL + '/api/orders/payment', // your backend route
       {
         ...orderData,
         paymentMethod,
@@ -7620,7 +7650,7 @@ export default function OrderPage() {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('http://localhost:4000/api/orders/my-orders', {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', {
           headers: getAuthHeader()
         });
 
@@ -7705,7 +7735,7 @@ export default function OrderPage() {
 
     try {
       setLoading(true);
-      const res = await axios.put(`http://localhost:4000/api/orders/${orderId}/cancel`, {}, {
+      const res = await axios.put(import.meta.env.VITE_BACKEND_URL+`/api/orders/${orderId}/cancel`, {}, {
         headers: getAuthHeader()
       });
 
@@ -7745,7 +7775,7 @@ export default function OrderPage() {
   const handleRefreshOrders = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:4000/api/orders/my-orders', { headers: getAuthHeader() });
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', { headers: getAuthHeader() });
       if (res.data.success) setOrders(res.data.orders || []);
     } catch (error) { console.error(error); } 
     finally { setLoading(false); }
@@ -8017,7 +8047,7 @@ export default function NavbarNotification() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/notifications/getNotifications");
       setNotifications(res.data);
       setUnreadCount(res.data.filter(n => !n.isRead).length);
     } catch (err) {
@@ -8027,7 +8057,7 @@ export default function NavbarNotification() {
 
   const markAsRead = async (id) => {
     try {
-      await axios.post(`http://localhost:4000/api/notifications/markRead/${id}`);
+      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/markRead/${id}`);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
@@ -8037,7 +8067,7 @@ export default function NavbarNotification() {
 
   const replyNotification = async (id, reply) => {
     try {
-      await axios.post(`http://localhost:4000/api/notifications/reply/${id}`, { message: reply });
+      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/reply/${id}`, { message: reply });
       Swal.fire("Sent!", "Your reply has been sent.", "success");
       setSelectedMessage(null);
       setReplyText("");
@@ -8169,92 +8199,32 @@ export default function NavbarNotification() {
 }
 ````
 
-## File: text.text
-````
-import React from "react";
-import { Link, Route, Routes } from "react-router-dom";
-import AddProducts from "./addProducts";
-import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
-import EditProducts from "@/components/pages/admin/EditProducts";
-import { MdOutlineGridView, MdAddBox, MdEdit } from "react-icons/md";
+## File: src/App.jsx
+````javascript
+import Homepage from "./components/pages/Homepage.jsx";
+import NotFound from "./components/pages/NotFound.jsx"; // import new page
+import { useState } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import "./App.css";
 
-export default function Dashboard() {
-  const [hamburgerOpen, setHamburgerOpen] = useState(false);
+
+
+function App() {
+  const [count, setCount] = useState(0);
 
   return (
-    <div className="w-full h-screen flex">
-      {/* Sidebar (always visible) */}
-      <div className="w-64 h-full bg-white text-gray-700 flex flex-col shadow-md border-r border-gray-200">
-        <div className="py-6 flex justify-center border-b border-gray-200 px-4">
-          <Link
-            to="/admin/dashboard"
-            className="text-2xl font-bold text-blue-600 tracking-wide"
-          >
-            Dashboard
-          </Link>
-        </div>
-
-        <nav className="flex flex-col gap-2 px-4 mt-6">
-          <Link
-            to="adminviewproducts"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
-          >
-            <MdOutlineGridView className="text-xl" /> View Products
-          </Link>
-
-          <Link
-            to="products"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
-          >
-            <MdAddBox className="text-xl" /> Add Product
-          </Link>
-
-          <Link
-            to="editproducts"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
-          >
-            <MdEdit className="text-xl" /> Edit Product
-          </Link>
-        </nav>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 bg-gray-100 p-10 overflow-y-auto">
-        <h1 className="text-3xl font-semibold text-gray-800 mb-6">
-          Welcome to your dashboard
-        </h1>
-
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <Routes>
-            <Route path="products" element={<AddProducts />} />
-            <Route path="adminviewproducts" element={<AdminAllProductView />} />
-            <Route path="editproducts" element={<EditProducts />} />
-          </Routes>
-        </div>
-      </div>
+    <div>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/*" element={<Homepage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
     </div>
   );
 }
-````
 
-## File: vite.config.js
-````javascript
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  server: {
-    port: 3001,
-  },
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
-  },
-});
+export default App;
 ````
 
 ## File: src/components/pages/admin/AdminAllProductView.jsx
@@ -8302,7 +8272,7 @@ export default function AdminAllProductView() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("http://localhost:4000/api/products", {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const productsData = res.data?.data || res.data || [];
@@ -8409,7 +8379,7 @@ export default function AdminAllProductView() {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/products/${productId}`, {
+        await axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -8461,7 +8431,7 @@ export default function AdminAllProductView() {
     if (result.isConfirmed) {
       try {
         const deletePromises = Array.from(selectedProducts).map(productId =>
-          axios.delete(`http://localhost:4000/api/products/${productId}`, {
+          axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`, {
             headers: { Authorization: `Bearer ${token}` },
           })
         );
@@ -8959,829 +8929,45 @@ export default function AdminAllProductView() {
 }
 ````
 
-## File: src/components/pages/admin/EditProducts.jsx
+## File: src/components/pages/admin/Dashboard/DashboardRoutes.jsx
 ````javascript
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import uploadMediaToSupabase from "@/components/utils/mediaUpload";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { 
-  FiEdit, 
-  FiSave, 
-  FiTrash2, 
-  FiImage, 
-  FiPackage, 
-  FiDollarSign, 
-  FiTag, 
-  FiGrid,
-  FiCheckCircle,
-  FiClock,
-  FiTruck,
-  FiBox
-} from "react-icons/fi";
-import { MdClose } from "react-icons/md";
-import Swal from "sweetalert2";
+// DashboardRoutes.jsx
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import AddProducts from "../addProducts";
+import AdminAllProductView from "../AdminAllProductView";
+import EditProducts from "../EditProducts";
+import Notification from "../notification";
+import StatCard from "../Dashboard/StatCard";
+import { FiPackage, FiUsers, FiDollarSign } from "react-icons/fi";
+import { MdShoppingCart } from "react-icons/md";
 
-export default function EditProduct() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { id } = useParams();
-  const token = localStorage.getItem("token");
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [newImages, setNewImages] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [existingImageUrls, setExistingImageUrls] = useState([]);
-  
-  // Status options
-  const statusOptions = [
-    { value: "pending", label: "Pending", icon: FiClock, color: "bg-yellow-100 text-yellow-800" },
-    { value: "ready", label: "Ready", icon: FiCheckCircle, color: "bg-green-100 text-green-800" },
-    { value: "delivered", label: "Delivered", icon: FiTruck, color: "bg-blue-100 text-blue-800" },
-    { value: "out_of_stock", label: "Out of Stock", icon: FiBox, color: "bg-red-100 text-red-800" },
-  ];
-
-  // Categories and brands for dropdown
-  const categories = ["General", "Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Beauty", "Toys", "Food", "Office"];
-  const brands = ["Unbranded", "Nike", "Samsung", "Apple", "Sony", "Adidas", "Dell", "LG", "HP", "Microsoft", "Other"];
-
-  const [formData, setFormData] = useState({
-    productId: "",
-    productName: "",
-    altNames: "",
-    price: "",
-    lastPrices: "",
-    stock: "",
-    description: "",
-    category: "General",
-    brand: "Unbranded",
-    status: "pending", // Added status field
-  });
-
-  // Fetch product data
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    const fetchProduct = async () => {
-      setLoading(true);
-      try {
-        let productData;
-        
-        if (location.state?.product) {
-          productData = location.state.product;
-        } else if (id) {
-          const response = await axios.get(
-            `http://localhost:4000/api/products/${id}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          productData = response.data;
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'No Product Selected',
-            text: 'Please select a product to edit',
-            confirmButtonColor: '#d33',
-          }).then(() => navigate("/admin/products"));
-          return;
-        }
-
-        // Set form data including status
-        setFormData({
-          productId: productData.productId || "",
-          productName: productData.productName || "",
-          altNames: productData.altNames?.join(", ") || "",
-          price: productData.price || "",
-          lastPrices: productData.lastPrices || productData.price || "",
-          stock: productData.stock || "",
-          description: productData.description || "",
-          category: productData.category || "General",
-          brand: productData.brand || "Unbranded",
-          status: productData.status || "pending", // Set status from API
-        });
-
-        if (productData.images && Array.isArray(productData.images)) {
-          setExistingImageUrls(productData.images);
-        }
-
-      } catch (error) {
-        console.error("Error fetching product:", error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to load product data',
-          confirmButtonColor: '#d33',
-        }).then(() => navigate("/admin/products"));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProduct();
-  }, [token, navigate, location.state, id]);
-
-  // Handle new image selection with preview
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setNewImages(files);
-    
-    // Create previews
-    const previews = files.map(file => URL.createObjectURL(file));
-    setImagePreviews(previews);
-  };
-
-  // Remove new image preview
-  const removeNewImage = (index) => {
-    const newImagesCopy = [...newImages];
-    const newPreviews = [...imagePreviews];
-    
-    URL.revokeObjectURL(newPreviews[index]);
-    newImagesCopy.splice(index, 1);
-    newPreviews.splice(index, 1);
-    
-    setNewImages(newImagesCopy);
-    setImagePreviews(newPreviews);
-  };
-
-  // Remove existing image
-  const removeExistingImage = (index) => {
-    Swal.fire({
-      title: 'Remove Image?',
-      text: "This image will be removed from the product",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, remove it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const newExistingImages = [...existingImageUrls];
-        newExistingImages.splice(index, 1);
-        setExistingImageUrls(newExistingImages);
-      }
-    });
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Quick status update handler
-  const handleQuickStatusUpdate = (newStatus) => {
-    Swal.fire({
-      title: `Change Status to ${newStatus.toUpperCase()}?`,
-      text: `Are you sure you want to change product status to "${newStatus}"?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, update status!',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setFormData(prev => ({ ...prev, status: newStatus }));
-        Swal.fire({
-          icon: 'success',
-          title: 'Status Updated!',
-          text: `Product status changed to ${newStatus}`,
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-    });
-  };
-
-  const validateForm = () => {
-    if (!formData.productName.trim()) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Information',
-        text: 'Product name is required',
-        confirmButtonColor: '#d33',
-      });
-      return false;
-    }
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Invalid Price',
-        text: 'Please enter a valid price',
-        confirmButtonColor: '#d33',
-      });
-      return false;
-    }
-    if (existingImageUrls.length === 0 && newImages.length === 0) {
-      Swal.fire({
-        icon: 'error',
-        title: 'No Images',
-        text: 'Please add at least one product image',
-        confirmButtonColor: '#d33',
-      });
-      return false;
-    }
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) return;
-
-    setSaving(true);
-    
-    try {
-      // Upload new images
-      const uploadedImages = newImages.length > 0 
-        ? await Promise.all(newImages.map(uploadMediaToSupabase))
-        : [];
-
-      // Prepare payload including status
-      const payload = {
-        ...formData,
-        altNames: formData.altNames 
-          ? formData.altNames.split(",").map(n => n.trim()).filter(n => n)
-          : [],
-        price: parseFloat(formData.price),
-        lastPrices: formData.lastPrices ? parseFloat(formData.lastPrices) : parseFloat(formData.price),
-        stock: parseInt(formData.stock) || 0,
-        images: [...existingImageUrls, ...uploadedImages],
-        status: formData.status, // Include status in payload
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Update product
-      await axios.patch(
-        `http://localhost:4000/api/products/${formData.productId}`,
-        payload,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
-      );
-
-      // Success alert
-      await Swal.fire({
-        icon: 'success',
-        title: 'Product Updated!',
-        text: 'Product has been successfully updated',
-        showConfirmButton: false,
-        timer: 2000
-      });
-
-      // Reset image states
-      setNewImages([]);
-      setImagePreviews([]);
-
-      // Navigate back
-      navigate("/admin/dashboard/adminviewproducts");
-
-    } catch (error) {
-      console.error("Update failed:", error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Update Failed',
-        text: error.response?.data?.message || 'Failed to update product. Please try again.',
-        confirmButtonColor: '#d33',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-gray-600">Loading product data...</div>
-        </div>
-      </div>
-    );
-  }
-
+export default function DashboardRoutes({ stats }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header with Status */}
-          <div className="bg-gradient-to-r from-blue-600 to-teal-500 p-6 text-white">
-            <div className="flex flex-col md:flex-row md:items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">Edit Product</h1>
-                <p className="text-blue-100 mt-2">Update product information</p>
-              </div>
-              <div className="mt-4 md:mt-0 space-y-2">
-                <div className="text-sm opacity-90">Product ID</div>
-                <div className="text-xl font-mono font-bold">{formData.productId}</div>
-                
-                {/* Current Status Display */}
-                <div className="flex items-center space-x-2 mt-3">
-                  <div className="text-sm opacity-90">Current Status:</div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    statusOptions.find(s => s.value === formData.status)?.color || "bg-gray-100 text-gray-800"
-                  }`}>
-                    {statusOptions.find(s => s.value === formData.status)?.label || "Unknown"}
-                  </div>
-                </div>
-              </div>
+    <Routes>
+      <Route
+        index
+        element={
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="text-6xl mb-6">📊</div>
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-4">Dashboard Overview</h2>
+            <p className="text-gray-600 max-w-2xl mb-8">
+              Select a section from the sidebar to manage products, view notifications, or access other admin features.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 w-full max-w-4xl">
+              <StatCard icon={<FiPackage size={24} />} title="Total Products" value={stats.totalProducts} color="text-green-600" />
+              <StatCard icon={<MdShoppingCart size={24} />} title="Total Orders" value={stats.totalOrders} color="text-indigo-600" />
+              <StatCard icon={<FiDollarSign size={24} />} title="Total Revenue" value={`$${stats.totalRevenue.toLocaleString()}`} color="text-amber-600" />
+              <StatCard icon={<FiUsers size={24} />} title="New Users" value={stats.newUsers} color="text-teal-600" />
             </div>
           </div>
-
-          <div className="p-6 md:p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left Column - Product Info */}
-              <div className="space-y-6">
-                {/* Product Name */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiPackage className="mr-2" /> Product Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="productName"
-                    value={formData.productName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>
-
-                {/* Alternate Names */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiTag className="mr-2" /> Alternate Names
-                  </label>
-                  <input
-                    type="text"
-                    name="altNames"
-                    value={formData.altNames}
-                    onChange={handleChange}
-                    placeholder="Separate with commas"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                </div>
-
-                {/* Price & Stock */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                      <FiDollarSign className="mr-2" /> Price *
-                    </label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleChange}
-                      min="0"
-                      step="0.01"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Previous Price
-                    </label>
-                    <input
-                      type="number"
-                      name="lastPrices"
-                      value={formData.lastPrices}
-                      onChange={handleChange}
-                      min="0"
-                      step="0.01"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Stock Quantity
-                    </label>
-                    <input
-                      type="number"
-                      name="stock"
-                      value={formData.stock}
-                      onChange={handleChange}
-                      min="0"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                      <FiGrid className="mr-2" /> Category
-                    </label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    >
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Brand */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Brand
-                  </label>
-                  <select
-                    name="brand"
-                    value={formData.brand}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  >
-                    {brands.map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Status Selection */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Product Status
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    {statusOptions.map((status) => (
-                      <button
-                        key={status.value}
-                        type="button"
-                        onClick={() => handleQuickStatusUpdate(status.value)}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all duration-200 ${
-                          formData.status === status.value
-                            ? 'border-blue-500 bg-blue-50 scale-105'
-                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                        }`}
-                      >
-                        <status.icon className={`h-6 w-6 mb-2 ${
-                          formData.status === status.value ? 'text-blue-600' : 'text-gray-500'
-                        }`} />
-                        <span className={`text-sm font-medium ${
-                          formData.status === status.value ? 'text-blue-700' : 'text-gray-700'
-                        }`}>
-                          {status.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Select product status from dropdown or click on status cards above
-                  </p>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                </div>
-              </div>
-
-              {/* Right Column - Images */}
-              <div className="space-y-6">
-                {/* Existing Images */}
-                {existingImageUrls.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Current Images ({existingImageUrls.length})
-                    </label>
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      {existingImageUrls.map((img, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={img}
-                            alt={`Product ${index + 1}`}
-                            className="w-24 h-24 object-cover rounded-lg border shadow-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeExistingImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
-                            title="Remove image"
-                          >
-                            <FiTrash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* New Images Preview */}
-                {imagePreviews.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      New Images to Add ({imagePreviews.length})
-                    </label>
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={preview}
-                            alt={`New ${index + 1}`}
-                            className="w-24 h-24 object-cover rounded-lg border shadow-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeNewImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
-                            title="Remove image"
-                          >
-                            <MdClose size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Image Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiImage className="mr-2" /> Add More Images
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition cursor-pointer">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <FiImage className="text-4xl text-gray-400 mx-auto mb-4" />
-                      <div className="text-gray-600 font-medium mb-2">Click to upload new images</div>
-                      <div className="text-sm text-gray-500">PNG, JPG, WEBP up to 5MB each</div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Status Summary */}
-                <div className="bg-gradient-to-r from-blue-50 to-teal-50 p-4 rounded-lg border border-blue-200">
-                  <h3 className="font-semibold text-gray-800 mb-2 flex items-center">
-                    <FiCheckCircle className="h-5 w-5 mr-2 text-blue-600" />
-                    Status Summary
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Current Status:</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        statusOptions.find(s => s.value === formData.status)?.color || "bg-gray-100 text-gray-800"
-                      }`}>
-                        {statusOptions.find(s => s.value === formData.status)?.label}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Stock Level:</span>
-                      <span className={`font-medium ${
-                        parseInt(formData.stock) > 10 ? 'text-green-600' : 
-                        parseInt(formData.stock) > 0 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                        {formData.stock || 0} units
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-3">
-                      💡 <strong>Status Guide:</strong> Pending → Ready → Delivered
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="pt-6 space-y-4">
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold py-4 px-6 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {saving ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving Changes...
-                      </>
-                    ) : (
-                      <>
-                        <FiSave className="mr-2" />
-                        Update Product
-                      </>
-                    )}
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={() => navigate("/admin/dashboard/adminviewproducts")}
-                      className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Cancel
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        Swal.fire({
-                          title: 'Update Only Status?',
-                          text: 'Would you like to update just the status without saving other changes?',
-                          icon: 'question',
-                          showDenyButton: true,
-                          showCancelButton: true,
-                          confirmButtonText: 'Save All Changes',
-                          denyButtonText: 'Update Status Only',
-                          cancelButtonText: 'Cancel'
-                        }).then((result) => {
-                          if (result.isConfirmed) {
-                            handleSave();
-                          } else if (result.isDenied) {
-                            // Update only status
-                            const statusOnlyPayload = { status: formData.status };
-                            axios.patch(
-                              `http://localhost:4000/api/products/${formData.productId}`,
-                              statusOnlyPayload,
-                              { 
-                                headers: { 
-                                  Authorization: `Bearer ${token}`,
-                                  'Content-Type': 'application/json'
-                                } 
-                              }
-                            ).then(() => {
-                              Swal.fire({
-                                icon: 'success',
-                                title: 'Status Updated!',
-                                text: 'Product status has been updated',
-                                timer: 1500,
-                                showConfirmButton: false
-                              });
-                            }).catch(error => {
-                              console.error("Status update failed:", error);
-                              Swal.fire({
-                                icon: 'error',
-                                title: 'Status Update Failed',
-                                text: 'Failed to update product status',
-                                confirmButtonColor: '#d33',
-                              });
-                            });
-                          }
-                        });
-                      }}
-                      className="w-full px-6 py-3 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
-                    >
-                      Update Status
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Product Preview Card */}
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Preview</h3>
-            <div className={`px-4 py-1 rounded-full text-sm font-medium ${
-              statusOptions.find(s => s.value === formData.status)?.color || "bg-gray-100 text-gray-800"
-            }`}>
-              {statusOptions.find(s => s.value === formData.status)?.label}
-            </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Image Preview */}
-            <div className="md:w-1/3">
-              <div className="bg-gray-100 rounded-lg overflow-hidden h-48 flex items-center justify-center">
-                {existingImageUrls.length > 0 || imagePreviews.length > 0 ? (
-                  <img
-                    src={existingImageUrls[0] || imagePreviews[0]}
-                    alt="Product preview"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="text-gray-400">No image</div>
-                )}
-              </div>
-              <div className="mt-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">Product Status</div>
-                <div className="flex items-center">
-                  <div className={`w-3 h-3 rounded-full mr-2 ${
-                    formData.status === 'pending' ? 'bg-yellow-500' :
-                    formData.status === 'ready' ? 'bg-green-500' :
-                    formData.status === 'delivered' ? 'bg-blue-500' :
-                    'bg-red-500'
-                  }`}></div>
-                  <span className="text-gray-700">{statusOptions.find(s => s.value === formData.status)?.label}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {formData.status === 'pending' && 'Product is awaiting processing'}
-                  {formData.status === 'ready' && 'Product is ready for delivery'}
-                  {formData.status === 'delivered' && 'Product has been delivered'}
-                  {formData.status === 'out_of_stock' && 'Product is currently out of stock'}
-                </p>
-              </div>
-            </div>
-            
-            {/* Info Preview */}
-            <div className="md:w-2/3">
-              <h4 className="text-2xl font-bold text-gray-900 mb-2">{formData.productName || "Product Name"}</h4>
-              <div className="flex items-center mb-4">
-                <span className="text-3xl font-bold text-blue-600 mr-3">
-                  ${parseFloat(formData.price || 0).toFixed(2)}
-                </span>
-                {formData.lastPrices && parseFloat(formData.lastPrices) > parseFloat(formData.price) && (
-                  <span className="text-lg text-gray-500 line-through">
-                    ${parseFloat(formData.lastPrices).toFixed(2)}
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <div className="text-sm text-gray-500">Category</div>
-                  <div className="font-medium">{formData.category}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Brand</div>
-                  <div className="font-medium">{formData.brand}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Stock</div>
-                  <div className={`font-medium ${
-                    parseInt(formData.stock) > 10 ? 'text-green-600' : 
-                    parseInt(formData.stock) > 0 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
-                    {formData.stock || 0} units
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Product ID</div>
-                  <div className="font-mono font-medium">{formData.productId}</div>
-                </div>
-              </div>
-              <div className="mb-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">Availability</div>
-                <div className="flex items-center space-x-4">
-                  <div className={`px-3 py-1 rounded-full text-sm ${
-                    formData.status === 'out_of_stock' 
-                      ? 'bg-red-100 text-red-800' 
-                      : parseInt(formData.stock) > 0 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {formData.status === 'out_of_stock' 
-                      ? 'Out of Stock' 
-                      : parseInt(formData.stock) > 0 
-                        ? 'In Stock' 
-                        : 'Low Stock'}
-                  </div>
-                  {formData.status === 'delivered' && (
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <FiTruck className="h-4 w-4 mr-1" /> Delivered
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="text-gray-600">
-                {formData.description || "No description provided"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        }
+      />
+      <Route path="adminviewproducts" element={<AdminAllProductView />} />
+      <Route path="addproducts" element={<AddProducts />} />
+      <Route path="editproducts/:id" element={<EditProducts />} />
+      <Route path="notification" element={<Notification />} />
+    </Routes>
   );
 }
 ````
@@ -9845,7 +9031,7 @@ export default function Shipping() {
 
     const fetchAddresses = async () => {
       try {
-        const res = await axios.get('http://localhost:4000/api/addresses', {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/addresses', {
           headers: getAuthHeader()
         });
         
@@ -9886,7 +9072,7 @@ export default function Shipping() {
     
     const fetchUserInfo = async () => {
       try {
-        const res = await axios.get('http://localhost:4000/api/users/me', {
+        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/users/me', {
           headers: getAuthHeader()
         });
         
@@ -9940,7 +9126,7 @@ export default function Shipping() {
         // Update existing address
         const addrId = addresses[editingAddressIndex].id;
         response = await axios.put(
-          `http://localhost:4000/api/addresses/${addrId}`,
+          import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addrId}`,
           addressForm,
           { headers: getAuthHeader() }
         );
@@ -9966,7 +9152,7 @@ export default function Shipping() {
       } else {
         // Add new address
         response = await axios.post(
-          'http://localhost:4000/api/addresses',
+          import.meta.env.VITE_BACKEND_URL+'/api/addresses',
           addressForm,
           { headers: getAuthHeader() }
         );
@@ -10040,7 +9226,7 @@ export default function Shipping() {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/addresses/${addressId}`, {
+        await axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addressId}`, {
           headers: getAuthHeader()
         });
 
@@ -10093,7 +9279,7 @@ export default function Shipping() {
     try {
       const addrId = addresses[index].id;
       const res = await axios.put(
-        `http://localhost:4000/api/addresses/${addrId}`,
+        import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addrId}`,
         { isDefault: true },
         { headers: getAuthHeader() }
       );
@@ -10152,7 +9338,7 @@ export default function Shipping() {
       try {
         setLoading(true);
         const res = await axios.put(
-          'http://localhost:4000/api/users/me',
+          import.meta.env.VITE_BACKEND_URL+'/api/users/me',
           formData,
           { headers: getAuthHeader() }
         );
@@ -10845,6 +10031,7 @@ export default function Shipping() {
     "@supabase/supabase-js": "^2.86.0",
     "@tailwindcss/vite": "^4.1.17",
     "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.556.0",
     "react": "^19.2.0",
@@ -10866,431 +10053,6 @@ export default function Shipping() {
     "globals": "^16.5.0",
     "vite": "^7.2.4"
   }
-}
-````
-
-## File: src/components/pages/admin/addProducts.jsx
-````javascript
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import uploadMediaToSupabase from "@/components/utils/mediaUpload";
-import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
-import { jwtDecode } from "jwt-decode";
-import { FiUpload, FiImage, FiDollarSign, FiPackage, FiTag, FiShoppingCart } from "react-icons/fi";
-
-export default function AddProducts() {
-  const navigate = useNavigate();
-  const [images, setImages] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [formData, setFormData] = useState({
-    productId: uuidv4().substring(0, 8).toUpperCase(),
-    productName: "",
-    altNames: "",
-    price: "",
-    lastPrices: "",
-    stock: "",
-    description: "",
-    category: "General",
-    brand: "Unbranded",
-  });
-
-  const categories = ["General", "Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Beauty", "Toys", "Food"];
-  const brands = ["Unbranded", "Nike", "Samsung", "Apple", "Sony", "Adidas", "Dell", "LG", "Other"];
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    try {
-      const decoded = jwtDecode(token);
-      if (decoded.role !== "admin") {
-        alert("Only administrators can add products.");
-        navigate("/");
-      }
-    } catch {
-      localStorage.removeItem("token");
-      navigate("/login");
-    }
-  }, [navigate]);
-
-  // Generate new product ID
-  const generateNewId = () => {
-    setFormData(prev => ({
-      ...prev,
-      productId: uuidv4().substring(0, 8).toUpperCase()
-    }));
-  };
-
-  // Handle image selection with preview
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setImages(files);
-    
-    // Create previews
-    const previews = files.map(file => URL.createObjectURL(file));
-    setImagePreviews(previews);
-  };
-
-  // Remove image
-  const removeImage = (index) => {
-    const newImages = [...images];
-    const newPreviews = [...imagePreviews];
-    
-    newImages.splice(index, 1);
-    newPreviews.splice(index, 1);
-    
-    setImages(newImages);
-    setImagePreviews(newPreviews);
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const validateForm = () => {
-    if (!formData.productName.trim()) {
-      alert("Product name is required");
-      return false;
-    }
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      alert("Please enter a valid price");
-      return false;
-    }
-    if (images.length === 0) {
-      alert("Please upload at least one image");
-      return false;
-    }
-    return true;
-  };
-
-  const handleUpload = async () => {
-    if (!validateForm()) return;
-
-    setUploading(true);
-    const token = localStorage.getItem("token");
-    
-    try {
-      // Upload images to Supabase
-      const imgUrls = await Promise.all(
-        images.map(file => uploadMediaToSupabase(file))
-      );
-
-      // Prepare payload
-      const payload = {
-        ...formData,
-        productId: `PROD-${formData.productId}`,
-        altNames: formData.altNames ? formData.altNames.split(",").map(n => n.trim()).filter(n => n) : [],
-        price: parseFloat(formData.price),
-        lastPrices: formData.lastPrices ? parseFloat(formData.lastPrices) : parseFloat(formData.price),
-        stock: parseInt(formData.stock) || 0,
-        images: imgUrls,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      // Send to backend
-      const res = await axios.post(
-        "http://localhost:4000/api/products",
-        payload,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
-      );
-
-      console.log("Product saved:", res.data);
-      
-      // Show success message and reset form
-      alert("✅ Product uploaded successfully!");
-      
-      // Reset form
-      setFormData({
-        productId: uuidv4().substring(0, 8).toUpperCase(),
-        productName: "",
-        altNames: "",
-        price: "",
-        lastPrices: "",
-        stock: "",
-        description: "",
-        category: "General",
-        brand: "Unbranded",
-      });
-      setImages([]);
-      setImagePreviews([]);
-      
-      // Optional: Navigate to products page
-      // navigate("/products");
-
-    } catch (err) {
-      console.error("Upload failed:", err);
-      let errorMessage = "Failed to upload product.";
-      
-      if (err.response) {
-        errorMessage = err.response.data?.message || err.response.statusText;
-      } else if (err.request) {
-        errorMessage = "No response from server. Check your connection.";
-      }
-      
-      alert(`❌ ${errorMessage}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-teal-500 p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">Add New Product</h1>
-                <p className="text-blue-100 mt-2">Fill in the product details below</p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={generateNewId}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
-                  title="Generate new ID"
-                >
-                  🔄 New ID
-                </button>
-                <div className="text-right">
-                  <div className="text-sm opacity-90">Product ID</div>
-                  <div className="text-xl font-mono font-bold">PROD-{formData.productId}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 md:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column - Basic Info */}
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiShoppingCart className="mr-2" /> Product Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="productName"
-                    value={formData.productName}
-                    onChange={handleChange}
-                    placeholder="Enter product name"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiTag className="mr-2" /> Alternate Names
-                  </label>
-                  <input
-                    type="text"
-                    name="altNames"
-                    value={formData.altNames}
-                    onChange={handleChange}
-                    placeholder="Separate with commas (e.g., iPhone 15, Smartphone)"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Optional: Other names customers might search for</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                      <FiDollarSign className="mr-2" /> Price *
-                    </label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Previous Price
-                    </label>
-                    <input
-                      type="number"
-                      name="lastPrices"
-                      value={formData.lastPrices}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiPackage className="mr-2" /> Stock Quantity
-                  </label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleChange}
-                    placeholder="0"
-                    min="0"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Category
-                    </label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    >
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Brand
-                    </label>
-                    <select
-                      name="brand"
-                      value={formData.brand}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    >
-                      {brands.map(brand => (
-                        <option key={brand} value={brand}>{brand}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Images & Description */}
-              <div className="space-y-6">
-                {/* Image Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <FiImage className="mr-2" /> Product Images *
-                  </label>
-                  
-                  {/* Image Previews */}
-                  {imagePreviews.length > 0 && (
-                    <div className="mb-4">
-                      <div className="flex flex-wrap gap-3 mb-3">
-                        {imagePreviews.map((preview, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              className="w-24 h-24 object-cover rounded-lg border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-sm text-gray-500">{imagePreviews.length} image(s) selected</p>
-                    </div>
-                  )}
-
-                  {/* Upload Button */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition">
-                    <FiUpload className="text-3xl text-gray-400 mx-auto mb-3" />
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <div className="text-gray-600 font-medium mb-1">Click to upload images</div>
-                      <div className="text-sm text-gray-500">PNG, JPG, WEBP up to 5MB each</div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Product Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Describe the product features, specifications, etc."
-                    rows="5"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <div className="pt-4">
-                  <button
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold py-4 px-6 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {uploading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Uploading Product...
-                      </>
-                    ) : (
-                      "Upload Product"
-                    )}
-                  </button>
-                  
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    * Required fields. All product information will be saved to our database.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 ````
 
@@ -11341,7 +10103,7 @@ export default function ViewCart() {
     const fetchQuote = async () => {
       setLoading(true);
       try {
-        const { data } = await axios.post("http://localhost:4000/api/orders/quote", { orderedItems: cart });
+        const { data } = await axios.post(import.meta.env.VITE_BACKEND_URL+"/api/orders/quote", { orderedItems: cart });
         setQuoteData(data);
       } catch (error) {
         console.error("Quote API Error:", error);
@@ -11774,6 +10536,1258 @@ export default function ViewCart() {
 }
 ````
 
+## File: src/components/pages/admin/addProducts.jsx
+````javascript
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import uploadMediaToSupabase from "../../utils/mediaupload.jsx";
+import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
+import { jwtDecode } from "jwt-decode";
+import { FiUpload, FiImage, FiDollarSign, FiPackage, FiTag, FiShoppingCart } from "react-icons/fi";
+
+export default function AddProducts() {
+  const navigate = useNavigate();
+  const [images, setImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    productId: uuidv4().substring(0, 8).toUpperCase(),
+    productName: "",
+    altNames: "",
+    price: "",
+    lastPrices: "",
+    stock: "",
+    description: "",
+    category: "General",
+    brand: "Unbranded",
+  });
+
+  const categories = ["General", "Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Beauty", "Toys", "Food"];
+  const brands = ["Unbranded", "Nike", "Samsung", "Apple", "Sony", "Adidas", "Dell", "LG", "Other"];
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.role !== "admin") {
+        alert("Only administrators can add products.");
+        navigate("/");
+      }
+    } catch {
+      localStorage.removeItem("token");
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  // Generate new product ID
+  const generateNewId = () => {
+    setFormData(prev => ({
+      ...prev,
+      productId: uuidv4().substring(0, 8).toUpperCase()
+    }));
+  };
+
+  // Handle image selection with preview
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setImages(files);
+    
+    // Create previews
+    const previews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(previews);
+  };
+
+  // Remove image
+  const removeImage = (index) => {
+    const newImages = [...images];
+    const newPreviews = [...imagePreviews];
+    
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    
+    setImages(newImages);
+    setImagePreviews(newPreviews);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const validateForm = () => {
+    if (!formData.productName.trim()) {
+      alert("Product name is required");
+      return false;
+    }
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      alert("Please enter a valid price");
+      return false;
+    }
+    if (images.length === 0) {
+      alert("Please upload at least one image");
+      return false;
+    }
+    return true;
+  };
+
+  const handleUpload = async () => {
+    if (!validateForm()) return;
+
+    setUploading(true);
+    const token = localStorage.getItem("token");
+    
+    try {
+      // Upload images to Supabase
+      const imgUrls = await Promise.all(
+        images.map(file => uploadMediaToSupabase(file))
+      );
+
+      // Prepare payload
+      const payload = {
+        ...formData,
+        productId: `PROD-${formData.productId}`,
+        altNames: formData.altNames ? formData.altNames.split(",").map(n => n.trim()).filter(n => n) : [],
+        price: parseFloat(formData.price),
+        lastPrices: formData.lastPrices ? parseFloat(formData.lastPrices) : parseFloat(formData.price),
+        stock: parseInt(formData.stock) || 0,
+        images: imgUrls,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Send to backend
+      const res = await axios.post(
+        import.meta.env.VITE_BACKEND_URL + "/api/products",
+        payload,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+
+      console.log("Product saved:", res.data);
+      
+      // Show success message and reset form
+      alert("✅ Product uploaded successfully!");
+      
+      // Reset form
+      setFormData({
+        productId: uuidv4().substring(0, 8).toUpperCase(),
+        productName: "",
+        altNames: "",
+        price: "",
+        lastPrices: "",
+        stock: "",
+        description: "",
+        category: "General",
+        brand: "Unbranded",
+      });
+      setImages([]);
+      setImagePreviews([]);
+      
+      // Optional: Navigate to products page
+      // navigate("/products");
+
+    } catch (err) {
+      console.error("Upload failed:", err);
+      let errorMessage = "Failed to upload product.";
+      
+      if (err.response) {
+        errorMessage = err.response.data?.message || err.response.statusText;
+      } else if (err.request) {
+        errorMessage = "No response from server. Check your connection.";
+      }
+      
+      alert(`❌ ${errorMessage}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-teal-500 p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Add New Product</h1>
+                <p className="text-blue-100 mt-2">Fill in the product details below</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={generateNewId}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
+                  title="Generate new ID"
+                >
+                  🔄 New ID
+                </button>
+                <div className="text-right">
+                  <div className="text-sm opacity-90">Product ID</div>
+                  <div className="text-xl font-mono font-bold">PROD-{formData.productId}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Column - Basic Info */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiShoppingCart className="mr-2" /> Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="productName"
+                    value={formData.productName}
+                    onChange={handleChange}
+                    placeholder="Enter product name"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiTag className="mr-2" /> Alternate Names
+                  </label>
+                  <input
+                    type="text"
+                    name="altNames"
+                    value={formData.altNames}
+                    onChange={handleChange}
+                    placeholder="Separate with commas (e.g., iPhone 15, Smartphone)"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Optional: Other names customers might search for</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                      <FiDollarSign className="mr-2" /> Price *
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Previous Price
+                    </label>
+                    <input
+                      type="number"
+                      name="lastPrices"
+                      value={formData.lastPrices}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiPackage className="mr-2" /> Stock Quantity
+                  </label>
+                  <input
+                    type="number"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleChange}
+                    placeholder="0"
+                    min="0"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Category
+                    </label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Brand
+                    </label>
+                    <select
+                      name="brand"
+                      value={formData.brand}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    >
+                      {brands.map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - Images & Description */}
+              <div className="space-y-6">
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiImage className="mr-2" /> Product Images *
+                  </label>
+                  
+                  {/* Image Previews */}
+                  {imagePreviews.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-24 h-24 object-cover rounded-lg border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-sm text-gray-500">{imagePreviews.length} image(s) selected</p>
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition">
+                    <FiUpload className="text-3xl text-gray-400 mx-auto mb-3" />
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <div className="text-gray-600 font-medium mb-1">Click to upload images</div>
+                      <div className="text-sm text-gray-500">PNG, JPG, WEBP up to 5MB each</div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Product Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Describe the product features, specifications, etc."
+                    rows="5"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-4">
+                  <button
+                    onClick={handleUpload}
+                    disabled={uploading}
+                    className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold py-4 px-6 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {uploading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Uploading Product...
+                      </>
+                    ) : (
+                      "Upload Product"
+                    )}
+                  </button>
+                  
+                  <p className="text-xs text-gray-500 mt-3 text-center">
+                    * Required fields. All product information will be saved to our database.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/admin/EditProducts.jsx
+````javascript
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import uploadMediaToSupabase from "../../utils/mediaUpload.jsx";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { 
+  FiEdit, 
+  FiSave, 
+  FiTrash2, 
+  FiImage, 
+  FiPackage, 
+  FiDollarSign, 
+  FiTag, 
+  FiGrid,
+  FiCheckCircle,
+  FiClock,
+  FiTruck,
+  FiBox
+} from "react-icons/fi";
+import { MdClose } from "react-icons/md";
+import Swal from "sweetalert2";
+
+export default function EditProduct() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
+  const token = localStorage.getItem("token");
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [newImages, setNewImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [existingImageUrls, setExistingImageUrls] = useState([]);
+  
+  // Status options
+  const statusOptions = [
+    { value: "pending", label: "Pending", icon: FiClock, color: "bg-yellow-100 text-yellow-800" },
+    { value: "ready", label: "Ready", icon: FiCheckCircle, color: "bg-green-100 text-green-800" },
+    { value: "delivered", label: "Delivered", icon: FiTruck, color: "bg-blue-100 text-blue-800" },
+    { value: "out_of_stock", label: "Out of Stock", icon: FiBox, color: "bg-red-100 text-red-800" },
+  ];
+
+  // Categories and brands for dropdown
+  const categories = ["General", "Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Beauty", "Toys", "Food", "Office"];
+  const brands = ["Unbranded", "Nike", "Samsung", "Apple", "Sony", "Adidas", "Dell", "LG", "HP", "Microsoft", "Other"];
+
+  const [formData, setFormData] = useState({
+    productId: "",
+    productName: "",
+    altNames: "",
+    price: "",
+    lastPrices: "",
+    stock: "",
+    description: "",
+    category: "General",
+    brand: "Unbranded",
+    status: "pending", // Added status field
+  });
+
+  // Fetch product data
+  useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fetchProduct = async () => {
+      setLoading(true);
+      try {
+        let productData;
+        
+        if (location.state?.product) {
+          productData = location.state.product;
+        } else if (id) {
+          const response = await axios.get(
+            import.meta.env.VITE_BACKEND_URL+`/api/products/${id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          productData = response.data;
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'No Product Selected',
+            text: 'Please select a product to edit',
+            confirmButtonColor: '#d33',
+          }).then(() => navigate("/admin/products"));
+          return;
+        }
+
+        // Set form data including status
+        setFormData({
+          productId: productData.productId || "",
+          productName: productData.productName || "",
+          altNames: productData.altNames?.join(", ") || "",
+          price: productData.price || "",
+          lastPrices: productData.lastPrices || productData.price || "",
+          stock: productData.stock || "",
+          description: productData.description || "",
+          category: productData.category || "General",
+          brand: productData.brand || "Unbranded",
+          status: productData.status || "pending", // Set status from API
+        });
+
+        if (productData.images && Array.isArray(productData.images)) {
+          setExistingImageUrls(productData.images);
+        }
+
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to load product data',
+          confirmButtonColor: '#d33',
+        }).then(() => navigate("/admin/products"));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [token, navigate, location.state, id]);
+
+  // Handle new image selection with preview
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setNewImages(files);
+    
+    // Create previews
+    const previews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(previews);
+  };
+
+  // Remove new image preview
+  const removeNewImage = (index) => {
+    const newImagesCopy = [...newImages];
+    const newPreviews = [...imagePreviews];
+    
+    URL.revokeObjectURL(newPreviews[index]);
+    newImagesCopy.splice(index, 1);
+    newPreviews.splice(index, 1);
+    
+    setNewImages(newImagesCopy);
+    setImagePreviews(newPreviews);
+  };
+
+  // Remove existing image
+  const removeExistingImage = (index) => {
+    Swal.fire({
+      title: 'Remove Image?',
+      text: "This image will be removed from the product",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, remove it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const newExistingImages = [...existingImageUrls];
+        newExistingImages.splice(index, 1);
+        setExistingImageUrls(newExistingImages);
+      }
+    });
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Quick status update handler
+  const handleQuickStatusUpdate = (newStatus) => {
+    Swal.fire({
+      title: `Change Status to ${newStatus.toUpperCase()}?`,
+      text: `Are you sure you want to change product status to "${newStatus}"?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, update status!',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setFormData(prev => ({ ...prev, status: newStatus }));
+        Swal.fire({
+          icon: 'success',
+          title: 'Status Updated!',
+          text: `Product status changed to ${newStatus}`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+      }
+    });
+  };
+
+  const validateForm = () => {
+    if (!formData.productName.trim()) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Information',
+        text: 'Product name is required',
+        confirmButtonColor: '#d33',
+      });
+      return false;
+    }
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Price',
+        text: 'Please enter a valid price',
+        confirmButtonColor: '#d33',
+      });
+      return false;
+    }
+    if (existingImageUrls.length === 0 && newImages.length === 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No Images',
+        text: 'Please add at least one product image',
+        confirmButtonColor: '#d33',
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+    
+    try {
+      // Upload new images
+      const uploadedImages = newImages.length > 0 
+        ? await Promise.all(newImages.map(uploadMediaToSupabase))
+        : [];
+
+      // Prepare payload including status
+      const payload = {
+        ...formData,
+        altNames: formData.altNames 
+          ? formData.altNames.split(",").map(n => n.trim()).filter(n => n)
+          : [],
+        price: parseFloat(formData.price),
+        lastPrices: formData.lastPrices ? parseFloat(formData.lastPrices) : parseFloat(formData.price),
+        stock: parseInt(formData.stock) || 0,
+        images: [...existingImageUrls, ...uploadedImages],
+        status: formData.status, // Include status in payload
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Update product
+      await axios.patch(
+        import.meta.env.VITE_API_URL + `/api/products/${formData.productId}`,
+        payload,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+
+      // Success alert
+      await Swal.fire({
+        icon: 'success',
+        title: 'Product Updated!',
+        text: 'Product has been successfully updated',
+        showConfirmButton: false,
+        timer: 2000
+      });
+
+      // Reset image states
+      setNewImages([]);
+      setImagePreviews([]);
+
+      // Navigate back
+      navigate("/admin/dashboard/adminviewproducts");
+
+    } catch (error) {
+      console.error("Update failed:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: error.response?.data?.message || 'Failed to update product. Please try again.',
+        confirmButtonColor: '#d33',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-600">Loading product data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header with Status */}
+          <div className="bg-gradient-to-r from-blue-600 to-teal-500 p-6 text-white">
+            <div className="flex flex-col md:flex-row md:items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Edit Product</h1>
+                <p className="text-blue-100 mt-2">Update product information</p>
+              </div>
+              <div className="mt-4 md:mt-0 space-y-2">
+                <div className="text-sm opacity-90">Product ID</div>
+                <div className="text-xl font-mono font-bold">{formData.productId}</div>
+                
+                {/* Current Status Display */}
+                <div className="flex items-center space-x-2 mt-3">
+                  <div className="text-sm opacity-90">Current Status:</div>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    statusOptions.find(s => s.value === formData.status)?.color || "bg-gray-100 text-gray-800"
+                  }`}>
+                    {statusOptions.find(s => s.value === formData.status)?.label || "Unknown"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column - Product Info */}
+              <div className="space-y-6">
+                {/* Product Name */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiPackage className="mr-2" /> Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="productName"
+                    value={formData.productName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    required
+                  />
+                </div>
+
+                {/* Alternate Names */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiTag className="mr-2" /> Alternate Names
+                  </label>
+                  <input
+                    type="text"
+                    name="altNames"
+                    value={formData.altNames}
+                    onChange={handleChange}
+                    placeholder="Separate with commas"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
+                </div>
+
+                {/* Price & Stock */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                      <FiDollarSign className="mr-2" /> Price *
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Previous Price
+                    </label>
+                    <input
+                      type="number"
+                      name="lastPrices"
+                      value={formData.lastPrices}
+                      onChange={handleChange}
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Stock Quantity
+                    </label>
+                    <input
+                      type="number"
+                      name="stock"
+                      value={formData.stock}
+                      onChange={handleChange}
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                      <FiGrid className="mr-2" /> Category
+                    </label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Brand */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Brand
+                  </label>
+                  <select
+                    name="brand"
+                    value={formData.brand}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  >
+                    {brands.map(brand => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Selection */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Product Status
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    {statusOptions.map((status) => (
+                      <button
+                        key={status.value}
+                        type="button"
+                        onClick={() => handleQuickStatusUpdate(status.value)}
+                        className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all duration-200 ${
+                          formData.status === status.value
+                            ? 'border-blue-500 bg-blue-50 scale-105'
+                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
+                      >
+                        <status.icon className={`h-6 w-6 mb-2 ${
+                          formData.status === status.value ? 'text-blue-600' : 'text-gray-500'
+                        }`} />
+                        <span className={`text-sm font-medium ${
+                          formData.status === status.value ? 'text-blue-700' : 'text-gray-700'
+                        }`}>
+                          {status.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Select product status from dropdown or click on status cards above
+                  </p>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows="4"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Right Column - Images */}
+              <div className="space-y-6">
+                {/* Existing Images */}
+                {existingImageUrls.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Current Images ({existingImageUrls.length})
+                    </label>
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      {existingImageUrls.map((img, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={img}
+                            alt={`Product ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeExistingImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
+                            title="Remove image"
+                          >
+                            <FiTrash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Images Preview */}
+                {imagePreviews.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      New Images to Add ({imagePreviews.length})
+                    </label>
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`New ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeNewImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
+                            title="Remove image"
+                          >
+                            <MdClose size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <FiImage className="mr-2" /> Add More Images
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition cursor-pointer">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <FiImage className="text-4xl text-gray-400 mx-auto mb-4" />
+                      <div className="text-gray-600 font-medium mb-2">Click to upload new images</div>
+                      <div className="text-sm text-gray-500">PNG, JPG, WEBP up to 5MB each</div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Status Summary */}
+                <div className="bg-gradient-to-r from-blue-50 to-teal-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-gray-800 mb-2 flex items-center">
+                    <FiCheckCircle className="h-5 w-5 mr-2 text-blue-600" />
+                    Status Summary
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Current Status:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        statusOptions.find(s => s.value === formData.status)?.color || "bg-gray-100 text-gray-800"
+                      }`}>
+                        {statusOptions.find(s => s.value === formData.status)?.label}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Stock Level:</span>
+                      <span className={`font-medium ${
+                        parseInt(formData.stock) > 10 ? 'text-green-600' : 
+                        parseInt(formData.stock) > 0 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {formData.stock || 0} units
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-3">
+                      💡 <strong>Status Guide:</strong> Pending → Ready → Delivered
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-6 space-y-4">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold py-4 px-6 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {saving ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving Changes...
+                      </>
+                    ) : (
+                      <>
+                        <FiSave className="mr-2" />
+                        Update Product
+                      </>
+                    )}
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => navigate("/admin/dashboard/adminviewproducts")}
+                      className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        Swal.fire({
+                          title: 'Update Only Status?',
+                          text: 'Would you like to update just the status without saving other changes?',
+                          icon: 'question',
+                          showDenyButton: true,
+                          showCancelButton: true,
+                          confirmButtonText: 'Save All Changes',
+                          denyButtonText: 'Update Status Only',
+                          cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                          if (result.isConfirmed) {
+                            handleSave();
+                          } else if (result.isDenied) {
+                            // Update only status
+                            const statusOnlyPayload = { status: formData.status };
+                            axios.patch(
+                              import.meta.env.VITE_API_URL + `/api/products/${formData.productId}`,
+                              statusOnlyPayload,
+                              { 
+                                headers: { 
+                                  Authorization: `Bearer ${token}`,
+                                  'Content-Type': 'application/json'
+                                } 
+                              }
+                            ).then(() => {
+                              Swal.fire({
+                                icon: 'success',
+                                title: 'Status Updated!',
+                                text: 'Product status has been updated',
+                                timer: 1500,
+                                showConfirmButton: false
+                              });
+                            }).catch(error => {
+                              console.error("Status update failed:", error);
+                              Swal.fire({
+                                icon: 'error',
+                                title: 'Status Update Failed',
+                                text: 'Failed to update product status',
+                                confirmButtonColor: '#d33',
+                              });
+                            });
+                          }
+                        });
+                      }}
+                      className="w-full px-6 py-3 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
+                    >
+                      Update Status
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Preview Card */}
+        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Preview</h3>
+            <div className={`px-4 py-1 rounded-full text-sm font-medium ${
+              statusOptions.find(s => s.value === formData.status)?.color || "bg-gray-100 text-gray-800"
+            }`}>
+              {statusOptions.find(s => s.value === formData.status)?.label}
+            </div>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Image Preview */}
+            <div className="md:w-1/3">
+              <div className="bg-gray-100 rounded-lg overflow-hidden h-48 flex items-center justify-center">
+                {existingImageUrls.length > 0 || imagePreviews.length > 0 ? (
+                  <img
+                    src={existingImageUrls[0] || imagePreviews[0]}
+                    alt="Product preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-gray-400">No image</div>
+                )}
+              </div>
+              <div className="mt-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Product Status</div>
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full mr-2 ${
+                    formData.status === 'pending' ? 'bg-yellow-500' :
+                    formData.status === 'ready' ? 'bg-green-500' :
+                    formData.status === 'delivered' ? 'bg-blue-500' :
+                    'bg-red-500'
+                  }`}></div>
+                  <span className="text-gray-700">{statusOptions.find(s => s.value === formData.status)?.label}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {formData.status === 'pending' && 'Product is awaiting processing'}
+                  {formData.status === 'ready' && 'Product is ready for delivery'}
+                  {formData.status === 'delivered' && 'Product has been delivered'}
+                  {formData.status === 'out_of_stock' && 'Product is currently out of stock'}
+                </p>
+              </div>
+            </div>
+            
+            {/* Info Preview */}
+            <div className="md:w-2/3">
+              <h4 className="text-2xl font-bold text-gray-900 mb-2">{formData.productName || "Product Name"}</h4>
+              <div className="flex items-center mb-4">
+                <span className="text-3xl font-bold text-blue-600 mr-3">
+                  ${parseFloat(formData.price || 0).toFixed(2)}
+                </span>
+                {formData.lastPrices && parseFloat(formData.lastPrices) > parseFloat(formData.price) && (
+                  <span className="text-lg text-gray-500 line-through">
+                    ${parseFloat(formData.lastPrices).toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="text-sm text-gray-500">Category</div>
+                  <div className="font-medium">{formData.category}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Brand</div>
+                  <div className="font-medium">{formData.brand}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Stock</div>
+                  <div className={`font-medium ${
+                    parseInt(formData.stock) > 10 ? 'text-green-600' : 
+                    parseInt(formData.stock) > 0 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {formData.stock || 0} units
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Product ID</div>
+                  <div className="font-mono font-medium">{formData.productId}</div>
+                </div>
+              </div>
+              <div className="mb-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Availability</div>
+                <div className="flex items-center space-x-4">
+                  <div className={`px-3 py-1 rounded-full text-sm ${
+                    formData.status === 'out_of_stock' 
+                      ? 'bg-red-100 text-red-800' 
+                      : parseInt(formData.stock) > 0 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {formData.status === 'out_of_stock' 
+                      ? 'Out of Stock' 
+                      : parseInt(formData.stock) > 0 
+                        ? 'In Stock' 
+                        : 'Low Stock'}
+                  </div>
+                  {formData.status === 'delivered' && (
+                    <div className="text-sm text-gray-600 flex items-center">
+                      <FiTruck className="h-4 w-4 mr-1" /> Delivered
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-gray-600">
+                {formData.description || "No description provided"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+````
+
 ## File: src/components/pages/HomeContainer.jsx
 ````javascript
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -11798,7 +11812,7 @@ export default function HomeContainer() {
       setLoading(true);
       setError(null); // Clear previous errors
       try {
-        const response = await axios.get("http://localhost:4000/api/products");
+        const response = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products");
         if (Array.isArray(response.data)) {
           const products = response.data;
           setAllProducts(products);
@@ -11814,7 +11828,7 @@ export default function HomeContainer() {
       } catch (e) {
         console.error("Error fetching products:", e);
         // <--- UPDATED: Set the error state on failure
-        setError("Failed to fetch products. Please check the server connection (http://localhost:4000).");
+        setError("Failed to fetch products. Please check the server connection " +(import.meta.env.VITE_BACKEND_URL));
       } finally {
         setLoading(false);
       }
@@ -12017,7 +12031,7 @@ export default function Login() {
 
     try {
       const response = await axios.post(
-        "http://localhost:4000/api/users/login",
+        import.meta.env.VITE_BACKEND_URL + "/api/users/login",
         { email, password }
       );
 
@@ -12144,6 +12158,248 @@ export default function Login() {
 }
 ````
 
+## File: src/components/Navbar.jsx
+````javascript
+import { jwtDecode } from "jwt-decode";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { HiMenu, HiX } from "react-icons/hi";
+import NotificationsDropdown from "@/components/utils/notificationDrop";
+
+export default function Navbar() {
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // 🔐 Auth check
+  const authCheck = () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser(null);
+      setIsAdmin(false);
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      setUser(decoded);
+      setIsAdmin(decoded.role === "admin");
+    } catch {
+      setUser(null);
+      setIsAdmin(false);
+    }
+  };
+
+  useEffect(() => {
+    authCheck();
+    window.addEventListener("authChange", authCheck);
+    return () => window.removeEventListener("authChange", authCheck);
+  }, []);
+
+  // 🚪 Logout
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    setIsAdmin(false);
+    window.dispatchEvent(new Event("authChange"));
+    navigate("/login");
+  };
+
+  const userId = user?.id || "";
+
+  return (
+    <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
+      <div className="flex justify-between items-center">
+        {/* Brand */}
+        <Link to="/" className="text-xl font-bold text-gray-800">
+          MyBrand
+        </Link>
+
+        {/* Desktop Menu */}
+        <div className="hidden md:flex gap-6 items-center">
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
+          <Link to="/contact">Contact</Link>
+          <Link to="/service">Service</Link>
+
+          {user && (
+            <>
+              <Link to={`/viewcart?userId=${userId}`}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`}>Orders</Link>
+            </>
+          )}
+
+          {/* Admin notifications */}
+          {isAdmin && <NotificationsDropdown />}
+          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
+
+          {user ? (
+            <div className="flex items-center gap-3">
+              <img
+                src={user.profileImage || "/default-avatar.png"}
+                alt="profile"
+                className="w-9 h-9 rounded-full"
+              />
+              <Link to={`/profile?userId=${userId}`}>Profile</Link>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-3 py-1 rounded"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Toggle */}
+        <button
+          className="md:hidden text-2xl"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <HiX /> : <HiMenu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden mt-4 flex flex-col gap-4 bg-white p-4 rounded shadow">
+          <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
+          <Link to="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
+          <Link to="/service" onClick={() => setMenuOpen(false)}>Service</Link>
+
+          {user && (
+            <>
+              <Link to={`/viewcart?userId=${userId}`} onClick={() => setMenuOpen(false)}>Cart</Link>
+              <Link to={`/orders?userId=${userId}`} onClick={() => setMenuOpen(false)}>Orders</Link>
+            </>
+          )}
+
+          {isAdmin && (
+            <Link to="/admin/dashboard/notification" onClick={() => setMenuOpen(false)}>
+              Notifications
+            </Link>
+          )}
+          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
+
+          {user ? (
+            <>
+              <Link to={`/profile?userId=${userId}`}>Profile</Link>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-3 py-1 rounded"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+            </>
+          )}
+        </div>
+      )}
+    </nav>
+  );
+}
+````
+
+## File: src/components/pages/Homepage.jsx
+````javascript
+import React, { useEffect, useState } from "react";
+import Navbar from "../Navbar";
+import { Route, Routes } from "react-router-dom";
+import HomeContainer from "@/components/pages/HomeContainer";
+import Login from "./Login";
+import Dashboard from "@/components/pages/admin/Dashboard/dashboard";
+import NotFound from "@/components/pages/NotFound";
+import Signup from "@/components/pages/singUp";
+import Productoverview from "./productoverview";
+import ViewCartPage from "./viewCart";
+import ShipingPage from "@/components/pages/shipping";
+import AboutPage from "@/components/pages/about.jsx";
+import ServicePage from "@/components/pages/service.jsx";
+import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
+import AiChatBot from "@/components/aiChatBot";
+import PaymentPage from "@/components/pages/admin/payment";
+import OrderPage from "@/components/pages/orderpage.jsx";
+import ProfilePage from "@/components/pages/ProfilePage.jsx";
+
+export default function Homepage() {
+  const [load, setLoad] = useState(false);
+  const [user, setUser] = useState("customer");
+
+  useEffect(() => {
+    const authcheck = () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setUser("customer");
+        return;
+      }
+
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded.role === "admin" ? "admin" : "customer");
+      } catch {
+        setUser("customer");
+      }
+    };
+
+    authcheck(); // first check
+    window.addEventListener("authChange", authcheck);
+
+    return () => window.removeEventListener("authChange", authcheck);
+  }, []);
+
+  return (
+    <div className="w-full h-screen flex flex-col">
+      <Navbar />
+
+      {/* Main content area */}
+      <div className="w-full h-[calc(100vh-100px)]">
+        <Routes>
+          <Route path="/" element={<HomeContainer />} />
+          <Route path="/viewcart" element={<ViewCartPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/shipping/" element={<ShipingPage />} />
+          <Route path="/service" element={<ServicePage />} />
+          <Route path="/contact" element={<h1>Contact</h1>} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/singup" element={<Signup />} />
+          <Route path="/orders" element={<OrderPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+
+          <Route path="/payment" element={<PaymentPage />} />
+
+          <Route path="/admin/dashboard/*" element={<Dashboard />} />
+
+          <Route path="*" element={<NotFound />} />
+
+
+          
+          <Route
+            path="/productoverview/:productId"
+            element={<Productoverview />}
+          />
+
+
+        </Routes>
+      </div>
+
+      {/* Show chatbot only for customer */}
+      {user === "customer" && <AiChatBot />}
+    </div>
+  );
+}
+````
+
 ## File: src/components/pages/productoverview.jsx
 ````javascript
 import axios from "axios";
@@ -12170,7 +12426,7 @@ export default function ProductOverview() {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get(`http://localhost:4000/api/products/${productId}`);
+        const response = await axios.get(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`);
         
         if (response.data && response.data.product) {
           setProduct(response.data);
@@ -12529,159 +12785,6 @@ export default function ProductOverview() {
 }
 ````
 
-## File: src/components/Navbar.jsx
-````javascript
-import { jwtDecode } from "jwt-decode";
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { HiMenu, HiX } from "react-icons/hi";
-import NotificationsDropdown from "@/components/utils/notificationDrop";
-
-export default function Navbar() {
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
-
-  // 🔐 Auth check
-  const authCheck = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setUser(null);
-      setIsAdmin(false);
-      return;
-    }
-
-    try {
-      const decoded = jwtDecode(token);
-      setUser(decoded);
-      setIsAdmin(decoded.role === "admin");
-    } catch {
-      setUser(null);
-      setIsAdmin(false);
-    }
-  };
-
-  useEffect(() => {
-    authCheck();
-    window.addEventListener("authChange", authCheck);
-    return () => window.removeEventListener("authChange", authCheck);
-  }, []);
-
-  // 🚪 Logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-    setIsAdmin(false);
-    window.dispatchEvent(new Event("authChange"));
-    navigate("/login");
-  };
-
-  const userId = user?.id || "";
-
-  return (
-    <nav className="bg-gray-100 shadow-md px-6 py-3 sticky top-0 z-50">
-      <div className="flex justify-between items-center">
-        {/* Brand */}
-        <Link to="/" className="text-xl font-bold text-gray-800">
-          MyBrand
-        </Link>
-
-        {/* Desktop Menu */}
-        <div className="hidden md:flex gap-6 items-center">
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-          <Link to="/contact">Contact</Link>
-          <Link to="/service">Service</Link>
-
-          {user && (
-            <>
-              <Link to={`/viewcart?userId=${userId}`}>Cart</Link>
-              <Link to={`/orders?userId=${userId}`}>Orders</Link>
-            </>
-          )}
-
-          {/* Admin notifications */}
-          {isAdmin && <NotificationsDropdown />}
-          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
-
-          {user ? (
-            <div className="flex items-center gap-3">
-              <img
-                src={user.profileImage || "/default-avatar.png"}
-                alt="profile"
-                className="w-9 h-9 rounded-full"
-              />
-              <Link to={`/profile?userId=${userId}`}>Profile</Link>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 text-white px-3 py-1 rounded"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <>
-              <Link to="/login">Login</Link>
-              <Link to="/register">Register</Link>
-            </>
-          )}
-        </div>
-
-        {/* Mobile Toggle */}
-        <button
-          className="md:hidden text-2xl"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <HiX /> : <HiMenu />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="md:hidden mt-4 flex flex-col gap-4 bg-white p-4 rounded shadow">
-          <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
-          <Link to="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
-          <Link to="/service" onClick={() => setMenuOpen(false)}>Service</Link>
-
-          {user && (
-            <>
-              <Link to={`/viewcart?userId=${userId}`} onClick={() => setMenuOpen(false)}>Cart</Link>
-              <Link to={`/orders?userId=${userId}`} onClick={() => setMenuOpen(false)}>Orders</Link>
-            </>
-          )}
-
-          {isAdmin && (
-            <Link to="/admin/dashboard/notification" onClick={() => setMenuOpen(false)}>
-              Notifications
-            </Link>
-          )}
-          {isAdmin && <Link to="/admin/dashboard">Admin Dashboard</Link>}
-
-          {user ? (
-            <>
-              <Link to={`/profile?userId=${userId}`}>Profile</Link>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 text-white px-3 py-1 rounded"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Login</Link>
-              <Link to="/register">Register</Link>
-            </>
-          )}
-        </div>
-      )}
-    </nav>
-  );
-}
-````
-
 ## File: src/components/pages/admin/notification.jsx
 ````javascript
 import axios from "axios";
@@ -12715,7 +12818,7 @@ export default function Notification() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+`/api/notifications/getNotifications`);
       setNotifications(res.data);
     } catch (err) {
       console.error(err);
@@ -12724,7 +12827,7 @@ export default function Notification() {
 
   const markAsRead = async (id) => {
     try {
-      await axios.post(`http://localhost:4000/api/notifications/markRead/${id}`);
+      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/markRead/${id}`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
@@ -12756,7 +12859,7 @@ export default function Notification() {
         if (reply) {
           try {
             // Replace with your API endpoint
-            await axios.post(`http://localhost:4000/api/notifications/reply/${notification.userId}`, {
+            await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/reply/${notification.userId}`, {
               message: reply,
             });
             Swal.fire("Sent!", "Your reply has been sent.", "success");
@@ -12819,95 +12922,6 @@ export default function Notification() {
 }
 ````
 
-## File: src/components/pages/Homepage.jsx
-````javascript
-import React, { useEffect, useState } from "react";
-import Navbar from "../Navbar";
-import { Route, Routes } from "react-router-dom";
-import HomeContainer from "@/components/pages/HomeContainer";
-import Login from "./Login";
-import Dashboard from "@/components/pages/admin/Dashboard/dashboard";
-import NotFound from "@/components/pages/NotFound";
-import Signup from "@/components/pages/singUp";
-import Productoverview from "./productoverview";
-import ViewCartPage from "./viewCart";
-import ShipingPage from "@/components/pages/shipping";
-import AboutPage from "@/components/pages/about.jsx";
-import ServicePage from "@/components/pages/service.jsx";
-import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
-import AiChatBot from "@/components/aiChatBot";
-import PaymentPage from "@/components/pages/admin/payment";
-import OrderPage from "@/components/pages/orderpage.jsx";
-import ProfilePage from "@/components/pages/ProfilePage.jsx";
-
-export default function Homepage() {
-  const [load, setLoad] = useState(false);
-  const [user, setUser] = useState("customer");
-
-  useEffect(() => {
-    const authcheck = () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setUser("customer");
-        return;
-      }
-
-      try {
-        const decoded = jwtDecode(token);
-        setUser(decoded.role === "admin" ? "admin" : "customer");
-      } catch {
-        setUser("customer");
-      }
-    };
-
-    authcheck(); // first check
-    window.addEventListener("authChange", authcheck);
-
-    return () => window.removeEventListener("authChange", authcheck);
-  }, []);
-
-  return (
-    <div className="w-full h-screen flex flex-col">
-      <Navbar />
-
-      {/* Main content area */}
-      <div className="w-full h-[calc(100vh-100px)]">
-        <Routes>
-          <Route path="/" element={<HomeContainer />} />
-          <Route path="/viewcart" element={<ViewCartPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/shipping/" element={<ShipingPage />} />
-          <Route path="/service" element={<ServicePage />} />
-          <Route path="/contact" element={<h1>Contact</h1>} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/singup" element={<Signup />} />
-          <Route path="/orders" element={<OrderPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-
-          <Route path="/payment" element={<PaymentPage />} />
-
-          <Route path="/admin/dashboard/*" element={<Dashboard />} />
-
-          <Route path="*" element={<NotFound />} />
-
-
-          
-          <Route
-            path="/productoverview/:productId"
-            element={<Productoverview />}
-          />
-
-
-        </Routes>
-      </div>
-
-      {/* Show chatbot only for customer */}
-      {user === "customer" && <AiChatBot />}
-    </div>
-  );
-}
-````
-
 ## File: src/components/aiChatBot.jsx
 ````javascript
 import React, { useEffect, useState, useRef } from "react";
@@ -12940,7 +12954,7 @@ export default function AiChatbot() {
 
     try {
       const res = await axios.get(
-        "http://localhost:4000/api/messages/getMessages",
+        import.meta.env.VITE_API_URL + "/api/messages/getMessages",
         { headers: { Authorization: `Bearer ${currentToken}` } }
       );
 
@@ -13094,7 +13108,7 @@ export default function AiChatbot() {
     try {
       setIsTyping(true);
       const res = await axios.post(
-        "http://localhost:4000/api/admin/reply",
+        import.meta.env.VITE_BACKEND_URL+"//api/admin/reply",
         { query: userText },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -13148,7 +13162,7 @@ export default function AiChatbot() {
 
     if (isAdmin) {
       await axios.post(
-        "http://localhost:4000/api/admin/message",
+        import.meta.env.VITE_BACKEND_URL+"/api/admin/message",
         { message: adminText },
         {
           headers: {
@@ -13171,7 +13185,7 @@ export default function AiChatbot() {
 
     // Send user message to backend
     await axios.post(
-      "http://localhost:4000/api/messages/sendMessages",
+      import.meta.env.VITE_BACKEND_URL+"/api/messages/sendMessages",
       { text, sender: "user" },
       { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
     );
