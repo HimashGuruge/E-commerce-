@@ -1,5 +1,5 @@
-import Homepage from "./components/pages/Homepage";
-import NotFound from "./components/pages/NotFound"; // import new page
+import Homepage from "./components/pages/Homepage.jsx";
+import NotFound from "./components/pages/NotFound.jsx"; // import new page
 import { useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
