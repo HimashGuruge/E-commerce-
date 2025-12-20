@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import uploadMediaToSupabase from "@/components/utils/mediaUpload.jsx";
+import uploadMediaToSupabase from "../../utils/mediaupload.jsx";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { 
   FiEdit, 
