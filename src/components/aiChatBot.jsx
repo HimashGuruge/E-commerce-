@@ -177,7 +177,7 @@ export default function AiChatbot() {
     }
   };
 
-  /* 🤖 AI reply *
+  /* 🤖 AI reply */
   const fetchAiReply = async (userText) => {
     try {
       setIsTyping(true);
