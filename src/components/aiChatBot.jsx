@@ -3,7 +3,7 @@ import axios from "axios";
 
 export default function ChatBot() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]); // මෙහි [{sender, text}] ලෙස objects තැන්පත් වේ
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const messagesEndRef = useRef(null);
@@ -18,25 +18,25 @@ export default function ChatBot() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🛠️ AI Chat සහ Admin Replies දෙකම ලබාගෙන එකතු කරන function එක
+  // 🛠️ AI සහ Admin පණිවිඩ සියල්ල එකට ලබා ගැනීම
   const fetchAllMessages = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
-      // 1. AI Chat History එක ලබා ගැනීම (String Array එකක් එන්නේ: ["user: hi", "ai: hello"])
+      // 1. AI Chat History (Strings)
       const resAI = await axios.get("http://localhost:4000/api/messages/getmessages", {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // 2. Admin Replies ලබා ගැනීම (Object Array එකක් එන්නේ: [{sender: "admin", text: "..."}])
+      // 2. Admin Replies (Objects)
       const resAdmin = await axios.get("http://localhost:4000/api/messages/getadminreplies", {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       let combinedMessages = [];
 
-      // AI පණිවිඩ (Strings) ටික Object format එකට හරවා ගැනීම
+      // AI පණිවිඩ Object format එකට හරවා ගැනීම
       if (resAI.data.messages) {
         const formattedAI = resAI.data.messages.map(msg => {
           const isUser = msg.startsWith("user:");
@@ -48,7 +48,7 @@ export default function ChatBot() {
         combinedMessages = [...formattedAI];
       }
 
-      // Admin පණිවිඩ කෙලින්ම එකතු කිරීම (ඒවා දැනටමත් Objects නිසා)
+      // Admin පණිවිඩ එකතු කිරීම
       if (resAdmin.data.messages) {
         combinedMessages = [...combinedMessages, ...resAdmin.data.messages];
       }
@@ -60,35 +60,34 @@ export default function ChatBot() {
   };
 
   // පණිවිඩයක් යැවීම
-  // handleSend function එක මේ විදියට update කරන්න (aiChatBot.jsx)
-const handleSend = async (e) => {
-  e.preventDefault();
-  if (!input.trim() || loading) return;
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
 
-  const token = localStorage.getItem("token");
-  const userText = input;
-  setInput(""); 
-  setLoading(true);
+    const token = localStorage.getItem("token");
+    const userText = input;
+    setInput(""); 
+    setLoading(true);
 
-  try {
-    const res = await axios.post(
-      "http://localhost:4000/api/messages/sendmessage",
-      { message: userText },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    try {
+      const res = await axios.post(
+        "http://localhost:4000/api/messages/sendmessage",
+        { message: userText },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    // ✅ මෙතනදී Backend එකෙන් එන messages ටික කෙලින්ම set කරනවා
-    if (res.data.messages) {
-      setMessages(prev => [...prev, ...res.data.messages]);
-    } else {
-      fetchAllMessages(); // මොකක් හරි අවුලක් නම් විතරක් මුල ඉඳන් fetch කරනවා
+      // Backend එකෙන් ලැබෙන අලුත් පණිවිඩ (Reply soon ඇතුළුව) එකතු කිරීම
+      if (res.data.messages) {
+        setMessages(prev => [...prev, ...res.data.messages]);
+      } else {
+        fetchAllMessages();
+      }
+    } catch (err) {
+      console.error("Send error:", err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Send error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <>
@@ -109,16 +108,35 @@ const handleSend = async (e) => {
           <div style={styles.header}>
             <div style={styles.statusDot}></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: "600", fontSize: "14px" }}>Assistant Support</div>
-              <div style={{ fontSize: "11px", opacity: 0.9 }}>AI & Admin help center</div>
+              <div style={{ fontWeight: "600", fontSize: "14px" }}>Support Center</div>
+              <div style={{ fontSize: "11px", opacity: 0.9 }}>Online Support Team</div>
             </div>
           </div>
 
           <div style={styles.messageArea}>
             {messages.map((msg, idx) => {
               const isUser = msg.sender === "user";
+              const isAdmin = msg.sender === "admin";
+              
+              // Label එක තීරණය කිරීම
+              let label = "AI Assistant";
+              if (isUser) label = "You";
+              if (isAdmin) label = "Admin";
+
               return (
                 <div key={idx} style={isUser ? styles.userRow : styles.aiRow}>
+                  {/* Sender Label */}
+                  <div style={{
+                    fontSize: "10px",
+                    marginBottom: "3px",
+                    color: "#888",
+                    textAlign: isUser ? "right" : "left",
+                    fontWeight: "700",
+                    textTransform: "uppercase"
+                  }}>
+                    {label}
+                  </div>
+                  
                   <div style={isUser ? styles.userBubble : styles.aiBubble}>
                     {msg.text}
                   </div>
@@ -128,6 +146,7 @@ const handleSend = async (e) => {
 
             {loading && (
               <div style={styles.aiRow}>
+                <div style={{ fontSize: "10px", color: "#888", marginBottom: "3px" }}>AI Assistant</div>
                 <div style={styles.aiBubble}>
                   <span className="dot"></span>
                   <span className="dot"></span>
@@ -142,7 +161,7 @@ const handleSend = async (e) => {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="මෙතන ලියන්න..."
+              placeholder="Type @admin to talk to a human..."
               style={styles.inputField}
               disabled={loading}
             />
@@ -159,12 +178,12 @@ const styles = {
   chatContainer: { position: "fixed", bottom: "105px", right: "30px", width: "360px", height: "500px", backgroundColor: "white", borderRadius: "20px", display: "flex", flexDirection: "column", boxShadow: "0 12px 40px rgba(0,0,0,0.15)", zIndex: 1000, overflow: "hidden", border: "1px solid #f0f0f0" },
   header: { padding: "18px", backgroundColor: "#7c4dff", color: "white", display: "flex", alignItems: "center", gap: "12px" },
   statusDot: { width: "10px", height: "10px", backgroundColor: "#00e676", borderRadius: "50%", border: "2px solid white" },
-  messageArea: { flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", backgroundColor: "#f9fafb" },
-  userRow: { alignSelf: "flex-end", maxWidth: "80%" },
-  aiRow: { alignSelf: "flex-start", maxWidth: "80%" },
-  userBubble: { backgroundColor: "#7c4dff", color: "white", padding: "10px 16px", borderRadius: "18px 18px 0 18px", fontSize: "14px" },
-  aiBubble: { backgroundColor: "#ffffff", color: "#333", padding: "10px 16px", borderRadius: "18px 18px 18px 0", fontSize: "14px", border: "1px solid #e5e7eb" },
+  messageArea: { flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", backgroundColor: "#f9fafb" },
+  userRow: { alignSelf: "flex-end", maxWidth: "85%" },
+  aiRow: { alignSelf: "flex-start", maxWidth: "85%" },
+  userBubble: { backgroundColor: "#7c4dff", color: "white", padding: "10px 14px", borderRadius: "15px 15px 0 15px", fontSize: "14px", boxShadow: "0 2px 5px rgba(0,0,0,0.05)" },
+  aiBubble: { backgroundColor: "#ffffff", color: "#333", padding: "10px 14px", borderRadius: "15px 15px 15px 0", fontSize: "14px", border: "1px solid #e5e7eb", boxShadow: "0 2px 5px rgba(0,0,0,0.02)" },
   inputForm: { padding: "15px", display: "flex", alignItems: "center", gap: "10px", borderTop: "1px solid #f0f0f0" },
-  inputField: { flex: 1, border: "1px solid #e5e7eb", borderRadius: "25px", padding: "10px 18px", outline: "none" },
+  inputField: { flex: 1, border: "1px solid #e5e7eb", borderRadius: "25px", padding: "10px 18px", outline: "none", fontSize: "14px" },
   sendBtn: { background: "none", border: "none", color: "#7c4dff", fontSize: "22px", cursor: "pointer" }
 };
