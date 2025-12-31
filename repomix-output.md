@@ -60,6 +60,7 @@ src/components/pages/admin/AdminAllProductView.jsx
 src/components/pages/admin/Dashboard/dashboard.jsx
 src/components/pages/admin/Dashboard/DashboardRoutes.jsx
 src/components/pages/admin/Dashboard/Footer.jsx
+src/components/pages/admin/Dashboard/orderSuccess.jsx
 src/components/pages/admin/Dashboard/Sidebar.jsx
 src/components/pages/admin/Dashboard/StatCard.jsx
 src/components/pages/admin/Dashboard/TopBar.jsx
@@ -91,6 +92,42 @@ vite.config.js
 ```
 
 # Files
+
+## File: src/components/pages/admin/Dashboard/orderSuccess.jsx
+````javascript
+// OrderSuccess.jsx
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+
+export default function OrderSuccess() {
+  const { orderId } = useParams();
+  const [order, setOrder] = useState(null);
+
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const res = await axios.get(`http://localhost:4000/api/orders/${orderId}`);
+        setOrder(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchOrder();
+  }, [orderId]);
+
+  if (!order) return <p>Loading order details...</p>;
+
+  return (
+    <div className="p-4">
+      <h1>Order Success!</h1>
+      <p>Order ID: {order.orderId}</p>
+      <p>Status: {order.status}</p>
+      <p>Total: {order.totalAmount}</p>
+    </div>
+  );
+}
+````
 
 ## File: aiChatBot.jsx
 ````javascript
@@ -6837,70 +6874,7 @@ export default function ProfilePage() {
 
 ## File: text.text
 ````
-import React from "react";
-import { Link, Route, Routes } from "react-router-dom";
-import AddProducts from "./addProducts";
-import AdminAllProductView from "@/components/pages/admin/AdminAllProductView";
-import EditProducts from "@/components/pages/admin/EditProducts";
-import { MdOutlineGridView, MdAddBox, MdEdit } from "react-icons/md";
-
-export default function Dashboard() {
-  const [hamburgerOpen, setHamburgerOpen] = useState(false);
-
-  return (
-    <div className="w-full h-screen flex">
-      {/* Sidebar (always visible) */}
-      <div className="w-64 h-full bg-white text-gray-700 flex flex-col shadow-md border-r border-gray-200">
-        <div className="py-6 flex justify-center border-b border-gray-200 px-4">
-          <Link
-            to="/admin/dashboard"
-            className="text-2xl font-bold text-blue-600 tracking-wide"
-          >
-            Dashboard
-          </Link>
-        </div>
-
-        <nav className="flex flex-col gap-2 px-4 mt-6">
-          <Link
-            to="adminviewproducts"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
-          >
-            <MdOutlineGridView className="text-xl" /> View Products
-          </Link>
-
-          <Link
-            to="products"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
-          >
-            <MdAddBox className="text-xl" /> Add Product
-          </Link>
-
-          <Link
-            to="editproducts"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-base font-medium hover:bg-blue-50 hover:text-blue-600 transition"
-          >
-            <MdEdit className="text-xl" /> Edit Product
-          </Link>
-        </nav>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 bg-gray-100 p-10 overflow-y-auto">
-        <h1 className="text-3xl font-semibold text-gray-800 mb-6">
-          Welcome to your dashboard
-        </h1>
-
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <Routes>
-            <Route path="products" element={<AddProducts />} />
-            <Route path="adminviewproducts" element={<AdminAllProductView />} />
-            <Route path="editproducts" element={<EditProducts />} />
-          </Routes>
-        </div>
-      </div>
-    </div>
-  );
-}
+MTgyODI4MjEzMzc5Mjk2MzExMzM5MjM0NDU5MjE4OTE0NjUxMDI=
 ````
 
 ## File: vite.config.js
@@ -6925,696 +6899,106 @@ export default defineConfig({
 
 ## File: src/components/pages/admin/payment.jsx
 ````javascript
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  CreditCard, Shield, Lock, CheckCircle, ArrowLeft, 
-  Truck, Package, Wallet, DollarSign 
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
-
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
+import md5 from "md5";
+import { v4 as uuidv4 } from "uuid";
 export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
-  const orderData = location.state?.orderData;
-
+  const orderData = location.state;
+  const token = localStorage.getItem("token");
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [cardDetails, setCardDetails] = useState({
-    cardNumber: '',
-    cardName: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: ''
-  });
-
-  const [userInfo, setUserInfo] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
-
-  useEffect(() => {
-    if (!orderData) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Order Data Missing',
-        text: 'Please complete the shipping process first.',
-      }).then(() => {
-        navigate('/shipping');
-      });
-      return;
-    }
-
-    // Get user info from order data or fetch from API
-    const token = localStorage.getItem('token');
-    if (token && orderData.userInfo) {
-      setUserInfo(orderData.userInfo);
-    }
-  }, [orderData, navigate]);
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const handleCardInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Format card number with spaces
-    if (name === 'cardNumber') {
-      const formatted = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-      setCardDetails(prev => ({ ...prev, [name]: formatted.slice(0, 19) }));
-    } 
-    // Format CVV to max 3-4 digits
-    else if (name === 'cvv') {
-      const formatted = value.replace(/\D/g, '').slice(0, 4);
-      setCardDetails(prev => ({ ...prev, [name]: formatted }));
-    }
-    // Format expiry month/year
-    else if (name === 'expiryMonth') {
-      const formatted = value.replace(/\D/g, '').slice(0, 2);
-      setCardDetails(prev => ({ ...prev, [name]: formatted }));
-    }
-    else if (name === 'expiryYear') {
-      const formatted = value.replace(/\D/g, '').slice(0, 4);
-      setCardDetails(prev => ({ ...prev, [name]: formatted }));
-    }
-    else {
-      setCardDetails(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const validateCardDetails = () => {
-    if (!cardDetails.cardNumber || cardDetails.cardNumber.replace(/\s/g, '').length < 16) {
-      return 'Please enter a valid 16-digit card number';
-    }
-    if (!cardDetails.cardName) {
-      return 'Please enter the name on card';
-    }
-    if (!cardDetails.expiryMonth || !cardDetails.expiryYear) {
-      return 'Please enter card expiry date';
-    }
-    const month = parseInt(cardDetails.expiryMonth);
-    const year = parseInt(cardDetails.expiryYear);
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-    
-    if (month < 1 || month > 12) {
-      return 'Invalid expiry month';
-    }
-    if (year < currentYear || (year === currentYear && month < currentMonth)) {
-      return 'Card has expired';
-    }
-    if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
-      return 'Please enter a valid CVV';
-    }
-    return null;
-  };
-
-  const handlePlaceOrder = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Login Required',
-      text: 'Please log in to complete your order.',
-    });
-    navigate('/login');
-    return;
-  }
 
   if (!orderData) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Order Error',
-      text: 'Order data is missing. Please try again.',
-    });
-    return;
+    return <p>No order data found</p>;
   }
 
-  if (paymentMethod === 'card') {
-    const validationError = validateCardDetails();
-    if (validationError) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Validation Error',
-        text: validationError,
-      });
-      return;
-    }
-  }
+  // 1️⃣ Cash on Delivery
 
-  // Confirm with Swal first
-  const result = await Swal.fire({
-    title: 'Confirm Order',
-    html: `... your summary HTML ...`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Place Order',
-    cancelButtonText: 'Cancel'
-  });
+  const handleCOD = async () => {
+    if (loading) return;
+    setLoading(true);
 
-  if (!result.isConfirmed) return;
-
-  setLoading(true);
-
-  try {
-    // Send order to backend
-    const response = await axios.post(
-      import.meta.env.VITE_BACKEND_URL + '/api/orders/payment', // your backend route
-      {
+    try {
+      const orderDataWithId = {
         ...orderData,
-        paymentMethod,
-        cardDetails: paymentMethod === 'card' ? cardDetails : null
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+        clientOrderId: uuidv4(),
+      };
 
-    const savedOrder = response.data;
+      const res = await axios.post(
+        "http://localhost:4000/api/payment/cod",
+        orderDataWithId,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    // Show success Swal
-    await Swal.fire({
-      icon: 'success',
-      title: 'Order Placed!',
-      html: `
-        <p>Order #${savedOrder._id} has been placed successfully.</p>
-        <p>Total: Rs. ${savedOrder.total?.toFixed(2)}</p>
-      `,
-      showConfirmButton: true
-    });
+      if (res.status === 201 || res.status === 200) {
+        localStorage.removeItem("cart");
 
-    navigate('/orders'); // go to order list page
-  } catch (error) {
-    console.error(error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Order Failed',
-      text: error.response?.data?.message || 'Something went wrong!',
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+        alert("Order placed successfully!");
 
-
-  const handleBackToShipping = () => {
-    navigate('/shipping', { state: { quoteData: orderData } });
+        navigate("/order-success", { state: res.data.order });
+      }
+    } catch (err) {
+      console.error("COD order failed:", err.response?.data || err.message);
+      alert("Failed to place order. Try again!");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!orderData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-            <Package className="h-8 w-8 text-gray-400" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Order Found</h2>
-          <p className="text-gray-600 mb-4">Please complete the shipping process first.</p>
-          <button
-            onClick={() => navigate('/shipping')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Go to Shipping
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // 2️⃣ Card Payment via PayHere
+  const handleCard = async () => {
+    setLoading(true);
+    try {
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = "https://sandbox.payhere.lk/pay/checkout";
+
+      Object.keys(paymentData).forEach((key) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = paymentData[key];
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+
+      localStorage.removeItem("cart");
+
+      form.submit();
+    } catch (err) {
+      console.error("Payment Error:", err.response?.data || err.message);
+      alert("Payment initialization failed!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={handleBackToShipping}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Shipping
-          </button>
-          
-          <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-purple-500 rounded-lg">
-              <CreditCard className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Complete Your Payment</h1>
-              <p className="text-gray-600">Secure payment gateway - Your information is protected</p>
-            </div>
-          </div>
-          
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between mt-8 mb-6">
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-2">
-                <p className="text-sm font-medium">Cart</p>
-                <p className="text-xs text-gray-500">Completed</p>
-              </div>
-            </div>
-            
-            <div className="flex-1 h-1 bg-green-500 mx-4"></div>
-            
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-2">
-                <p className="text-sm font-medium">Shipping</p>
-                <p className="text-xs text-gray-500">Completed</p>
-              </div>
-            </div>
-            
-            <div className="flex-1 h-1 bg-green-500 mx-4"></div>
-            
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
-                <Lock className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-2">
-                <p className="text-sm font-medium">Payment</p>
-                <p className="text-xs text-gray-500">Current Step</p>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-screen space-y-6 bg-slate-50">
+      <button
+        onClick={handleCOD}
+        disabled={loading}
+        className={`px-6 py-3 rounded-lg text-white transition ${
+          loading
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-amber-500 hover:bg-amber-600"
+        }`}
+      >
+        Cash on Delivery
+      </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Payment Methods */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Payment Method Selection */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2 text-purple-500" />
-                Select Payment Method
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <button
-                  onClick={() => setPaymentMethod('card')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'card' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'card' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                    <CreditCard className={`h-5 w-5 ${paymentMethod === 'card' ? 'text-purple-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Credit/Debit Card</p>
-                    <p className="text-sm text-gray-500">Pay with Visa, MasterCard</p>
-                  </div>
-                  {paymentMethod === 'card' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
+      <button
+        onClick={handleCard}
+        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition transform hover:scale-105"
+      >
+        Pay with Card (PayHere)
+      </button>
 
-                <button
-                  onClick={() => setPaymentMethod('wallet')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'wallet' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'wallet' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                    <Wallet className={`h-5 w-5 ${paymentMethod === 'wallet' ? 'text-purple-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Digital Wallet</p>
-                    <p className="text-sm text-gray-500">Apple Pay, Google Pay</p>
-                  </div>
-                  {paymentMethod === 'wallet' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod('bank')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'bank' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'bank' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-          <DollarSign className={`h-5 w-5 ${paymentMethod === 'bank' ? 'text-purple-600' : 'text-gray-600'}`} />
-
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Bank Transfer</p>
-                    <p className="text-sm text-gray-500">Direct bank payment</p>
-                  </div>
-                  {paymentMethod === 'bank' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod('cod')}
-                  className={`p-4 rounded-lg border-2 flex items-center space-x-3 transition-all ${
-                    paymentMethod === 'cod' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`p-2 rounded ${paymentMethod === 'cod' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                    <Truck className={`h-5 w-5 ${paymentMethod === 'cod' ? 'text-purple-600' : 'text-gray-600'}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Cash on Delivery</p>
-                    <p className="text-sm text-gray-500">Pay when you receive</p>
-                  </div>
-                  {paymentMethod === 'cod' && (
-                    <div className="ml-auto">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </div>
-                  )}
-                </button>
-              </div>
-
-              {/* Card Details Form */}
-              {paymentMethod === 'card' && (
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <Lock className="h-5 w-5 mr-2 text-blue-500" />
-                    Card Details
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Card Number *
-                      </label>
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        value={cardDetails.cardNumber}
-                        onChange={handleCardInputChange}
-                        placeholder="1234 5678 9012 3456"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        maxLength="19"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Name on Card *
-                      </label>
-                      <input
-                        type="text"
-                        name="cardName"
-                        value={cardDetails.cardName}
-                        onChange={handleCardInputChange}
-                        placeholder="John Doe"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Expiry Month *
-                        </label>
-                        <input
-                          type="text"
-                          name="expiryMonth"
-                          value={cardDetails.expiryMonth}
-                          onChange={handleCardInputChange}
-                          placeholder="MM"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          maxLength="2"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Expiry Year *
-                        </label>
-                        <input
-                          type="text"
-                          name="expiryYear"
-                          value={cardDetails.expiryYear}
-                          onChange={handleCardInputChange}
-                          placeholder="YYYY"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          maxLength="4"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          CVV *
-                        </label>
-                        <input
-                          type="password"
-                          name="cvv"
-                          value={cardDetails.cvv}
-                          onChange={handleCardInputChange}
-                          placeholder="123"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          maxLength="4"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center mt-4">
-                      <Shield className="h-5 w-5 text-green-500 mr-2" />
-                      <p className="text-sm text-gray-600">
-                        Your card details are encrypted and secure. We do not store your card information.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Other Payment Method Messages */}
-              {paymentMethod !== 'card' && (
-                <div className="bg-blue-50 p-6 rounded-lg">
-                  <div className="flex items-start">
-                    <Shield className="h-6 w-6 text-blue-500 mr-3 mt-1 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">
-                        {paymentMethod === 'wallet' && 'Digital Wallet Payment'}
-                        {paymentMethod === 'bank' && 'Bank Transfer'}
-                        {paymentMethod === 'cod' && 'Cash on Delivery'}
-                      </h4>
-                      <p className="text-gray-600">
-                        {paymentMethod === 'wallet' && 'You will be redirected to your preferred digital wallet for secure payment.'}
-                        {paymentMethod === 'bank' && 'Bank transfer details will be provided after order confirmation.'}
-                        {paymentMethod === 'cod' && 'Pay when your order is delivered. Additional charges may apply.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Order Summary Preview */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                <Package className="h-5 w-5 mr-2 text-amber-500" />
-                Order Summary
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span>Rs. {orderData.labeledTotal?.toFixed(2)}</span>
-                </div>
-                {orderData.discount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
-                    <span>- Rs. {orderData.discount?.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="text-green-600">FREE</span>
-                </div>
-                <div className="border-t pt-3 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-800">Total Amount</span>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-gray-900">Rs. {orderData.total?.toFixed(2)}</p>
-                      {orderData.discount > 0 && (
-                        <p className="text-sm text-green-600">
-                          You saved Rs. {orderData.discount?.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <h4 className="font-semibold text-gray-800 mb-3">Items in Order ({orderData.items?.length || 0})</h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {orderData.items?.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {item.images?.[0] ? (
-                            <img src={item.images[0]} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <Package className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{item.productName}</p>
-                          <p className="text-xs text-gray-500">Qty: {item.qty}</p>
-                        </div>
-                      </div>
-                      <p className="font-semibold">Rs. {(item.lastPrice * item.qty).toFixed(2)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Payment Summary & Button */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
-              {/* Security Assurance */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <Shield className="h-5 w-5 mr-2 text-green-500" />
-                  Secure Payment
-                </h3>
-                <ul className="space-y-3 text-sm text-gray-600">
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>256-bit SSL encryption</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>PCI DSS compliant</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>No card details stored</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Money-back guarantee</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Payment Summary & Button */}
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-800">Payment Summary</h3>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Order #{orderData.orderId}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Items Total</span>
-                      <span>Rs. {orderData.labeledTotal?.toFixed(2)}</span>
-                    </div>
-                    {orderData.discount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
-                        <span>- Rs. {orderData.discount?.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-green-600">FREE</span>
-                    </div>
-                    <div className="border-t pt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold text-gray-900">Total to Pay</span>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-gray-900">Rs. {orderData.total?.toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">including all taxes</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Terms and Conditions */}
-                <div className="mb-6">
-                  <div className="flex items-start mb-2">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      className="h-4 w-4 text-purple-600 rounded mt-1 mr-2"
-                      defaultChecked
-                    />
-                    <label htmlFor="terms" className="text-sm text-gray-600">
-                      I agree to the{' '}
-                      <button className="text-purple-600 hover:text-purple-700">Terms & Conditions</button>{' '}
-                      and{' '}
-                      <button className="text-purple-600 hover:text-purple-700">Privacy Policy</button>
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    By completing this purchase, you agree to our terms and authorize the charge to your selected payment method.
-                  </p>
-                </div>
-
-                {/* Payment Button */}
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={loading}
-                  className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Processing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-5 w-5" />
-                      <span>
-                        Pay Rs. {orderData.total?.toFixed(2)}
-                      </span>
-                    </>
-                  )}
-                </button>
-
-                <p className="text-center text-xs text-gray-500 mt-4">
-                  <Shield className="h-3 w-3 inline mr-1" />
-                  Secured by SSL encryption
-                </p>
-              </div>
-
-              {/* Support Info */}
-              <div className="text-center">
-                <p className="text-sm text-gray-500">
-                  Need help?{' '}
-                  <button className="text-purple-600 hover:text-purple-700 font-medium">
-                    Contact Customer Support
-                  </button>
-                </p>
-                <p className="text-xs text-gray-400 mt-2">
-                  You can cancel your order within 24 hours
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {loading && <p className="text-gray-500 mt-2">Processing order...</p>}
     </div>
   );
 }
@@ -7622,47 +7006,107 @@ export default function Payment() {
 
 ## File: src/components/pages/orderpage.jsx
 ````javascript
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Package, Truck, CheckCircle, Clock, XCircle, ArrowLeft,
-  Search, Eye, MapPin, CreditCard, RefreshCw, AlertCircle
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Package,
+  Truck,
+  CheckCircle,
+  Clock,
+  XCircle,
+  ArrowLeft,
+  Search,
+  Eye,
+  MapPin,
+  CreditCard,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
+import Swal from "sweetalert2";
+import axios from "axios";
 
 export default function OrderPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
   // Fetch orders
   useEffect(() => {
+    // Check for payment callback parameters
+    const queryParams = new URLSearchParams(location.search);
+    const statusCode = queryParams.get("status_code");
+    const orderId = queryParams.get("order_id");
+
+    if (statusCode) {
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      if (statusCode === "2") {
+        Swal.fire({
+          icon: "success",
+          title: "Payment Successful!",
+          text: `Your order ${orderId || ""} has been placed successfully.`,
+          timer: 3000,
+          showConfirmButton: false,
+        });
+      } else if (statusCode === "-1") {
+        Swal.fire({
+          icon: "info",
+          title: "Payment Canceled",
+          text: "You canceled the payment process.",
+        });
+      } else if (statusCode === "-2") {
+        Swal.fire({
+          icon: "error",
+          title: "Payment Failed",
+          text: "The payment transaction failed. Please try again.",
+        });
+      } else if (statusCode === "0") {
+        Swal.fire({
+          icon: "warning",
+          title: "Payment Pending",
+          text: "Your payment is pending verification.",
+        });
+      }
+    }
+
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', {
-          headers: getAuthHeader()
-        });
+        const res = await axios.get(
+          import.meta.env.VITE_BACKEND_URL + "/api/orders/my-orders",
+          {
+            headers: getAuthHeader(),
+          }
+        );
 
         if (res.data.success) {
           setOrders(res.data.orders || []);
           setFilteredOrders(res.data.orders || []);
         } else {
-          Swal.fire('Error', res.data.message || 'Failed to load orders', 'error');
+          Swal.fire(
+            "Error",
+            res.data.message || "Failed to load orders",
+            "error"
+          );
         }
       } catch (error) {
-        console.error('Error fetching orders:', error);
-        Swal.fire('Error', error.response?.data?.message || 'Failed to load orders', 'error');
+        console.error("Error fetching orders:", error);
+        Swal.fire(
+          "Error",
+          error.response?.data?.message || "Failed to load orders",
+          "error"
+        );
       } finally {
         setLoading(false);
       }
@@ -7675,12 +7119,16 @@ export default function OrderPage() {
   useEffect(() => {
     let result = orders;
 
-    if (statusFilter !== 'all') result = result.filter(o => o.status === statusFilter);
+    if (statusFilter !== "all")
+      result = result.filter((o) => o.status === statusFilter);
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      result = result.filter(o =>
-        o.orderId.toLowerCase().includes(term) ||
-        o.items?.some(item => item.productName?.toLowerCase().includes(term))
+      result = result.filter(
+        (o) =>
+          o.orderId.toLowerCase().includes(term) ||
+          o.items?.some((item) =>
+            item.productName?.toLowerCase().includes(term)
+          )
       );
     }
 
@@ -7689,32 +7137,47 @@ export default function OrderPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'shipped': return 'bg-amber-100 text-amber-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "processing":
+        return "bg-blue-100 text-blue-800";
+      case "shipped":
+        return "bg-amber-100 text-amber-800";
+      case "delivered":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPaymentStatusColor = (status) => {
     switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      case 'refunded': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "paid":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "failed":
+        return "bg-red-100 text-red-800";
+      case "refunded":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
-    } catch { return dateString || 'Unknown date'; }
+    } catch {
+      return dateString || "Unknown date";
+    }
   };
 
   const handleViewOrderDetails = (order) => setSelectedOrder(order);
@@ -7722,52 +7185,90 @@ export default function OrderPage() {
 
   const handleCancelOrder = async (orderId) => {
     const result = await Swal.fire({
-      title: 'Cancel Order?',
-      text: 'Are you sure you want to cancel this order?',
-      icon: 'warning',
+      title: "Cancel Order?",
+      text: "Are you sure you want to cancel this order?",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, cancel it!'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, cancel it!",
     });
 
     if (!result.isConfirmed) return;
 
     try {
       setLoading(true);
-      const res = await axios.put(import.meta.env.VITE_BACKEND_URL+`/api/orders/${orderId}/cancel`, {}, {
-        headers: getAuthHeader()
-      });
+      const res = await axios.put(
+        import.meta.env.VITE_BACKEND_URL + `/api/orders/${orderId}/cancel`,
+        {},
+        {
+          headers: getAuthHeader(),
+        }
+      );
 
       if (res.data.success) {
-        setOrders(orders.map(o => o._id === orderId ? { ...o, status: 'cancelled' } : o));
-        Swal.fire({ icon: 'success', title: 'Cancelled!', text: res.data.message || 'Order cancelled.', timer: 1500, showConfirmButton: false });
-      } else Swal.fire('Error', res.data.message || 'Failed to cancel order', 'error');
+        setOrders(
+          orders.map((o) =>
+            o._id === orderId ? { ...o, status: "cancelled" } : o
+          )
+        );
+        Swal.fire({
+          icon: "success",
+          title: "Cancelled!",
+          text: res.data.message || "Order cancelled.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else
+        Swal.fire(
+          "Error",
+          res.data.message || "Failed to cancel order",
+          "error"
+        );
     } catch (error) {
-      console.error('Cancel order error:', error);
-      Swal.fire('Error', error.response?.data?.message || 'Failed to cancel order.', 'error');
-    } finally { setLoading(false); }
+      console.error("Cancel order error:", error);
+      Swal.fire(
+        "Error",
+        error.response?.data?.message || "Failed to cancel order.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTrackOrder = (orderId) => {
-    Swal.fire('Track Order', `Tracking for order ${orderId} is not available yet.`, 'info');
+    Swal.fire(
+      "Track Order",
+      `Tracking for order ${orderId} is not available yet.`,
+      "info"
+    );
   };
 
   const handleDownloadInvoice = (orderId) => {
-    Swal.fire('Invoice Download', `Invoice for order ${orderId} will be available soon.`, 'info');
+    Swal.fire(
+      "Invoice Download",
+      `Invoice for order ${orderId} will be available soon.`,
+      "info"
+    );
   };
 
   const handleReorder = (order) => {
     Swal.fire({
-      title: 'Reorder Items?',
-      text: 'Add all items from this order to your cart?',
-      icon: 'question',
+      title: "Reorder Items?",
+      text: "Add all items from this order to your cart?",
+      icon: "question",
       showCancelButton: true,
-      confirmButtonText: 'Yes, add to cart'
-    }).then(res => {
+      confirmButtonText: "Yes, add to cart",
+    }).then((res) => {
       if (res.isConfirmed) {
-        console.log('Adding to cart:', order.items);
-        Swal.fire({ icon: 'info', title: 'Feature Coming Soon', text: 'Reorder feature coming soon.', timer: 2000 });
+        console.log("Adding to cart:", order.items);
+        Swal.fire({
+          icon: "info",
+          title: "Feature Coming Soon",
+          text: "Reorder feature coming soon.",
+          timer: 2000,
+        });
       }
     });
   };
@@ -7775,23 +7276,36 @@ export default function OrderPage() {
   const handleRefreshOrders = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/orders/my-orders', { headers: getAuthHeader() });
+      const res = await axios.get(
+        import.meta.env.VITE_BACKEND_URL + "/api/orders/my-orders",
+        { headers: getAuthHeader() }
+      );
       if (res.data.success) setOrders(res.data.orders || []);
-    } catch (error) { console.error(error); } 
-    finally { setLoading(false); }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getOrderCountByStatus = (status) => status === 'all' ? orders.length : orders.filter(o => o.status === status).length;
-  const getTotalSpent = () => orders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + (o.total || 0), 0);
+  const getOrderCountByStatus = (status) =>
+    status === "all"
+      ? orders.length
+      : orders.filter((o) => o.status === status).length;
+  const getTotalSpent = () =>
+    orders
+      .filter((o) => o.paymentStatus === "paid")
+      .reduce((sum, o) => sum + (o.total || 0), 0);
 
-  if (loading && orders.length === 0) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading your orders...</p>
+  if (loading && orders.length === 0)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your orders...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -7799,11 +7313,21 @@ export default function OrderPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-gray-600 hover:text-gray-900"
+            >
               <ArrowLeft className="h-5 w-5 mr-2" /> Go Back
             </button>
-            <button onClick={handleRefreshOrders} disabled={loading} className="flex items-center text-blue-600 hover:text-blue-700 disabled:opacity-50">
-              <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <button
+              onClick={handleRefreshOrders}
+              disabled={loading}
+              className="flex items-center text-blue-600 hover:text-blue-700 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-5 w-5 mr-2 ${loading ? "animate-spin" : ""}`}
+              />{" "}
+              Refresh
             </button>
           </div>
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
@@ -7818,43 +7342,64 @@ export default function OrderPage() {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Total Spent</p>
-                <p className="text-2xl font-bold">Rs. {getTotalSpent().toLocaleString()}</p>
+                <p className="text-2xl font-bold">
+                  Rs. {getTotalSpent().toLocaleString()}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            {['all', 'processing', 'shipped', 'delivered'].map((status, idx) => {
-              const icons = [Package, Clock, Truck, CheckCircle];
-              const titles = ['All Orders', 'Processing', 'Shipped', 'Delivered'];
-              const colors = ['blue', 'amber', 'green', 'purple'];
-              const Icon = icons[idx];
-              return (
-                <div key={status} className="bg-white p-4 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <div className={`p-2 bg-${colors[idx]}-100 rounded-lg mr-3`}>
-                      <Icon className={`h-5 w-5 text-${colors[idx]}-600`} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{titles[idx]}</p>
-                      <p className="text-xl font-bold">{getOrderCountByStatus(status)}</p>
+            {["all", "processing", "shipped", "delivered"].map(
+              (status, idx) => {
+                const icons = [Package, Clock, Truck, CheckCircle];
+                const titles = [
+                  "All Orders",
+                  "Processing",
+                  "Shipped",
+                  "Delivered",
+                ];
+                const colors = ["blue", "amber", "green", "purple"];
+                const Icon = icons[idx];
+                return (
+                  <div key={status} className="bg-white p-4 rounded-lg shadow">
+                    <div className="flex items-center">
+                      <div
+                        className={`p-2 bg-${colors[idx]}-100 rounded-lg mr-3`}
+                      >
+                        <Icon className={`h-5 w-5 text-${colors[idx]}-600`} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">{titles[idx]}</p>
+                        <p className="text-xl font-bold">
+                          {getOrderCountByStatus(status)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              }
+            )}
           </div>
 
           {/* Filters & Search */}
           <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input type="text" placeholder="Search orders by ID or product name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <input
+                type="text"
+                placeholder="Search orders by ID or product name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
               <option value="all">All Status</option>
               <option value="processing">Processing</option>
               <option value="shipped">Shipped</option>
@@ -7871,54 +7416,114 @@ export default function OrderPage() {
               {orders.length === 0 ? (
                 <>
                   <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Yet</h3>
-                  <p className="text-gray-500 mb-6">You haven't placed any orders yet.</p>
-                  <button onClick={() => navigate('/')} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Start Shopping</button>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    No Orders Yet
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    You haven't placed any orders yet.
+                  </p>
+                  <button
+                    onClick={() => navigate("/")}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Start Shopping
+                  </button>
                 </>
               ) : (
                 <>
                   <AlertCircle className="h-16 w-16 text-amber-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Found</h3>
-                  <p className="text-gray-500 mb-6">Try adjusting your search or filter criteria.</p>
-                  <button onClick={() => { setSearchTerm(''); setStatusFilter('all'); }} className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Clear Filters</button>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    No Orders Found
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Try adjusting your search or filter criteria.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setStatusFilter("all");
+                    }}
+                    className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  >
+                    Clear Filters
+                  </button>
                 </>
               )}
             </div>
           ) : (
-            filteredOrders.map(order => (
-              <div key={order._id} className="bg-white rounded-lg shadow overflow-hidden">
+            filteredOrders.map((order) => (
+              <div
+                key={order._id}
+                className="bg-white rounded-lg shadow overflow-hidden"
+              >
                 {/* Order Header */}
                 <div className="border-b border-gray-200 p-4 flex flex-col md:flex-row md:items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-lg text-gray-900">{order.orderId}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                    <h3 className="font-bold text-lg text-gray-900">
+                      {order.orderId}
+                    </h3>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        order.status
+                      )}`}
+                    >
+                      {order.status?.charAt(0).toUpperCase() +
+                        order.status?.slice(1)}
                     </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
-                      {order.paymentStatus?.charAt(0).toUpperCase() + order.paymentStatus?.slice(1)}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(
+                        order.paymentStatus
+                      )}`}
+                    >
+                      {order.paymentStatus?.charAt(0).toUpperCase() +
+                        order.paymentStatus?.slice(1)}
                     </span>
-                    <p className="text-sm text-gray-500 mt-1">Ordered on {formatDate(order.createdAt)}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Ordered on {formatDate(order.createdAt)}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-gray-900">Rs. {(order.total || 0).toLocaleString()}</p>
-                    <p className="text-sm text-gray-500">{order.items?.length || 0} item(s)</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      Rs. {(order.total || 0).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {order.items?.length || 0} item(s)
+                    </p>
                   </div>
                 </div>
 
                 {/* Order Items & Actions */}
                 <div className="p-4">
                   <div className="space-y-3">
-                    {order.items?.map(item => (
-                      <div key={item.productId || Math.random()} className="flex items-center space-x-4">
+                    {order.items?.map((item) => (
+                      <div
+                        key={item.productId || Math.random()}
+                        className="flex items-center space-x-4"
+                      >
                         <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {item.image ? <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" /> : <Package className="h-6 w-6 text-gray-400" />}
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.productName}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <Package className="h-6 w-6 text-gray-400" />
+                          )}
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-medium text-gray-800">{item.productName}</h4>
-                          <p className="text-sm text-gray-500">Qty: {item.qty} × Rs. {(item.lastPrice || 0).toLocaleString()}</p>
+                          <h4 className="font-medium text-gray-800">
+                            {item.productName}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            Qty: {item.qty} × Rs.{" "}
+                            {(item.lastPrice || 0).toLocaleString()}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">Rs. {(item.lastPrice * item.qty).toLocaleString()}</p>
+                          <p className="font-semibold">
+                            Rs. {(item.lastPrice * item.qty).toLocaleString()}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -7926,13 +7531,42 @@ export default function OrderPage() {
 
                   {/* Actions */}
                   <div className="mt-6 pt-6 border-t border-gray-200 flex flex-wrap gap-3">
-                    <button onClick={() => handleViewOrderDetails(order)} className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center hover:bg-blue-700">
+                    <button
+                      onClick={() => handleViewOrderDetails(order)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center hover:bg-blue-700"
+                    >
                       <Eye className="h-4 w-4 mr-2" /> View Details
                     </button>
-                    {order.status === 'processing' && <button onClick={() => handleCancelOrder(order._id)} className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center hover:bg-red-700"><XCircle className="h-4 w-4 mr-2" /> Cancel Order</button>}
-                    {order.status === 'shipped' && <button onClick={() => handleTrackOrder(order._id)} className="px-4 py-2 bg-amber-600 text-white rounded-lg flex items-center hover:bg-amber-700"><Truck className="h-4 w-4 mr-2" /> Track Order</button>}
-                    {order.status === 'delivered' && <button onClick={() => handleReorder(order)} className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center hover:bg-green-700"><Package className="h-4 w-4 mr-2" /> Reorder</button>}
-                    <button onClick={() => handleDownloadInvoice(order._id)} className="px-4 py-2 bg-gray-600 text-white rounded-lg flex items-center hover:bg-gray-700"><CreditCard className="h-4 w-4 mr-2" /> Invoice</button>
+                    {order.status === "processing" && (
+                      <button
+                        onClick={() => handleCancelOrder(order._id)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center hover:bg-red-700"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" /> Cancel Order
+                      </button>
+                    )}
+                    {order.status === "shipped" && (
+                      <button
+                        onClick={() => handleTrackOrder(order._id)}
+                        className="px-4 py-2 bg-amber-600 text-white rounded-lg flex items-center hover:bg-amber-700"
+                      >
+                        <Truck className="h-4 w-4 mr-2" /> Track Order
+                      </button>
+                    )}
+                    {order.status === "delivered" && (
+                      <button
+                        onClick={() => handleReorder(order)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center hover:bg-green-700"
+                      >
+                        <Package className="h-4 w-4 mr-2" /> Reorder
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDownloadInvoice(order._id)}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg flex items-center hover:bg-gray-700"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" /> Invoice
+                    </button>
                   </div>
                 </div>
               </div>
@@ -7948,10 +7582,17 @@ export default function OrderPage() {
                 {/* Header */}
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Order Details
+                    </h2>
                     <p className="text-gray-600">{selectedOrder.orderId}</p>
                   </div>
-                  <button onClick={handleCloseOrderDetails} className="text-gray-400 hover:text-gray-600"><XCircle className="h-6 w-6" /></button>
+                  <button
+                    onClick={handleCloseOrderDetails}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircle className="h-6 w-6" />
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -7959,57 +7600,155 @@ export default function OrderPage() {
                   <div>
                     {/* Timeline */}
                     <div className="mb-8">
-                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center"><Truck className="h-5 w-5 mr-2" />Order Status</h3>
+                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
+                        <Truck className="h-5 w-5 mr-2" />
+                        Order Status
+                      </h3>
                       <div className="space-y-4">
-                        {['processing', 'shipped', 'delivered'].map((step, idx) => {
-                          const stepNames = { processing: 'Order Placed', shipped: 'Shipped', delivered: 'Delivered' };
-                          const stepColors = { processing: 'bg-blue-100 text-blue-600', shipped: 'bg-amber-100 text-amber-600', delivered: 'bg-green-100 text-green-600' };
-                          const isCompleted = ['processing', 'shipped', 'delivered'].indexOf(step) <= ['processing', 'shipped', 'delivered'].indexOf(selectedOrder.status);
-                          return (
-                            <div key={step} className="flex items-center">
-                              <div className={`p-2 rounded-full mr-3 ${isCompleted ? stepColors[step] : 'bg-gray-100 text-gray-400'}`}>
-                                {step === 'processing' && <Package className="h-4 w-4" />}
-                                {step === 'shipped' && <Truck className="h-4 w-4" />}
-                                {step === 'delivered' && <CheckCircle className="h-4 w-4" />}
+                        {["processing", "shipped", "delivered"].map(
+                          (step, idx) => {
+                            const stepNames = {
+                              processing: "Order Placed",
+                              shipped: "Shipped",
+                              delivered: "Delivered",
+                            };
+                            const stepColors = {
+                              processing: "bg-blue-100 text-blue-600",
+                              shipped: "bg-amber-100 text-amber-600",
+                              delivered: "bg-green-100 text-green-600",
+                            };
+                            const isCompleted =
+                              ["processing", "shipped", "delivered"].indexOf(
+                                step
+                              ) <=
+                              ["processing", "shipped", "delivered"].indexOf(
+                                selectedOrder.status
+                              );
+                            return (
+                              <div key={step} className="flex items-center">
+                                <div
+                                  className={`p-2 rounded-full mr-3 ${
+                                    isCompleted
+                                      ? stepColors[step]
+                                      : "bg-gray-100 text-gray-400"
+                                  }`}
+                                >
+                                  {step === "processing" && (
+                                    <Package className="h-4 w-4" />
+                                  )}
+                                  {step === "shipped" && (
+                                    <Truck className="h-4 w-4" />
+                                  )}
+                                  {step === "delivered" && (
+                                    <CheckCircle className="h-4 w-4" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-medium">
+                                    {stepNames[step]}
+                                  </p>
+                                  <p
+                                    className={`text-sm ${
+                                      selectedOrder.status === "cancelled"
+                                        ? "text-red-500 font-medium"
+                                        : "text-gray-500"
+                                    }`}
+                                  >
+                                    {selectedOrder.status === "cancelled"
+                                      ? "Order Cancelled"
+                                      : step === "processing"
+                                      ? formatDate(selectedOrder.createdAt)
+                                      : step === "delivered" &&
+                                        selectedOrder.status === "delivered"
+                                      ? formatDate(selectedOrder.updatedAt)
+                                      : "Pending"}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-medium">{stepNames[step]}</p>
-                                <p className={`text-sm ${selectedOrder.status === 'cancelled' ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-                                  {selectedOrder.status === 'cancelled' ? 'Order Cancelled' :
-                                  step === 'processing' ? formatDate(selectedOrder.createdAt) :
-                                  step === 'delivered' && selectedOrder.status === 'delivered' ? formatDate(selectedOrder.updatedAt) : 'Pending'}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          }
+                        )}
                       </div>
                     </div>
 
                     {/* Payment */}
                     <div className="mb-8">
-                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center"><CreditCard className="h-5 w-5 mr-2" />Payment Info</h3>
-                      <div className="flex justify-between mb-2"><span>Status</span><span className={`${getPaymentStatusColor(selectedOrder.paymentStatus)} px-2 py-1 rounded-full text-sm`}>{selectedOrder.paymentStatus}</span></div>
-                      <div className="flex justify-between mb-2"><span>Subtotal</span><span>Rs. {(selectedOrder.total - (selectedOrder.shippingFee || 0)).toLocaleString()}</span></div>
-                      <div className="flex justify-between mb-2"><span>Shipping</span><span className="text-green-600">{selectedOrder.shippingFee > 0 ? `Rs. ${selectedOrder.shippingFee.toLocaleString()}` : 'FREE'}</span></div>
-                      <div className="flex justify-between font-bold text-gray-900"><span>Total</span><span>Rs. {(selectedOrder.total || 0).toLocaleString()}</span></div>
+                      <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
+                        <CreditCard className="h-5 w-5 mr-2" />
+                        Payment Info
+                      </h3>
+                      <div className="flex justify-between mb-2">
+                        <span>Status</span>
+                        <span
+                          className={`${getPaymentStatusColor(
+                            selectedOrder.paymentStatus
+                          )} px-2 py-1 rounded-full text-sm`}
+                        >
+                          {selectedOrder.paymentStatus}
+                        </span>
+                      </div>
+                      <div className="flex justify-between mb-2">
+                        <span>Subtotal</span>
+                        <span>
+                          Rs.{" "}
+                          {(
+                            selectedOrder.total -
+                            (selectedOrder.shippingFee || 0)
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between mb-2">
+                        <span>Shipping</span>
+                        <span className="text-green-600">
+                          {selectedOrder.shippingFee > 0
+                            ? `Rs. ${selectedOrder.shippingFee.toLocaleString()}`
+                            : "FREE"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-bold text-gray-900">
+                        <span>Total</span>
+                        <span>
+                          Rs. {(selectedOrder.total || 0).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Right - Items */}
                   <div>
-                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center"><Package className="h-5 w-5 mr-2" />Items</h3>
+                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
+                      <Package className="h-5 w-5 mr-2" />
+                      Items
+                    </h3>
                     <div className="space-y-4">
-                      {selectedOrder.items?.map(item => (
-                        <div key={item.productId || Math.random()} className="flex items-center space-x-4">
+                      {selectedOrder.items?.map((item) => (
+                        <div
+                          key={item.productId || Math.random()}
+                          className="flex items-center space-x-4"
+                        >
                           <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            {item.image ? <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" /> : <Package className="h-6 w-6 text-gray-400" />}
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.productName}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <Package className="h-6 w-6 text-gray-400" />
+                            )}
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-800">{item.productName}</h4>
-                            <p className="text-sm text-gray-500">Qty: {item.qty} × Rs. {(item.lastPrice || 0).toLocaleString()}</p>
+                            <h4 className="font-medium text-gray-800">
+                              {item.productName}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              Qty: {item.qty} × Rs.{" "}
+                              {(item.lastPrice || 0).toLocaleString()}
+                            </p>
                           </div>
-                          <div className="text-right font-semibold">Rs. {(item.lastPrice * item.qty).toLocaleString()}</div>
+                          <div className="text-right font-semibold">
+                            Rs. {(item.lastPrice * item.qty).toLocaleString()}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -8017,7 +7756,12 @@ export default function OrderPage() {
                 </div>
 
                 <div className="mt-6 text-right">
-                  <button onClick={handleCloseOrderDetails} className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+                  <button
+                    onClick={handleCloseOrderDetails}
+                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
@@ -8974,1039 +8718,59 @@ export default function DashboardRoutes({ stats }) {
 
 ## File: src/components/pages/shipping.jsx
 ````javascript
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Truck, Package, CreditCard, Shield, CheckCircle, ArrowLeft, Lock, MapPin, User, Phone, Edit, Plus, Trash2 } from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
+import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function Shipping() {
   const location = useLocation();
+  const orderData = location.state;
   const navigate = useNavigate();
-  const quoteData = location.state;
 
-  const [loading, setLoading] = useState(false);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddressIndex, setEditingAddressIndex] = useState(null);
-
-  const [userInfo, setUserInfo] = useState({
-    name: 'John Doe',
-    phone: '+94 77 123 4567',
-    email: 'john@example.com'
-  });
-
-  const [addresses, setAddresses] = useState([]);
-  const [selectedAddress, setSelectedAddress] = useState(null);
-  const [addressForm, setAddressForm] = useState({
-    type: 'Home',
-    name: '',
-    phone: '',
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    province: '',
-    postalCode: '',
-    isDefault: false
-  });
-
-  // ✅ FIX: Proper auth header with Bearer prefix
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  // ✅ FIX: Fetch addresses from API with correct endpoint and headers
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No token found');
-      Swal.fire({
-        icon: 'warning',
-        title: 'Login Required',
-        text: 'Please log in to continue',
-      });
-      navigate('/login');
-      return;
-    }
-
-    const fetchAddresses = async () => {
-      try {
-        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/addresses', {
-          headers: getAuthHeader()
-        });
-        
-        if (res.data && Array.isArray(res.data)) {
-          // ✅ FIX: Map _id to id for frontend compatibility
-          const mappedAddresses = res.data.map(addr => ({
-            id: addr._id, // Map MongoDB _id to id
-            ...addr
-          }));
-          
-          setAddresses(mappedAddresses);
-          const defaultAddr = mappedAddresses.find(addr => addr.isDefault) || mappedAddresses[0];
-          setSelectedAddress(defaultAddr || null);
-        } else {
-          console.error('Invalid response format:', res.data);
-        }
-      } catch (error) {
-        console.error('Error fetching addresses:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to load addresses. Please try again.',
-          timer: 3000,
-        });
-      }
-    };
-    
-    fetchAddresses();
-  }, []);
-
-
-
-
-  // ✅ FIX: Fetch user info with correct endpoint
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
-    const fetchUserInfo = async () => {
-      try {
-        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+'/api/users/me', {
-          headers: getAuthHeader()
-        });
-        
-        if (res.data) {
-          const userData = res.data.user || res.data;
-          setUserInfo({
-            name: userData.name || 'John Doe',
-            phone: userData.phone || '+94 77 123 4567',
-            email: userData.email || 'john@example.com'
-          });
-          
-          // Pre-fill address form with user info
-          setAddressForm(prev => ({
-            ...prev,
-            name: userData.name || '',
-            phone: userData.phone || ''
-          }));
-        }
-      } catch (error) {
-        console.error('Error fetching user info:', error);
-      }
-    };
-    
-    fetchUserInfo();
-  }, []);
-
-  const handleAddressFormChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setAddressForm({
-      ...addressForm,
-      [name]: type === 'checkbox' ? checked : value
-    });
-  };
-
-  // ✅ FIX: Save or update address with correct endpoint and headers
-  const handleSaveAddress = async () => {
-    if (!addressForm.name || !addressForm.phone || !addressForm.addressLine1 || !addressForm.city) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Information',
-        text: 'Please fill in all required fields (Name, Phone, Address, City)',
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      let response;
-
-      if (editingAddressIndex !== null) {
-        // Update existing address
-        const addrId = addresses[editingAddressIndex].id;
-        response = await axios.put(
-          import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addrId}`,
-          addressForm,
-          { headers: getAuthHeader() }
-        );
-
-        // ✅ FIX: Map response _id to id
-        const updatedAddress = {
-          id: response.data._id,
-          ...response.data
-        };
-
-        const updatedAddresses = [...addresses];
-        updatedAddresses[editingAddressIndex] = updatedAddress;
-        setAddresses(updatedAddresses);
-        setSelectedAddress(updatedAddress);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Address Updated',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-      } else {
-        // Add new address
-        response = await axios.post(
-          import.meta.env.VITE_BACKEND_URL+'/api/addresses',
-          addressForm,
-          { headers: getAuthHeader() }
-        );
-
-        // ✅ FIX: Map response _id to id
-        const newAddress = {
-          id: response.data._id,
-          ...response.data
-        };
-
-        let updatedAddresses = [...addresses];
-        if (addressForm.isDefault) {
-          updatedAddresses = updatedAddresses.map(addr => ({ ...addr, isDefault: false }));
-        }
-
-        updatedAddresses.push(newAddress);
-        setAddresses(updatedAddresses);
-        if (addressForm.isDefault || updatedAddresses.length === 1) {
-          setSelectedAddress(newAddress);
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Address Added',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-
-      // Reset form
-      setAddressForm({
-        type: 'Home',
-        name: userInfo.name,
-        phone: userInfo.phone,
-        addressLine1: '',
-        addressLine2: '',
-        city: '',
-        province: '',
-        postalCode: '',
-        isDefault: false
-      });
-      setShowAddressForm(false);
-      setEditingAddressIndex(null);
-
-    } catch (error) {
-      console.error('Save address error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Something went wrong',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ FIX: Delete address with correct endpoint and headers
-  const handleDeleteAddress = async (index) => {
-    const addressId = addresses[index].id;
-
-    const result = await Swal.fire({
-      title: 'Delete Address?',
-      text: 'Are you sure you want to delete this address?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addressId}`, {
-          headers: getAuthHeader()
-        });
-
-        const updatedAddresses = addresses.filter((_, i) => i !== index);
-        setAddresses(updatedAddresses);
-
-        if (selectedAddress?.id === addressId) {
-          setSelectedAddress(updatedAddresses[0] || null);
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Deleted!',
-          text: 'Address has been deleted successfully.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-      } catch (error) {
-        console.error('Delete address error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to delete address',
-        });
-      }
-    }
-  };
-
-  // Edit address
-  const handleEditAddress = (index) => {
-    const address = addresses[index];
-    setAddressForm({
-      type: address.type || 'Home',
-      name: address.name || '',
-      phone: address.phone || '',
-      addressLine1: address.addressLine1 || '',
-      addressLine2: address.addressLine2 || '',
-      city: address.city || '',
-      province: address.province || '',
-      postalCode: address.postalCode || '',
-      isDefault: address.isDefault || false
-    });
-    setEditingAddressIndex(index);
-    setShowAddressForm(true);
-  };
-
-  // ✅ FIX: Set default address with correct endpoint
-  const handleSetDefaultAddress = async (index) => {
-    try {
-      const addrId = addresses[index].id;
-      const res = await axios.put(
-        import.meta.env.VITE_BACKEND_URL+`/api/addresses/${addrId}`,
-        { isDefault: true },
-        { headers: getAuthHeader() }
-      );
-
-      const updatedAddresses = addresses.map((addr, i) => ({
-        ...addr,
-        isDefault: i === index
-      }));
-
-      setAddresses(updatedAddresses);
-      setSelectedAddress(updatedAddresses[index]);
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Default Address Updated',
-        timer: 1500,
-        showConfirmButton: false
-      });
-
-    } catch (error) {
-      console.error('Set default address error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Failed to set default address',
-      });
-    }
-  };
-
-  // ✅ FIX: Update user info with correct endpoint
-  const handleUserInfoUpdate = async () => {
-    const { value: formData } = await Swal.fire({
-      title: 'Update Contact Information',
-      html: `
-        <input id="swal-name" class="swal2-input" placeholder="Full Name" value="${userInfo.name}">
-        <input id="swal-phone" class="swal2-input" placeholder="Phone" value="${userInfo.phone}">
-        <input id="swal-email" class="swal2-input" placeholder="Email" value="${userInfo.email}" disabled>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Update',
-      preConfirm: () => {
-        const name = document.getElementById('swal-name').value;
-        const phone = document.getElementById('swal-phone').value;
-        const email = userInfo.email;
-        
-        if (!name || !phone) {
-          Swal.showValidationMessage('Please fill all fields');
-          return false;
-        }
-        return { name, phone, email };
-      },
-      allowOutsideClick: () => !Swal.isLoading()
-    });
-
-    if (formData) {
-      try {
-        setLoading(true);
-        const res = await axios.put(
-          import.meta.env.VITE_BACKEND_URL+'/api/users/me',
-          formData,
-          { headers: getAuthHeader() }
-        );
-        
-        const updatedUser = res.data.user || res.data;
-        setUserInfo({
-          name: updatedUser.name || userInfo.name,
-          phone: updatedUser.phone || userInfo.phone,
-          email: updatedUser.email || userInfo.email
-        });
-        
-        // Update address form with new user info
-        setAddressForm(prev => ({
-          ...prev,
-          name: updatedUser.name || '',
-          phone: updatedUser.phone || ''
-        }));
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Updated!',
-          text: 'Your contact information has been updated.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-      } catch (error) {
-        console.error('Update user info error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Failed to update info',
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  // Proceed to payment
-  const handleProceedToPayment = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      Swal.fire({ 
-        icon: 'warning', 
-        title: 'Authentication Required', 
-        text: 'Please log in to continue.' 
-      });
-      navigate('/login');
-      return;
-    }
-
-    if (!quoteData || quoteData.total <= 0) {
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Order Error', 
-        text: 'Cannot proceed to payment. Order data missing or total is zero.' 
-      });
-      return;
-    }
-    
-    if (!selectedAddress) {
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Shipping Address Required', 
-        text: 'Please select or add a shipping address.' 
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await Swal.fire({ 
-        title: 'Processing Order...', 
-        html: 'Preparing your order for payment', 
-        allowOutsideClick: false, 
-        timer: 1000, 
-        didOpen: () => Swal.showLoading() 
-      });
-      
-      navigate(`/payment/?username=${userInfo.name}/&productName=${encodeURIComponent(quoteData.orderedItems[0].productName)}`, {
-        state: { 
-          orderData: { 
-            ...quoteData, 
-            items: quoteData.orderedItems, 
-            timestamp: new Date().toISOString(), 
-            orderId: `ORD-${Date.now().toString().slice(-8)}-${Math.floor(Math.random()*1000)}`, 
-            shippingAddress: selectedAddress, 
-            userInfo: userInfo 
-          } 
-        }
-      });
-    } catch (error) {
-      console.error('Proceed to payment error:', error);
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Processing Failed', 
-        text: 'There was an error processing your order.' 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoToCart = () => {
-    navigate('/viewcart');
-  };
+  if (!orderData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">No order data found.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={handleGoToCart}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Cart
-          </button>
-          
-          <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-blue-500 rounded-lg">
-              <Truck className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Shipping & Order Confirmation</h1>
-              <p className="text-gray-600">Review your order and shipping details before payment</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
+        
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">
+          Shipping Details
+        </h1>
+
+        {/* Order Summary */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-600 mb-1">Total Amount</p>
+          <p className="text-xl font-semibold text-green-600">
+            Rs. {orderData.total?.toFixed(2)}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Order Summary & Shipping */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Shipping Address Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-blue-500" />
-                  Shipping Address
-                </h2>
-                <button
-                  onClick={() => {
-                    setAddressForm({
-                      type: 'Home',
-                      name: userInfo.name,
-                      phone: userInfo.phone,
-                      addressLine1: '',
-                      addressLine2: '',
-                      city: '',
-                      province: '',
-                      postalCode: '',
-                      isDefault: false
-                    });
-                    setEditingAddressIndex(null);
-                    setShowAddressForm(true);
-                  }}
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-700"
-                  disabled={loading}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add New Address
-                </button>
-              </div>
-
-              {/* Contact Information */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-800 flex items-center">
-                    <User className="h-4 w-4 mr-2" />
-                    Contact Information
-                  </h3>
-                  <button
-                    onClick={handleUserInfoUpdate}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                    disabled={loading}
-                  >
-                    Edit
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-600">Name</p>
-                    <p className="font-medium">{userInfo.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Phone</p>
-                    <p className="font-medium">{userInfo.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Email</p>
-                    <p className="font-medium">{userInfo.email}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Address Selection */}
-              {showAddressForm ? (
-                <div className="bg-gray-50 p-6 rounded-lg mb-4">
-                  <h3 className="font-bold text-gray-800 mb-4">
-                    {editingAddressIndex !== null ? 'Edit Address' : 'Add New Address'}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Type
-                      </label>
-                      <select
-                        name="type"
-                        value={addressForm.type}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      >
-                        <option value="Home">Home</option>
-                        <option value="Work">Work</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name *
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={addressForm.name}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={addressForm.phone}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 1 *
-                      </label>
-                      <input
-                        type="text"
-                        name="addressLine1"
-                        value={addressForm.addressLine1}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 2
-                      </label>
-                      <input
-                        type="text"
-                        name="addressLine2"
-                        value={addressForm.addressLine2}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        City *
-                      </label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={addressForm.city}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Province
-                      </label>
-                      <input
-                        type="text"
-                        name="province"
-                        value={addressForm.province}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        name="postalCode"
-                        value={addressForm.postalCode}
-                        onChange={handleAddressFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center mb-4">
-                    <input
-                      type="checkbox"
-                      name="isDefault"
-                      checked={addressForm.isDefault}
-                      onChange={handleAddressFormChange}
-                      className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-                      id="defaultAddress"
-                      disabled={loading}
-                    />
-                    <label htmlFor="defaultAddress" className="ml-2 text-sm text-gray-700">
-                      Set as default shipping address
-                    </label>
-                  </div>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={handleSaveAddress}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={loading}
-                    >
-                      {loading ? 'Saving...' : (editingAddressIndex !== null ? 'Update Address' : 'Save Address')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAddressForm(false);
-                        setEditingAddressIndex(null);
-                      }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                      disabled={loading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {addresses.length > 0 ? (
-                    addresses.map((address, index) => (
-                      <div
-                        key={address.id || index}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          selectedAddress?.id === address.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => setSelectedAddress(address)}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center">
-                            <div className={`p-1 rounded mr-2 ${
-                              address.type === 'Home' ? 'bg-green-100 text-green-800' :
-                              address.type === 'Work' ? 'bg-blue-100 text-blue-800' :
-                              'bg-purple-100 text-purple-800'
-                            }`}>
-                              <span className="text-xs font-medium">{address.type || 'Home'}</span>
-                            </div>
-                            {address.isDefault && (
-                              <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
-                                Default
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditAddress(index);
-                              }}
-                              className="p-1 text-gray-500 hover:text-blue-600"
-                              disabled={loading}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteAddress(index);
-                              }}
-                              className="p-1 text-gray-500 hover:text-red-600"
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-sm">
-                          <p className="font-medium">{address.name}</p>
-                          <p className="text-gray-600">{address.phone}</p>
-                          <p className="mt-2">{address.addressLine1}</p>
-                          {address.addressLine2 && (
-                            <p>{address.addressLine2}</p>
-                          )}
-                          <p>{address.city}{address.province ? `, ${address.province}` : ''} {address.postalCode || ''}</p>
-                        </div>
-                        <div className="mt-3 flex space-x-2">
-                          {!address.isDefault && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetDefaultAddress(index);
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-700"
-                              disabled={loading}
-                            >
-                              Set as Default
-                            </button>
-                          )}
-                          {selectedAddress?.id === address.id && (
-                            <span className="text-xs text-green-600 flex items-center">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Selected
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">No addresses saved yet.</p>
-                      <p className="text-sm text-gray-400 mt-1">Add an address to continue</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Order Summary Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <Package className="h-5 w-5 mr-2 text-amber-500" />
-                  Order Summary
-                </h2>
-                <span className="text-sm font-medium text-gray-500">
-                  {quoteData?.orderedItems?.length || 0} item(s)
-                </span>
-              </div>
-
-              {quoteData ? (
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-gray-600">Total Amount</p>
-                        <p className="text-2xl font-bold text-gray-900">Rs. {quoteData.total?.toFixed(2)}</p>
-                        {quoteData.discount > 0 && (
-                          <p className="text-sm text-green-600 mt-1">
-                            You saved Rs. {quoteData.discount?.toFixed(2)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="p-3 bg-white rounded-lg shadow-sm">
-                        <CreditCard className="h-8 w-8 text-amber-500" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span>Rs. {quoteData.labeledTotal?.toFixed(2)}</span>
-                    </div>
-                    {quoteData.discount > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Discount</span>
-                        <span>- Rs. {quoteData.discount?.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-green-600">FREE</span>
-                    </div>
-                    <div className="border-t pt-3 flex justify-between font-semibold">
-                      <span>Total</span>
-                      <span className="text-lg">Rs. {quoteData.total?.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <h3 className="font-semibold text-gray-800 mb-4">Order Items:</h3>
-                    <div className="space-y-3">
-                      {quoteData.orderedItems?.map((item, index) => (
-                        <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            {item.image ? (
-                              <img src={item.image} alt={item.productName} className="w-full h-full object-cover rounded-lg" />
-                            ) : (
-                              <Package className="h-6 w-6 text-gray-400" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-800">{item.productName}</h4>
-                            <p className="text-sm text-gray-600">Quantity: {item.qty}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-gray-900">
-                              Rs. {(item.lastPrice * item.qty).toFixed(2)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Rs. {item.lastPrice.toFixed(2)} each
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Package className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500">No order data found. Please return to cart.</p>
-                  <button
-                    onClick={handleGoToCart}
-                    className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-                  >
-                    Go to Cart
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column - Order Confirmation & Payment Button */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Payment Methods Preview */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2 text-purple-500" />
-                Payment Options
-              </h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <CreditCard className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-gray-700">Credit/Debit Card</p>
-                    <p className="text-xs text-gray-500 mt-1">Visa, MasterCard, American Express</p>
-                  </div>
-                </li>
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <svg className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                  <div>
-                    <p className="font-medium text-gray-700">Digital Wallets</p>
-                    <p className="text-xs text-gray-500 mt-1">Apple Pay, Google Pay, Samsung Pay</p>
-                  </div>
-                </li>
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <svg className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                  <div>
-                    <p className="font-medium text-gray-700">Bank Transfer</p>
-                    <p className="text-xs text-gray-500 mt-1">Direct bank payment</p>
-                  </div>
-                </li>
-                <li className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <Truck className="h-4 w-4 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-gray-700">Cash on Delivery</p>
-                    <p className="text-xs text-gray-500 mt-1">Pay when you receive</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            {/* Security Info */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                <Shield className="h-5 w-5 mr-2 text-green-500" />
-                Secure Checkout
-              </h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>256-bit SSL encryption</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>PCI DSS compliant</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>Your data is protected</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Order Confirmation Button */}
-            <div className="sticky top-8">
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                <h3 className="font-bold text-gray-800 mb-4">Ready to Pay</h3>
-                
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-600">Amount to Pay</p>
-                    <p className="text-xs text-gray-500">Order #{quoteData ? `ORD-${Date.now().toString().slice(-6)}` : '-----'}</p>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    Rs. {quoteData?.total?.toFixed(2) || '0.00'}
-                  </p>
-                  {quoteData?.discount > 0 && (
-                    <p className="text-sm text-green-600 mt-1">
-                      You saved Rs. {quoteData.discount.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-
-                {/* Payment Button */}
-                <button
-                  onClick={handleProceedToPayment}
-                  disabled={!quoteData || quoteData.total <= 0 || loading || !selectedAddress}
-                  className={`w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 ${
-                    quoteData && quoteData.total > 0 && !loading && selectedAddress
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                      : 'bg-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Preparing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-5 w-5" />
-                      <span>Proceed to Payment</span>
-                    </>
-                  )}
-                </button>
-
-                <p className="text-xs text-gray-500 text-center mt-4">
-                  By proceeding, you agree to our{' '}
-                  <button className="text-purple-600 hover:text-purple-700">Terms & Conditions</button>
-                </p>
-              </div>
-
-              {/* Help Text */}
-              <div className="mt-4 text-center">
-                <p className="text-sm text-gray-500">
-                  Need help?{' '}
-                  <button className="text-purple-600 hover:text-purple-700 font-medium">
-                    Contact Support
-                  </button>
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="mb-6">
+          <p className="text-sm text-gray-600 mb-2">
+            Items ({orderData.orderedItems?.length})
+          </p>
+          <ul className="text-sm text-gray-700 space-y-1">
+            {orderData.orderedItems?.map((item) => (
+              <li key={item.productId}>
+                • {item.productName} × {item.qty}
+              </li>
+            ))}
+          </ul>
         </div>
+
+        {/* Submit Button */}
+        <button
+          onClick={() => navigate("/payment", { state: orderData })}
+          className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+        >
+          Proceed to Payment
+        </button>
+
       </div>
     </div>
   );
@@ -10034,6 +8798,7 @@ export default function Shipping() {
     "dotenv": "^17.2.3",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.556.0",
+    "md5": "^2.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
@@ -10115,6 +8880,20 @@ export default function ViewCart() {
 
     fetchQuote();
   }, [user]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // Delete item with confirmation
   const handleDelete = (productId, productName) => {
@@ -10965,7 +9744,7 @@ export default function AddProducts() {
 ````javascript
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import uploadMediaToSupabase from "../../utils/mediaUpload.jsx";
+import uploadMediaToSupabase from "../../utils/mediaupload.jsx";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { 
   FiEdit, 
@@ -12311,95 +11090,6 @@ export default function Navbar() {
 }
 ````
 
-## File: src/components/pages/Homepage.jsx
-````javascript
-import React, { useEffect, useState } from "react";
-import Navbar from "../Navbar";
-import { Route, Routes } from "react-router-dom";
-import HomeContainer from "@/components/pages/HomeContainer";
-import Login from "./Login";
-import Dashboard from "@/components/pages/admin/Dashboard/dashboard";
-import NotFound from "@/components/pages/NotFound";
-import Signup from "@/components/pages/singUp";
-import Productoverview from "./productoverview";
-import ViewCartPage from "./viewCart";
-import ShipingPage from "@/components/pages/shipping";
-import AboutPage from "@/components/pages/about.jsx";
-import ServicePage from "@/components/pages/service.jsx";
-import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
-import AiChatBot from "@/components/aiChatBot";
-import PaymentPage from "@/components/pages/admin/payment";
-import OrderPage from "@/components/pages/orderpage.jsx";
-import ProfilePage from "@/components/pages/ProfilePage.jsx";
-
-export default function Homepage() {
-  const [load, setLoad] = useState(false);
-  const [user, setUser] = useState("customer");
-
-  useEffect(() => {
-    const authcheck = () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setUser("customer");
-        return;
-      }
-
-      try {
-        const decoded = jwtDecode(token);
-        setUser(decoded.role === "admin" ? "admin" : "customer");
-      } catch {
-        setUser("customer");
-      }
-    };
-
-    authcheck(); // first check
-    window.addEventListener("authChange", authcheck);
-
-    return () => window.removeEventListener("authChange", authcheck);
-  }, []);
-
-  return (
-    <div className="w-full h-screen flex flex-col">
-      <Navbar />
-
-      {/* Main content area */}
-      <div className="w-full h-[calc(100vh-100px)]">
-        <Routes>
-          <Route path="/" element={<HomeContainer />} />
-          <Route path="/viewcart" element={<ViewCartPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/shipping/" element={<ShipingPage />} />
-          <Route path="/service" element={<ServicePage />} />
-          <Route path="/contact" element={<h1>Contact</h1>} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/singup" element={<Signup />} />
-          <Route path="/orders" element={<OrderPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-
-          <Route path="/payment" element={<PaymentPage />} />
-
-          <Route path="/admin/dashboard/*" element={<Dashboard />} />
-
-          <Route path="*" element={<NotFound />} />
-
-
-          
-          <Route
-            path="/productoverview/:productId"
-            element={<Productoverview />}
-          />
-
-
-        </Routes>
-      </div>
-
-      {/* Show chatbot only for customer */}
-      {user === "customer" && <AiChatBot />}
-    </div>
-  );
-}
-````
-
 ## File: src/components/pages/productoverview.jsx
 ````javascript
 import axios from "axios";
@@ -12407,7 +11097,14 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ImageSlider from "@/components/imageSlider";
 import { addToCart } from "../utils/cart";
-import { FiShoppingCart, FiTag, FiInfo, FiArrowLeft, FiTruck, FiShield } from "react-icons/fi";
+import {
+  FiShoppingCart,
+  FiTag,
+  FiInfo,
+  FiArrowLeft,
+  FiTruck,
+  FiShield,
+} from "react-icons/fi";
 import { MdOutlineInventory2 } from "react-icons/md";
 import Swal from "sweetalert2";
 
@@ -12425,9 +11122,11 @@ export default function ProductOverview() {
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await axios.get(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`);
-        
+
+        const response = await axios.get(
+          import.meta.env.VITE_BACKEND_URL + `/api/products/${productId}`
+        );
+
         if (response.data && response.data.product) {
           setProduct(response.data);
         } else {
@@ -12435,7 +11134,10 @@ export default function ProductOverview() {
         }
       } catch (err) {
         console.error("Error fetching product:", err);
-        setError(err.response?.data?.message || "Failed to load product. Please try again.");
+        setError(
+          err.response?.data?.message ||
+            "Failed to load product. Please try again."
+        );
       } finally {
         setLoading(false);
       }
@@ -12444,6 +11146,8 @@ export default function ProductOverview() {
     fetchProduct();
   }, [productId]);
 
+  console.log(product);
+
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
     if (newQuantity >= 1 && newQuantity <= (product?.product?.stock || 10)) {
@@ -12451,62 +11155,51 @@ export default function ProductOverview() {
     }
   };
 
-
-
-
-
-
-  
-
   const handleBuyNow = () => {
     if (!product?.product || product.product.stock <= 0) return;
 
     Swal.fire({
-      title: 'Proceed to Checkout?',
-      text: `Buy "${product.product.productName}" for LKR ${(product.product.lastPrices * quantity).toFixed(2)}`,
-      icon: 'question',
+      title: "Proceed to Checkout?",
+      text: `Buy "${product.product.productName}" for LKR ${(
+        product.product.lastPrices * quantity
+      ).toFixed(2)}`,
+      icon: "question",
       showCancelButton: true,
-      confirmButtonColor: '#10b981',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, proceed',
-      cancelButtonText: 'Continue shopping'
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, proceed",
+      cancelButtonText: "Continue shopping",
     }).then((result) => {
       if (result.isConfirmed) {
-        navigate(`/shipping/?productId=${product.product.productId}&productName=${encodeURIComponent(product.product.productName)}`, {
-          state: {
-            orderedItems: [
-              {
-                productId: product.product.productId,
-                productName: product.product.productName,
-                price: product.product.price,
-                lastPrice: product.product.lastPrices,
-                qty: quantity,
-                image: product.product.images?.[0] || '',
-              },
-            ],
-            total: product.product.lastPrices * quantity,
-            labeledTotal: product.product.price * quantity,
-            discount: (product.product.price - product.product.lastPrices) * quantity,
-            message: "Buying single product now",
-          },
-        });
+        navigate(
+          `/shipping/?P_id=${
+            product.product._id
+          }&productName=${encodeURIComponent(
+            product.product.productName
+          )}&productId=${product.product.productId}`,
+          {
+            state: {
+              orderedItems: [
+                {
+                  productId: product.product.productId,
+                  productName: product.product.productName,
+                  price: product.product.price,
+                  lastPrice: product.product.lastPrices,
+                  qty: quantity,
+                  image: product.product.images?.[0] || "",
+                },
+              ],
+              total: product.product.lastPrices * quantity,
+              labeledTotal: product.product.price * quantity,
+              discount:
+                (product.product.price - product.product.lastPrices) * quantity,
+              message: "Buying single product now",
+            },
+          }
+        );
       }
     });
   };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   const handleAddToCart = async () => {
     if (!product?.product || product.product.stock <= 0) return;
@@ -12514,20 +11207,20 @@ export default function ProductOverview() {
     setAddingToCart(true);
     try {
       addToCart(product.product.productId, quantity);
-      
+
       await Swal.fire({
-        icon: 'success',
-        title: 'Added to Cart!',
+        icon: "success",
+        title: "Added to Cart!",
         text: `${quantity} × "${product.product.productName}" added to your cart`,
         showConfirmButton: false,
-        timer: 1500
+        timer: 1500,
       });
     } catch (err) {
       Swal.fire({
-        icon: 'error',
-        title: 'Failed to Add',
-        text: 'Could not add item to cart. Please try again.',
-        confirmButtonColor: '#ef4444',
+        icon: "error",
+        title: "Failed to Add",
+        text: "Could not add item to cart. Please try again.",
+        confirmButtonColor: "#ef4444",
       });
     } finally {
       setAddingToCart(false);
@@ -12535,9 +11228,9 @@ export default function ProductOverview() {
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-LK', {
-      style: 'currency',
-      currency: 'LKR',
+    return new Intl.NumberFormat("en-LK", {
+      style: "currency",
+      currency: "LKR",
       minimumFractionDigits: 2,
     }).format(price);
   };
@@ -12547,8 +11240,12 @@ export default function ProductOverview() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-6"></div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Loading Product Details</h2>
-          <p className="text-gray-500">Please wait while we fetch the product information...</p>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            Loading Product Details
+          </h2>
+          <p className="text-gray-500">
+            Please wait while we fetch the product information...
+          </p>
         </div>
       </div>
     );
@@ -12585,9 +11282,10 @@ export default function ProductOverview() {
   }
 
   const data = product.product;
-  const discountPercentage = data.price > 0 
-    ? Math.round(((data.price - data.lastPrices) / data.price) * 100) 
-    : 0;
+  const discountPercentage =
+    data.price > 0
+      ? Math.round(((data.price - data.lastPrices) / data.price) * 100)
+      : 0;
   const hasDiscount = data.price > data.lastPrices;
 
   return (
@@ -12609,12 +11307,12 @@ export default function ProductOverview() {
           {/* Left Column - Product Images */}
           <div className="lg:w-1/2">
             <div className="bg-white rounded-2xl shadow-lg p-4 lg:p-6">
-              <ImageSlider 
-                images={data.images} 
+              <ImageSlider
+                images={data.images}
                 showThumbnails={true}
                 autoplay={true}
               />
-              
+
               {/* Product Highlights */}
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
@@ -12627,7 +11325,9 @@ export default function ProductOverview() {
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg">
                   <MdOutlineInventory2 className="text-purple-600" />
-                  <span className="text-sm font-medium">In Stock: {data.stock}</span>
+                  <span className="text-sm font-medium">
+                    In Stock: {data.stock}
+                  </span>
                 </div>
               </div>
             </div>
@@ -12638,10 +11338,14 @@ export default function ProductOverview() {
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
               {/* Product ID & Category */}
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-gray-500">SKU: {data.productId}</span>
+                <span className="text-sm text-gray-500">
+                  SKU: {data.productId}
+                </span>
                 <div className="flex items-center gap-2">
                   <FiTag className="text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700">{data.category}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {data.category}
+                  </span>
                 </div>
               </div>
 
@@ -12670,20 +11374,30 @@ export default function ProductOverview() {
               </div>
 
               {/* Stock Status */}
-              <div className={`mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full ${
-                data.stock > 10 ? 'bg-green-100 text-green-800' : 
-                data.stock > 0 ? 'bg-amber-100 text-amber-800' : 
-                'bg-red-100 text-red-800'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  data.stock > 10 ? 'bg-green-500' : 
-                  data.stock > 0 ? 'bg-amber-500' : 
-                  'bg-red-500'
-                }`}></div>
+              <div
+                className={`mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+                  data.stock > 10
+                    ? "bg-green-100 text-green-800"
+                    : data.stock > 0
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    data.stock > 10
+                      ? "bg-green-500"
+                      : data.stock > 0
+                      ? "bg-amber-500"
+                      : "bg-red-500"
+                  }`}
+                ></div>
                 <span className="font-medium">
-                  {data.stock > 10 ? 'In Stock' : 
-                   data.stock > 0 ? `Only ${data.stock} left` : 
-                   'Out of Stock'}
+                  {data.stock > 10
+                    ? "In Stock"
+                    : data.stock > 0
+                    ? `Only ${data.stock} left`
+                    : "Out of Stock"}
                 </span>
               </div>
 
@@ -12760,7 +11474,8 @@ export default function ProductOverview() {
                 </h3>
                 <div className="prose max-w-none">
                   <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {data.description || "No description available for this product."}
+                    {data.description ||
+                      "No description available for this product."}
                   </p>
                 </div>
               </div>
@@ -12917,6 +11632,97 @@ export default function Notification() {
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+````
+
+## File: src/components/pages/Homepage.jsx
+````javascript
+import React, { useEffect, useState } from "react";
+import Navbar from "../Navbar";
+import { Route, Routes } from "react-router-dom";
+import HomeContainer from "@/components/pages/HomeContainer";
+import Login from "./Login";
+import Dashboard from "@/components/pages/admin/Dashboard/dashboard";
+import NotFound from "@/components/pages/NotFound";
+import Signup from "@/components/pages/singUp";
+import Productoverview from "./productoverview";
+import ViewCartPage from "./viewCart";
+import ShipingPage from "@/components/pages/shipping";
+import AboutPage from "@/components/pages/about.jsx";
+import ServicePage from "@/components/pages/service.jsx";
+import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
+import AiChatBot from "@/components/aiChatBot";
+import PaymentPage from "@/components/pages/admin/payment";
+import OrderPage from "@/components/pages/orderpage.jsx";
+import ProfilePage from "@/components/pages/ProfilePage.jsx";
+
+import OrderSuccess from "@/components/pages/admin/Dashboard/orderSuccess";
+
+export default function Homepage() {
+  const [load, setLoad] = useState(false);
+  const [user, setUser] = useState("customer");
+
+  useEffect(() => {
+    const authcheck = () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setUser("customer");
+        return;
+      }
+
+      try {
+        const decoded = jwtDecode(token);
+        setUser(decoded.role === "admin" ? "admin" : "customer");
+      } catch {
+        setUser("customer");
+      }
+    };
+
+    authcheck(); // first check
+    window.addEventListener("authChange", authcheck);
+
+    return () => window.removeEventListener("authChange", authcheck);
+  }, []);
+
+  return (
+    <div className="w-full h-screen flex flex-col">
+      <Navbar />
+
+      {/* Main content area */}
+      <div className="w-full h-[calc(100vh-100px)]">
+        <Routes>
+          <Route path="/" element={<HomeContainer />} />
+          <Route path="/viewcart" element={<ViewCartPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/shipping/" element={<ShipingPage />} />
+          <Route path="/service" element={<ServicePage />} />
+          <Route path="/contact" element={<h1>Contact</h1>} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/singup" element={<Signup />} />
+          <Route path="/orders" element={<OrderPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+
+
+
+          <Route path="/payment" element={<PaymentPage />} />
+
+           <Route path="/order-success/:orderId" element={<OrderSuccess />} />
+
+          <Route path="/admin/dashboard/*" element={<Dashboard />} />
+
+          <Route path="*" element={<NotFound />} />
+
+          <Route
+            path="/productoverview/:productId"
+            element={<Productoverview />}
+          />
+        </Routes>
+      </div>
+
+      {/* Show chatbot only for customer */}
+      {user === "customer" && <AiChatBot />}
     </div>
   );
 }
@@ -13108,7 +11914,7 @@ export default function AiChatbot() {
     try {
       setIsTyping(true);
       const res = await axios.post(
-        import.meta.env.VITE_BACKEND_URL+"//api/admin/reply",
+        import.meta.env.VITE_BACKEND_URL+"/api/admin/reply",
         { query: userText },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -13495,7 +12301,7 @@ export default function AiChatbot() {
       )}
 
       {/* Enhanced Custom Styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }

@@ -17,6 +17,8 @@ import PaymentPage from "@/components/pages/admin/payment";
 import OrderPage from "@/components/pages/orderpage.jsx";
 import ProfilePage from "@/components/pages/ProfilePage.jsx";
 
+
+
 export default function Homepage() {
   const [load, setLoad] = useState(false);
   const [user, setUser] = useState("customer");
@@ -58,23 +60,23 @@ export default function Homepage() {
           <Route path="/contact" element={<h1>Contact</h1>} />
           <Route path="/login" element={<Login />} />
           <Route path="/singup" element={<Signup />} />
+
           <Route path="/orders" element={<OrderPage />} />
+          <Route path="/orders/:orderId" element={<OrderPage />} />
+
+
           <Route path="/profile" element={<ProfilePage />} />
-
           <Route path="/payment" element={<PaymentPage />} />
-
           <Route path="/admin/dashboard/*" element={<Dashboard />} />
+
+
 
           <Route path="*" element={<NotFound />} />
 
-
-          
           <Route
             path="/productoverview/:productId"
             element={<Productoverview />}
           />
-
-
         </Routes>
       </div>
 

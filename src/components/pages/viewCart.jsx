@@ -56,6 +56,20 @@ export default function ViewCart() {
     fetchQuote();
   }, [user]);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // Delete item with confirmation
   const handleDelete = (productId, productName) => {
     Swal.fire({
