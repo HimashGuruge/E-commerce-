@@ -1,57 +1,59 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { FiBell, FiX } from "react-icons/fi";
+import { FiBell, FiCheckCircle } from "react-icons/fi";
 import axios from "axios";
-import Swal from "sweetalert2";
 
-export default function NavbarNotification() {
+export default function NotificationDrop() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState(null);
-  const [replyText, setReplyText] = useState("");
-  const pollingRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  // 🔄 1. දත්ත ලබා ගැනීම (Fetch)
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/notifications/getNotifications");
-      setNotifications(res.data);
-      setUnreadCount(res.data.filter(n => !n.isRead).length);
+      const res = await axios.get("http://localhost:4000/api/notifications/getNotifications");
+      const data = Array.isArray(res.data) ? res.data : [];
+      setNotifications(data);
+      
+      // ඇත්තටම isRead: false තියෙන ගණන Badge එකට ගන්නවා
+      const realUnreadCount = data.filter((n) => n.isRead === false).length;
+      setUnreadCount(realUnreadCount);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Error:", err);
     }
   }, []);
 
-  const markAsRead = async (id) => {
+  // 📩 2. Mark as Read (Optimistic Update ක්‍රමයට)
+  const markAsRead = async (userId) => {
+    // Backend එකෙන් response එක එන්න කලින් UI එක update කරනවා
+    const previousNotifications = [...notifications];
+    const previousCount = unreadCount;
+
+    // UI එක වහාම Update කිරීම
+    setNotifications((prev) =>
+      prev.map((n) => (n.userId === userId ? { ...n, isRead: true } : n))
+    );
+    setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+
     try {
-      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/markRead/${id}`);
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      // 💡 ඔයාගේ අලුත් Controller එකට අනුව Body එකෙන් userId යැවීම
+      await axios.post("http://localhost:4000/api/notifications/markRead", { userId });
     } catch (err) {
-      console.error(err);
+      // Error එකක් ආවොත් තිබුණු තත්වයටම Rollback කිරීම
+      console.error("Mark Read Error:", err);
+      setNotifications(previousNotifications);
+      setUnreadCount(previousCount);
     }
   };
 
-  const replyNotification = async (id, reply) => {
-    try {
-      await axios.post(import.meta.env.VITE_BACKEND_URL+`/api/notifications/reply/${id}`, { message: reply });
-      Swal.fire("Sent!", "Your reply has been sent.", "success");
-      setSelectedMessage(null);
-      setReplyText("");
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Failed to send reply.", "error");
-    }
-  };
-
-  // Polling
+  // තත්පර 5කට වරක් අලුත් මැසේජ් පරීක්ෂා කිරීම
   useEffect(() => {
     fetchNotifications();
-    pollingRef.current = setInterval(fetchNotifications, 3000);
-    return () => clearInterval(pollingRef.current);
+    const interval = setInterval(fetchNotifications, 5000);
+    return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // Close dropdown when clicking outside
+  // Dropdown එකෙන් පිටත click කළ විට වැසීම
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -63,101 +65,59 @@ export default function NavbarNotification() {
   }, []);
 
   return (
-    <div className="relative">
-      {/* Bell Icon */}
+    <div className="relative inline-block font-sans" ref={dropdownRef}>
+      {/* 🔔 Bell Icon & Real Count Badge */}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="relative p-2 rounded-full hover:bg-indigo-50 transition duration-200"
+        className="relative p-2 rounded-full hover:bg-slate-100 transition-all focus:outline-none"
       >
-        <FiBell className="text-2xl text-gray-700 hover:text-indigo-600 transition" />
+        <FiBell className="text-2xl text-slate-600" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-pink-500 to-red-500 rounded-full text-xs flex items-center justify-center text-white shadow-md animate-bounce">
-            {unreadCount > 9 ? "9+" : unreadCount}
+          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-600 rounded-full text-[10px] flex items-center justify-center text-white border-2 border-white font-bold animate-in zoom-in">
+            {unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* 📂 Dropdown Menu */}
       {dropdownOpen && (
-        <div
-          ref={dropdownRef}
-          className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 transform transition-all duration-300 origin-top-right"
-        >
-          <div className="p-4 border-b flex justify-between items-center bg-gradient-to-r from-indigo-50 to-white rounded-t-xl">
-            <h3 className="font-semibold text-gray-800 text-lg">Notifications</h3>
-            <button onClick={fetchNotifications} className="text-indigo-500 hover:text-indigo-700 font-medium">
-              Refresh
-            </button>
+        <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+          <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+            {unreadCount > 0 && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">NEW</span>}
           </div>
 
-          <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
+          <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 italic">✨ No notifications</div>
+              <div className="p-10 text-center text-slate-400 text-sm italic">No new alerts</div>
             ) : (
-              notifications.map(n => (
+              notifications.map((n) => (
                 <div
                   key={n._id}
-                  className={`p-4 cursor-pointer hover:bg-indigo-50 transition ${!n.isRead ? "bg-yellow-50" : ""}`}
-                  onClick={() => setSelectedMessage(n)}
+                  className={`p-4 border-b border-slate-50 flex flex-col transition-colors ${!n.isRead ? "bg-indigo-50/40" : "bg-white"}`}
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-700">{n.message}</span>
+                  <div className="flex justify-between items-start gap-3">
+                    <p className={`text-sm leading-snug ${!n.isRead ? "text-slate-900 font-bold" : "text-slate-500 font-medium"}`}>
+                      {n.message}
+                    </p>
                     {!n.isRead && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); markAsRead(n._id); }}
-                        className="text-xs text-green-600 hover:text-green-800 font-medium"
+                        onClick={() => markAsRead(n.userId)}
+                        className="text-indigo-600 hover:text-indigo-800 transition-transform active:scale-90"
+                        title="Mark as read"
                       >
-                        Mark read
+                        <FiCheckCircle size={18} />
                       </button>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 mt-1 block">
-                    {new Date(n.sentAt).toLocaleString()}
-                  </span>
+                  <div className="flex justify-between items-center mt-3">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                      {new Date(n.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
               ))
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Reply Modal */}
-      {selectedMessage && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl p-6 transform transition-all scale-100">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-indigo-600">Reply</h2>
-              <button onClick={() => { setSelectedMessage(null); setReplyText(""); }} className="text-gray-500 hover:text-red-500">
-                <FiX size={22} />
-              </button>
-            </div>
-
-            <p className="mb-2 font-medium text-gray-700">Original Message:</p>
-            <p className="mb-4 text-gray-600 italic">{selectedMessage.message}</p>
-
-            <textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              rows={4}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none mb-4"
-              placeholder="Type your reply..."
-            />
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => { setSelectedMessage(null); setReplyText(""); }}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => replyNotification(selectedMessage.userId, replyText)}
-                disabled={!replyText.trim()}
-                className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg shadow hover:opacity-90 transition disabled:opacity-50"
-              >
-                Send
-              </button>
-            </div>
           </div>
         </div>
       )}

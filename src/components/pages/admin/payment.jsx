@@ -1,161 +1,244 @@
-import axios from 'axios';
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
-import { clearCart } from '@/components/utils/cart'; // 🛒 ඔයාගේ cart functions තියෙන path එක මෙතනට දාන්න
+import axios from "axios";
+import React, { useEffect, useState, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import { clearCart } from "@/components/utils/cart";
+import { CreditCard, Truck } from "lucide-react";
+
+// --- constants ---
+const DELIVERY_FEE = 350;
+const MERCHANT_ID = import.meta.env.VITE_PAYHERE_MERCHANT_ID || "1233257";
+const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/payment`;
 
 export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
   const orderedata = location.state;
+  
+  const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState(null);
 
-  // 1. Cash on Delivery (COD) Function
-  const handleCOD = () => {
-    Swal.fire({
-      title: 'Are you sure?',
-      text: "Do you want to place this order as Cash on Delivery?",
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, place order!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        axios.post('http://localhost:4000/api/payment/cod', orderedata, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }).then((res) => {
-          
-          // ✅ සාර්ථක වූ පසු Cart එක clear කිරීම
-          clearCart(); 
+  // --- computation ---
+  // useMemo භාවිතා කිරීමෙන් අනවශ්‍ය re-calculations වළක්වයි
+  const { subTotal, finalTotal } = useMemo(() => {
+    const sub = orderedata?.total || 0;
+    const final = orderedata?.finalTotal || sub + DELIVERY_FEE;
+    return { subTotal: sub, finalTotal: final };
+  }, [orderedata]);
 
-          Swal.fire({
-            title: 'Success!',
-            text: 'Your order has been placed successfully.',
-            icon: 'success',
-            timer: 2000,
-            showConfirmButton: false
-          }).then(() => {
-            navigate('/orders'); 
-          });
-        }).catch((err) => {
-          Swal.fire('Error!', err.response?.data?.message || 'Order failed', 'error');
-        });
-      }
-    });
-  };
+  useEffect(() => {
+    if (!orderedata) {
+      navigate("/cart");
+    }
+  }, [orderedata, navigate]);
 
-  // 2. Card Payment Function (PayHere Redirect Method)
-  const handleCardPayment = async () => {
-    try {
-      // පේමන්ට් එක ලෑස්ති කරන අතරතුර Loading එකක් පෙන්වමු
-      Swal.fire({
-        title: 'Processing...',
-        text: 'Please wait while we redirect you to PayHere',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
-      const formattedItems = orderedata.orderedItems.map(item => ({
-        productId: item.productId,
-        name: item.productName || item.name,
-        qty: item.qty,
-        price: item.lastPrice || item.price 
-      }));
-
-      // Backend එකට දත්ත යවා Hash එක සහ Order ID එක ලබා ගැනීම
-      const response = await axios.post('http://localhost:4000/api/payment/generate-hash', {
-        items: formattedItems,
-        userDetails: {
-          firstName: "Himash", 
-          email: "himash@example.com",
-          phone: "0771234567"
-        }
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      const paymentData = response.data;
-      
-      // ✅ පේමන්ට් එකට Redirect වෙන්න කලින් Cart එක clear කිරීම
-      clearCart(); 
-      Swal.close(); 
-
-      const payment = {
-        sandbox: true,
-        merchant_id: paymentData.merchant_id,
-        return_url: "http://localhost:3001/orders", 
-        cancel_url: "http://localhost:3001/cancel",
-        notify_url: "http://localhost:4000/api/payment/notify", 
-        order_id: paymentData.order_id,
-        items: "Online Purchase",
-        amount: paymentData.amount, 
-        currency: paymentData.currency,
-        hash: paymentData.hash,
-        first_name: paymentData.first_name,
-        last_name: paymentData.last_name,
-        email: paymentData.email,
-        phone: paymentData.phone,
-        address: "No.1, Colombo Road",
-        city: "Colombo",
-        country: "Sri Lanka",
+  // --- payhere event listeners ---
+  useEffect(() => {
+    if (window.payhere) {
+      window.payhere.onCompleted = (orderId) => {
+        clearCart();
+        handleSuccess("Payment Successful!", "Your order has been placed.");
       };
 
-      // Hidden Form එකක් සාදා Submit කිරීම
-      const form = document.createElement('form');
-      form.setAttribute('method', 'post');
-      form.setAttribute('action', 'https://sandbox.payhere.lk/pay/checkout');
+      window.payhere.onDismissed = () => {
+        handleInfo("Payment Cancelled", "You closed the payment popup.");
+      };
 
-      Object.keys(payment).forEach(key => {
-        const hiddenField = document.createElement('input');
-        hiddenField.setAttribute('type', 'hidden');
-        hiddenField.setAttribute('name', key);
-        hiddenField.setAttribute('value', payment[key]);
-        form.appendChild(hiddenField);
-      });
+      window.payhere.onError = (error) => {
+        handleError("Payment Error", "Something went wrong with the gateway.");
+      };
+    }
+  }, [navigate]);
 
-      document.body.appendChild(form);
-      form.submit();
+  // --- helper alerts ---
+  const handleSuccess = (title, text) => {
+    Swal.fire({ title, text, icon: "success", timer: 3000, showConfirmButton: false })
+      .then(() => navigate("/orders"));
+  };
 
+  const handleError = (title, text) => {
+    Swal.fire({ title, text, icon: "error" });
+  };
+
+  const handleInfo = (title, text) => {
+    Swal.fire({ title, text, icon: "info" });
+  };
+
+  // --- handlers ---
+
+  const handleCardPayment = async () => {
+    if (!window.payhere || !orderedata) return;
+    setLoading(true);
+
+    try {
+      // පළමු item එකේ image එක පමණක් ලබා ගැනීම
+      const displayImage = orderedata.orderedItems?.[0]?.image || "";
+
+      // 1. Backend එකෙන් Secure Hash එක ලබා ගැනීම
+      const { data } = await axios.post(
+        `${API_URL}/generate-hash`,
+        {
+          amount: finalTotal,
+          currency: "LKR",
+          address: orderedata.shippingAddress,
+          phone: orderedata.contactPhone,
+          imageUrl: displayImage,
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+
+      // 2. PayHere Payment Object එක සකස් කිරීම
+      const payment = {
+        sandbox: true,
+        merchant_id: MERCHANT_ID,
+        return_url: `${window.location.origin}/orders`,
+        cancel_url: `${window.location.origin}/payment`,
+        notify_url: `${import.meta.env.VITE_BACKEND_URL}/api/payment/notify`,
+        order_id: data.order_id,
+        items: "Store Purchase",
+        amount: data.amount, 
+        currency: "LKR",
+        hash: data.hash,
+        first_name: orderedata.userFirstName || "Customer",
+        last_name: orderedata.userLastName || "",
+        email: orderedata.userEmail || "",
+        phone: orderedata.contactPhone,
+        address: orderedata.shippingAddress,
+        city: "Sri Lanka",
+        country: "Sri Lanka",
+        custom_1: displayImage,
+      };
+
+      window.payhere.startPayment(payment);
     } catch (err) {
-      console.error("Payment Error:", err.response?.data || err.message);
-      Swal.fire('Error!', 'Card payment initialization failed.', 'error');
+      handleError("Error", "Failed to initiate card payment.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCOD = async () => {
+    const result = await Swal.fire({
+      title: "Confirm Order",
+      html: `
+        <div class="text-sm border-t pt-2">
+          <p class="flex justify-between">Subtotal: <span>Rs. ${subTotal.toLocaleString()}</span></p>
+          <p class="flex justify-between">Delivery: <span>Rs. ${DELIVERY_FEE}</span></p>
+          <p class="flex justify-between font-bold text-lg mt-2">Total: <span>Rs. ${finalTotal.toLocaleString()}</span></p>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#0f172a",
+      confirmButtonText: "Place Order",
+    });
+
+    if (result.isConfirmed) {
+      setLoading(true);
+      try {
+        await axios.post(`${API_URL}/cod`, {
+          ...orderedata,
+          deliveryFee: DELIVERY_FEE,
+          total: finalTotal,
+          paymentMethod: "cod",
+        }, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        clearCart();
+        navigate("/orders");
+      } catch (err) {
+        handleError("Order Failed", "Could not process your COD order.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-      <div className="bg-white p-12 rounded-3xl shadow-2xl border border-blue-100 text-center max-w-lg w-full">
-        <h2 className="text-3xl font-extrabold text-slate-800 mb-2">Checkout</h2>
-        <p className="text-slate-500 mb-8 font-medium">කරුණාකර ඔබ කැමති ගෙවීම් ක්‍රමය තෝරන්න</p>
-        
-        <div className="flex flex-col gap-4">
-          {/* Cash on Delivery Button */}
-          <button 
-            onClick={handleCOD}
-            className="bg-slate-700 hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-2xl transition duration-300 transform hover:scale-105"
-          >
-            Cash on Delivery (COD)
-          </button>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6 font-sans">
+      <div className="relative w-full max-w-xl bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
+        {loading && (
+           <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
+           </div>
+        )}
 
-          {/* Card Payment Button */}
-          <button 
-            onClick={handleCardPayment}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-12 rounded-2xl transition duration-300 transform hover:scale-105 shadow-xl"
-          >
-            Pay with Card (PayHere)
-          </button>
+        {/* Header Section */}
+        <div className="bg-slate-900 p-8 text-center text-white">
+          <p className="text-slate-400 text-sm uppercase tracking-widest mb-2">Checkout Summary</p>
+          <h1 className="text-4xl font-black">Rs. {finalTotal.toLocaleString()}</h1>
+          <p className="text-slate-400 text-xs mt-2 italic">Including delivery fee of Rs. {DELIVERY_FEE}</p>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-slate-100">
-            <p className="text-slate-400 text-sm">Safe & Secure Payments by PayHere</p>
+        <div className="p-8">
+          {/* Detailed Summary */}
+          <div className="mb-8 space-y-3 bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200">
+            <div className="flex justify-between text-slate-600">
+              <span>Items Subtotal</span>
+              <span className="font-semibold text-slate-900 font-mono">Rs. {subTotal.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-blue-600 font-medium">
+              <span>Delivery Charges</span>
+              <span className="font-mono">+ Rs. {DELIVERY_FEE.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-bold text-slate-800 mb-4 text-center">Select Payment Method</h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <PaymentOption 
+              active={paymentMethod === "card"}
+              onClick={() => { setPaymentMethod("card"); handleCardPayment(); }}
+              icon={<CreditCard className="w-6 h-6" />}
+              title="Card Payment"
+              desc="Visa / Mastercard"
+              color="blue"
+            />
+            <PaymentOption 
+              active={paymentMethod === "cod"}
+              onClick={() => { setPaymentMethod("cod"); handleCOD(); }}
+              icon={<Truck className="w-6 h-6" />}
+              title="Cash on Delivery"
+              desc="Pay at doorstep"
+              color="emerald"
+            />
+          </div>
+
+          <button
+            onClick={() => navigate(-1)}
+            disabled={loading}
+            className="w-full mt-8 py-3 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+          >
+            ← Back to Shipping Details
+          </button>
         </div>
       </div>
     </div>
+  );
+}
+
+// Reusable UI Component for Payment Cards
+function PaymentOption({ active, onClick, icon, title, desc, color }) {
+  const colorClasses = {
+    blue: active ? "border-blue-500 bg-blue-50/50" : "border-slate-100 hover:border-blue-200",
+    emerald: active ? "border-emerald-500 bg-emerald-50/50" : "border-slate-100 hover:border-emerald-200"
+  };
+
+  const iconColors = {
+    blue: "text-blue-600",
+    emerald: "text-emerald-600"
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`p-5 rounded-2xl border-2 text-left transition-all duration-300 transform active:scale-95 ${colorClasses[color]}`}
+    >
+      <div className={`${iconColors[color]} mb-3 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm`}>
+        {icon}
+      </div>
+      <div className="font-bold text-slate-900">{title}</div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{desc}</div>
+    </button>
   );
 }

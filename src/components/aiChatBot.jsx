@@ -1,189 +1,245 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useRef,
+  useCallback,
+  memo,
+} from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Swal from "sweetalert2";
+
+/* =====================
+   Constants
+===================== */
+const API_BASE = "http://localhost:4000/api/messages";
+const POLL_INTERVAL = 3000;
+
+/* =====================
+   Message Bubble Component
+===================== */
+const MessageBubble = memo(({ msg }) => {
+  const isUser = msg.sender === "user";
+  const isAdmin = msg.sender === "admin";
+
+  return (
+    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} mb-3 animate-in fade-in slide-in-from-bottom-1`}>
+      <div className={`max-w-[85%] px-4 py-2.5 text-sm shadow-sm ${isUser ? "bg-slate-900 text-white rounded-t-2xl rounded-bl-2xl" : "bg-white border rounded-t-2xl rounded-br-2xl text-slate-700"}`}>
+        {msg.text}
+      </div>
+      <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tight">
+        {isUser ? "You" : isAdmin ? "Admin" : "AI"}
+      </span>
+    </div>
+  );
+});
 
 export default function ChatBot() {
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
 
-  // 🔄 Chat එක open කරන විට history එක load කිරීම
-  useEffect(() => {
-    if (isOpen) fetchAllMessages();
-  }, [isOpen]);
+  const mainRef = useRef(null);
+  const token = localStorage.getItem("token");
 
-  // 📜 පණිවිඩ ලැබෙන විට auto-scroll වීම
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  // 🛠️ AI සහ Admin පණිවිඩ සියල්ල එකට ලබා ගැනීම
-  const fetchAllMessages = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      // 1. AI Chat History (Strings)
-      const resAI = await axios.get("http://localhost:4000/api/messages/getmessages", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      // 2. Admin Replies (Objects)
-      const resAdmin = await axios.get("http://localhost:4000/api/messages/getadminreplies", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      let combinedMessages = [];
-
-      // AI පණිවිඩ Object format එකට හරවා ගැනීම
-      if (resAI.data.messages) {
-        const formattedAI = resAI.data.messages.map(msg => {
-          const isUser = msg.startsWith("user:");
-          return {
-            sender: isUser ? "user" : "ai",
-            text: msg.replace("user:", "").replace("ai:", "").trim()
-          };
-        });
-        combinedMessages = [...formattedAI];
-      }
-
-      // Admin පණිවිඩ එකතු කිරීම
-      if (resAdmin.data.messages) {
-        combinedMessages = [...combinedMessages, ...resAdmin.data.messages];
-      }
-
-      setMessages(combinedMessages);
-    } catch (err) {
-      console.error("Fetch history error:", err);
+  useLayoutEffect(() => {
+    if (isOpen && mainRef.current) {
+      mainRef.current.scrollTop = mainRef.current.scrollHeight;
     }
-  };
+  }, [messages.length, loading, isOpen]);
 
-  // පණිවිඩයක් යැවීම
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  /* =====================
+      2. Text-to-Speech (With Auto-Reset)
+  ===================== */
+  const speak = useCallback((text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel(); 
 
-    const token = localStorage.getItem("token");
-    const userText = input;
-    setInput(""); 
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+
+    // AI කතා කර අවසන් වූ පසු ස්වයංක්‍රීයව voiceMode එක Off කරයි
+    utterance.onend = () => {
+      setVoiceMode(false);
+    };
+
+    // Error එකක් වුවහොත් (උදා: voice block වුවහොත්) voiceMode එක Off කරයි
+    utterance.onerror = () => {
+      setVoiceMode(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const fetchMessages = useCallback(async (endpoint) => {
+    if (!token || !isOpen) return;
+    try {
+      const { data } = await axios.get(`${API_BASE}/${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!data?.messages?.length) return;
+      setMessages((prev) => {
+        const newItems = data.messages.filter(m => !prev.some(p => p._id === m._id));
+        if (newItems.length === 0) return prev;
+        const combined = [...prev, ...newItems];
+        return combined.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  }, [isOpen, token]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchMessages("getmessages");
+    const interval = setInterval(() => fetchMessages("getadminreplies"), POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [isOpen, fetchMessages]);
+
+  useEffect(() => {
+    if (voiceMode && messages.length > 0) {
+      const latest = messages[messages.length - 1];
+      if (latest.sender === "ai") {
+        speak(latest.text);
+      }
+    }
+  }, [messages, voiceMode, speak]);
+
+  const sendMessage = async (text, viaVoice = false) => {
+    const trimmedText = text?.trim();
+    if (!trimmedText || loading) return;
+
+    // Mic එකෙන් එවන විට පමණක් voiceMode activate වේ
+    setVoiceMode(viaVoice);
+    if (!viaVoice) window.speechSynthesis.cancel();
+
+    const tempId = Date.now().toString();
+    const optimisticMsg = {
+      _id: tempId,
+      text: trimmedText,
+      sender: "user",
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setInput("");
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:4000/api/messages/sendmessage",
-        { message: userText },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // Backend එකෙන් ලැබෙන අලුත් පණිවිඩ (Reply soon ඇතුළුව) එකතු කිරීම
-      if (res.data.messages) {
-        setMessages(prev => [...prev, ...res.data.messages]);
-      } else {
-        fetchAllMessages();
+      const { data } = await axios.post(`${API_BASE}/sendmessage`, { message: trimmedText }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (data?.messages) {
+        setMessages((prev) => {
+          const filtered = prev.filter(m => m._id !== tempId);
+          const combined = [...filtered, ...data.messages];
+          return combined.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
       }
-    } catch (err) {
-      console.error("Send error:", err);
+    } catch {
+      setMessages((prev) => prev.filter(m => m._id !== tempId));
+      setVoiceMode(false);
+      Swal.fire("Error", "Failed to send message", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <>
-      <style>{`
-        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-5px); } }
-        .dot { display: inline-block; width: 6px; height: 6px; background: #999; border-radius: 50%; margin-right: 3px; animation: bounce 1.4s infinite ease-in-out; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-      `}</style>
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (e) => {
+      const t = e.results[0][0].transcript.trim();
+      if (t) sendMessage(t, true);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  };
 
-      {/* Floating Button */}
-      <button onClick={() => setIsOpen(!isOpen)} style={styles.fab}>
-        {isOpen ? "✖" : "💬"}
+  return (
+    <div className="fixed bottom-6 right-6 z-[1000] font-sans">
+      <button 
+        onClick={() => (token ? setIsOpen(!isOpen) : navigate("/login"))} 
+        className="w-14 h-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center text-lg hover:scale-105 active:scale-95 transition-all"
+      >
+        {isOpen ? "✕" : "💬"}
       </button>
 
       {isOpen && (
-        <div style={styles.chatContainer}>
-          <div style={styles.header}>
-            <div style={styles.statusDot}></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: "600", fontSize: "14px" }}>Support Center</div>
-              <div style={{ fontSize: "11px", opacity: 0.9 }}>Online Support Team</div>
+        <div className="absolute bottom-20 right-0 w-[340px] h-[550px] bg-white rounded-[30px] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+          <header className="p-5 bg-slate-900 text-white flex justify-between items-center shrink-0">
+            <div className="flex flex-col">
+              <h3 className="font-bold text-sm">Customer Support</h3>
+              {isListening ? (
+                <span className="text-[9px] text-green-400 font-bold tracking-widest animate-pulse">
+                  ● LISTENING...
+                </span>
+              ) : voiceMode ? (
+                <span className="text-[9px] text-blue-400 font-bold tracking-widest animate-pulse">
+                  ● AI SPEAKING...
+                </span>
+              ) : null}
             </div>
-          </div>
+            {voiceMode && (
+              <button 
+                onClick={() => { setVoiceMode(false); window.speechSynthesis.cancel(); }}
+                className="text-[10px] bg-red-500/20 hover:bg-red-500 border border-red-500/50 px-2 py-1 rounded-md transition-all"
+              >
+                Stop
+              </button>
+            )}
+          </header>
 
-          <div style={styles.messageArea}>
-            {messages.map((msg, idx) => {
-              const isUser = msg.sender === "user";
-              const isAdmin = msg.sender === "admin";
-              
-              // Label එක තීරණය කිරීම
-              let label = "AI Assistant";
-              if (isUser) label = "You";
-              if (isAdmin) label = "Admin";
-
-              return (
-                <div key={idx} style={isUser ? styles.userRow : styles.aiRow}>
-                  {/* Sender Label */}
-                  <div style={{
-                    fontSize: "10px",
-                    marginBottom: "3px",
-                    color: "#888",
-                    textAlign: isUser ? "right" : "left",
-                    fontWeight: "700",
-                    textTransform: "uppercase"
-                  }}>
-                    {label}
-                  </div>
-                  
-                  <div style={isUser ? styles.userBubble : styles.aiBubble}>
-                    {msg.text}
-                  </div>
-                </div>
-              );
-            })}
-
+          <main ref={mainRef} className="flex-1 p-4 overflow-y-auto bg-slate-50">
+            {messages.map((m) => (
+              <MessageBubble key={m._id} msg={m} />
+            ))}
             {loading && (
-              <div style={styles.aiRow}>
-                <div style={{ fontSize: "10px", color: "#888", marginBottom: "3px" }}>AI Assistant</div>
-                <div style={styles.aiBubble}>
-                  <span className="dot"></span>
-                  <span className="dot"></span>
-                  <span className="dot"></span>
-                </div>
+              <div className="flex justify-start mb-3">
+                <p className="text-[10px] italic text-slate-400 bg-white border rounded-t-2xl rounded-br-2xl px-3 py-1 animate-pulse">Typing...</p>
               </div>
             )}
-            <div ref={messagesEndRef} />
-          </div>
+          </main>
 
-          <form onSubmit={handleSend} style={styles.inputForm}>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type @admin to talk to a human..."
-              style={styles.inputField}
-              disabled={loading}
-            />
-            <button type="submit" style={styles.sendBtn} disabled={loading}>➤</button>
-          </form>
+          <footer className="p-3 border-t bg-white shrink-0">
+            <form 
+              onSubmit={(e) => { e.preventDefault(); sendMessage(input, false); }} 
+              className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3"
+            >
+              <button 
+                type="button" 
+                onClick={startVoiceInput} 
+                className={`text-lg transition-all ${isListening ? "text-red-500 scale-125" : "text-slate-500 hover:text-slate-700"}`} 
+                disabled={isListening}
+              >
+                🎤
+              </button>
+              <input 
+                className="flex-1 bg-transparent outline-none text-sm py-2 text-slate-700" 
+                value={input} 
+                onChange={(e) => setInput(e.target.value)} 
+                placeholder={isListening ? "Listening..." : "Type a message..."} 
+                disabled={isListening || loading} 
+              />
+              <button 
+                type="submit" 
+                disabled={!input.trim() || loading || isListening} 
+                className="text-lg text-slate-900 opacity-70 hover:opacity-100 disabled:opacity-20"
+              >
+                ➤
+              </button>
+            </form>
+          </footer>
         </div>
       )}
-    </>
+    </div>
   );
 }
-
-const styles = {
-  fab: { position: "fixed", bottom: "30px", right: "30px", width: "60px", height: "60px", borderRadius: "50%", backgroundColor: "#7c4dff", color: "white", border: "none", fontSize: "24px", cursor: "pointer", zIndex: 1000, boxShadow: "0 6px 20px rgba(124, 77, 255, 0.4)" },
-  chatContainer: { position: "fixed", bottom: "105px", right: "30px", width: "360px", height: "500px", backgroundColor: "white", borderRadius: "20px", display: "flex", flexDirection: "column", boxShadow: "0 12px 40px rgba(0,0,0,0.15)", zIndex: 1000, overflow: "hidden", border: "1px solid #f0f0f0" },
-  header: { padding: "18px", backgroundColor: "#7c4dff", color: "white", display: "flex", alignItems: "center", gap: "12px" },
-  statusDot: { width: "10px", height: "10px", backgroundColor: "#00e676", borderRadius: "50%", border: "2px solid white" },
-  messageArea: { flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", backgroundColor: "#f9fafb" },
-  userRow: { alignSelf: "flex-end", maxWidth: "85%" },
-  aiRow: { alignSelf: "flex-start", maxWidth: "85%" },
-  userBubble: { backgroundColor: "#7c4dff", color: "white", padding: "10px 14px", borderRadius: "15px 15px 0 15px", fontSize: "14px", boxShadow: "0 2px 5px rgba(0,0,0,0.05)" },
-  aiBubble: { backgroundColor: "#ffffff", color: "#333", padding: "10px 14px", borderRadius: "15px 15px 15px 0", fontSize: "14px", border: "1px solid #e5e7eb", boxShadow: "0 2px 5px rgba(0,0,0,0.02)" },
-  inputForm: { padding: "15px", display: "flex", alignItems: "center", gap: "10px", borderTop: "1px solid #f0f0f0" },
-  inputField: { flex: 1, border: "1px solid #e5e7eb", borderRadius: "25px", padding: "10px 18px", outline: "none", fontSize: "14px" },
-  sendBtn: { background: "none", border: "none", color: "#7c4dff", fontSize: "22px", cursor: "pointer" }
-};

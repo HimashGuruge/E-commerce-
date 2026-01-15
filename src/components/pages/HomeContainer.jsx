@@ -1,215 +1,130 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import Card from "@/components/Card";
+import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import axios from "axios";
+import { Loader2, ArrowDown, CheckCircle2 } from "lucide-react";
+
+// Components imports
+import Card from "@/components/Card";
 import NewAdsTitles from "@/components/newadds";
 import Banners from "@/components/Banners";
 
+// 1. Constants - මම මේවා එළියට ගත්තා Render වෙද්දී අලුතින් හැදෙන්නේ නැති වෙන්න
+const PROMO_DATA = ["🔥 Hot Deals Today!", "🚀 Free Shipping!", "✨ New Arrivals!", "🎁 Limited Offers!"];
+const ITEMS_PER_PAGE = 8;
+
+// 2. Memoized Promo Bar - මේක වෙනම Component එකක් විදිහට ගත්තම Main Page එක Render වෙද්දී මේක නැවත Render වෙන්නේ නැහැ
+const MemoizedPromoBar = memo(() => (
+  <div className="bg-slate-900 py-3 shadow-lg overflow-hidden border-b border-white/5">
+    <NewAdsTitles speed={25}>
+      <div className="flex items-center">
+        {PROMO_DATA.map((text, i) => (
+          <span key={i} className="mx-8 md:mx-12 text-white font-black text-[10px] md:text-xs uppercase tracking-[0.25em] opacity-95 antialiased">
+            {text}
+          </span>
+        ))}
+      </div>
+    </NewAdsTitles>
+  </div>
+));
+
 export default function HomeContainer() {
   const [allProducts, setAllProducts] = useState([]);
-  const [displayedProducts, setDisplayedProducts] = useState([]);
-  const [loading, setLoading] = useState(true); // Initial fetch loading state
-  const [loadingMore, setLoadingMore] = useState(false); // Infinite scroll/button loading state
-  const [error, setError] = useState(null); // <--- NEW: State to store fetch error
-  const [visibleCount, setVisibleCount] = useState(8);
-  const [hasMore, setHasMore] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const observerTarget = useRef(null);
 
-  // --- 1. Initial Data Fetch ---
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      setError(null); // Clear previous errors
-      try {
-        const response = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products");
-        if (Array.isArray(response.data)) {
-          const products = response.data;
-          setAllProducts(products);
-          setDisplayedProducts(products.slice(0, visibleCount));
-          setHasMore(products.length > visibleCount);
-        } else {
-          setAllProducts([]);
-          setDisplayedProducts([]);
-          setHasMore(false);
-          // Optional: Set a specific error if data format is unexpected
-          // setError("Received data in an unexpected format.");
-        }
-      } catch (e) {
-        console.error("Error fetching products:", e);
-        // <--- UPDATED: Set the error state on failure
-        setError("Failed to fetch products. Please check the server connection " +(import.meta.env.VITE_BACKEND_URL));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
+  // 3. Optimized Fetch - Axios shortcut පාවිච්චි කළා
+  const fetchProducts = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`);
+      setAllProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch failed");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // --- 2. Load More Logic (No change needed here) ---
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // 4. Turbo Processing - UseMemo මගින් array එක ඉතා වේගයෙන් slice කරයි
+  const displayedProducts = useMemo(() => 
+    allProducts.slice(0, visibleCount), 
+    [allProducts, visibleCount]
+  );
+
+  const hasMore = allProducts.length > visibleCount;
+
+  // 5. Smooth Load More
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
-
     setLoadingMore(true);
-
-    setTimeout(() => {
-      const newCount = visibleCount + 8;
-      setVisibleCount(newCount);
-      setDisplayedProducts(allProducts.slice(0, newCount));
-      setHasMore(allProducts.length > newCount);
+    // UI එක හිර නොවී වැඩ කිරීමට කුඩා පමාවක් (Micro-task)
+    requestAnimationFrame(() => {
+      setVisibleCount(prev => prev + ITEMS_PER_PAGE);
       setLoadingMore(false);
-    }, 500);
-  }, [allProducts, loadingMore, hasMore, visibleCount]);
+    });
+  }, [loadingMore, hasMore]);
 
-  // --- 3. Intersection Observer (No change needed here) ---
+  // 6. Intersection Observer - Infinite Scroll
   useEffect(() => {
-    // Only observe if there is more data and no loading is currently active
-    if (!hasMore || loading || loadingMore || error) return; // <--- Check for error
-
+    if (!hasMore || loading) return;
+    
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
-      },
-      { threshold: 0.5, rootMargin: "100px" }
+      ([entry]) => entry.isIntersecting && loadMore(),
+      { threshold: 0.1, rootMargin: "400px" } // 400px කලින් Load වෙනවා (Fast UX)
     );
 
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadMore]);
 
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [hasMore, loading, loadingMore, loadMore, error]); // <--- Added error dependency
+  if (loading) return (
+    <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+      <Loader2 className="animate-spin text-blue-600" size={40} />
+      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Store...</p>
+    </div>
+  );
 
-  // --- 4. Initial Load Spinner UI ---
-  // A. Show spinner while fetching
-  if (loading && displayedProducts.length === 0) {
-    return (
-      <div className="min-h-screen p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
-        <span className="ml-3 text-teal-600">Fetching initial products...</span>
-      </div>
-    );
-  }
-
-  // B. Show persistent error message if fetch failed
-  if (error) {
-    return (
-      <div className="min-h-screen p-8 flex flex-col justify-center items-center bg-red-50">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mb-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-        </svg>
-        <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Data</h2>
-        <p className="text-red-600 text-center max-w-lg">{error}</p>
-        <p className="text-gray-500 text-sm mt-4">Check your console for more details on the fetch error.</p>
-      </div>
-    );
-  }
-
-  // --- 5. Main Render ---
   return (
-    <div className="min-h-screen">
-      <div className="">
-        <NewAdsTitles direction="left" speed={100}>
-          <span className="mr-8">🔥 Hot Deals Today!</span>
-          <span className="mr-8">🚀 Free Shipping!</span>
-          <span className="mr-8">🎉 Big Savings!</span>
-          <span className="mr-8">🎁 Limited Time Offers!</span>
-          <span className="mr-8">✨ New Arrivals!</span>
-          <span className="mr-8">🔥 Hot Deals Today!</span>
-          <span className="mr-8">🚀 Free Shipping!</span>
-          <span className="mr-8">🎉 Big Savings!</span>
-          <span className="mr-8">🎁 Limited Time Offers!</span>
-          <span className="mr-8">✨ New Arrivals!</span>
-          <span className="mr-8">🔥 Hot Deals Today!</span>
-          <span className="mr-8">🔥 Hot Deals Today!</span>
-          <span className="mr-8">🚀 Free Shipping!</span>
-          <span className="mr-8">🎉 Big Savings!</span>
-          <span className="mr-8">🎁 Limited Time Offers!</span>
-          <span className="mr-8">✨ New Arrivals!</span>
-          <span className="mr-8">🔥 Hot Deals Today!</span>
-          <span className="mr-8">🚀 Free Shipping!</span>
-          <span className="mr-8">🎉 Big Savings!</span>
-          <span className="mr-8">🎁 Limited Time Offers!</span>
-          <span className="mr-8">✨ New Arrivals!</span>
-          <span className="mr-8">🔥 Hot Deals Today!</span>
-        </NewAdsTitles>
-      </div>
-      <div className="p-4 md:p-8">
-        {/*banners casorle here */}
+    <div className="w-full bg-[#fcfcfc] min-h-screen">
+      <MemoizedPromoBar />
 
-        <div className="mt-2">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
+        <div className="mt-6 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/60">
           <Banners images={[]} />
         </div>
 
-        {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {displayedProducts.map((product) => (
-            <Card
-              key={product._id || product.productId}
-              productId={product.productId}
-              productName={product.productName}
-              lastPrices={product.lastPrices}
-              price={product.price}
-              images={product.images}
-            />
+        {/* 7. Product Grid - GPU optimized rendering */}
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          {displayedProducts.map(product => (
+            <Card key={product._id || product.productId} {...product} />
           ))}
         </div>
 
-        {/* --- 6. Loading More Indicator UI --- */}
-        {loadingMore && (
-          <div className="text-center py-8">
-            <div className="inline-flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mr-3"></div>
-              <span className="text-teal-600">Loading more products...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Observer target for Intersection Observer */}
-        {/* Only visible when there's a chance of loading more */}
-        {hasMore && <div ref={observerTarget} className="h-10"></div>}
-
-
-        {/* --- 7. Fallback "Load More" Button UI --- */}
-        {hasMore && !loadingMore && (
-          <div className="text-center py-8">
-            <div className="mb-4 text-gray-600 text-sm">
-              Scroll down to load more or click below
-            </div>
-            <button
-              onClick={loadMore}
-              className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
-            >
-              Load More ({allProducts.length - displayedProducts.length}{" "}
-              remaining)
-            </button>
-          </div>
-        )}
-
-        {/* --- 8. All Loaded Message UI --- */}
-        {!hasMore && allProducts.length > 0 && (
-          <div className="text-center py-8">
-            <div className="inline-block px-6 py-3 bg-green-100 text-green-800 rounded-full">
-              🎉 All {allProducts.length} products loaded!
-            </div>
-            <p className="text-gray-500 text-sm mt-2">
-              You've reached the end of our products
-            </p>
-          </div>
-        )}
-
-        {/* Scroll indicator for mobile */}
-        {hasMore && displayedProducts.length > 8 && (
-          <div className="fixed bottom-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-full shadow-lg text-sm animate-bounce lg:hidden">
-            ↓ Scroll for more
-          </div>
-        )}
+        {/* Footer Actions */}
+        <div className="mt-16 flex flex-col items-center">
+          {hasMore ? (
+            <>
+              <div ref={observerTarget} className="h-10 w-full" />
+              <button 
+                onClick={loadMore}
+                className="group flex items-center gap-3 px-12 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 hover:scale-105 transition-all duration-300 shadow-xl shadow-slate-200"
+              >
+                {loadingMore ? <Loader2 className="animate-spin" size={18}/> : <>Load More <ArrowDown size={18} className="group-hover:translate-y-1 transition-transform"/></>}
+              </button>
+            </>
+          ) : (
+            allProducts.length > 0 && (
+              <div className="flex flex-col items-center gap-2 py-10 opacity-50">
+                <CheckCircle2 className="text-green-500" size={24} />
+                <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em]">End of Collection</p>
+              </div>
+            )
+          )}
+        </div>
       </div>
     </div>
   );

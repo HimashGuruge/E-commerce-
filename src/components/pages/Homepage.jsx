@@ -11,16 +11,14 @@ import ViewCartPage from "./viewCart";
 import ShipingPage from "@/components/pages/shipping";
 import AboutPage from "@/components/pages/about.jsx";
 import ServicePage from "@/components/pages/service.jsx";
-import { jwtDecode } from "jwt-decode"; // FIXED IMPORT
+import { jwtDecode } from "jwt-decode";
 import AiChatBot from "@/components/aiChatBot";
 import PaymentPage from "@/components/pages/admin/payment";
 import OrderPage from "@/components/pages/orderpage.jsx";
 import ProfilePage from "@/components/pages/ProfilePage.jsx";
-
-
+import ContactPage from "@/components/pages/contactPage.jsx";
 
 export default function Homepage() {
-  const [load, setLoad] = useState(false);
   const [user, setUser] = useState("customer");
 
   useEffect(() => {
@@ -39,46 +37,43 @@ export default function Homepage() {
       }
     };
 
-    authcheck(); // first check
+    authcheck();
     window.addEventListener("authChange", authcheck);
-
     return () => window.removeEventListener("authChange", authcheck);
   }, []);
 
   return (
-    <div className="w-full h-screen flex flex-col">
+    /* h-screen සහ overflow-hidden මගින් මුළු පිටුවම scroll වීම පාලනය කරයි */
+    <div className="w-full h-screen flex flex-col overflow-hidden bg-[#F9FAFB]">
       <Navbar />
 
-      {/* Main content area */}
-      <div className="w-full h-[calc(100vh-100px)]">
+      {/* Main content area: 
+          1. pt-[80px]: Navbar එකට යටින් content පටන් ගැනීමට ඉඩ තැබීම.
+          2. flex-1: ඉතිරි උස ප්‍රමාණය සම්පූර්ණයෙන් ගැනීම.
+          3. overflow-y-auto: ඇතුළත content එක පමණක් scroll වීමට ඉඩ දීම.
+      */}
+      <div className="flex-1 pt-[80px] overflow-y-auto">
         <Routes>
+      
           <Route path="/" element={<HomeContainer />} />
           <Route path="/viewcart" element={<ViewCartPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/shipping/" element={<ShipingPage />} />
-          <Route path="/service" element={<ServicePage />} />
-          <Route path="/contact" element={<h1>Contact</h1>} />
           <Route path="/login" element={<Login />} />
           <Route path="/singup" element={<Signup />} />
-
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/orders" element={<OrderPage />} />
           <Route path="/orders/:orderId" element={<OrderPage />} />
-
-
+          <Route path="/service" element={<ServicePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/admin/dashboard/*" element={<Dashboard />} />
-
-
-
+          <Route path="/productoverview/:productId" element={<Productoverview />} />
           <Route path="*" element={<NotFound />} />
-
-          <Route
-            path="/productoverview/:productId"
-            element={<Productoverview />}
-          />
         </Routes>
       </div>
+
+      
 
       {/* Show chatbot only for customer */}
       {user === "customer" && <AiChatBot />}
