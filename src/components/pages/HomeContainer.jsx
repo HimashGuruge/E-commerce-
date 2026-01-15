@@ -7,11 +7,18 @@ import Card from "@/components/Card";
 import NewAdsTitles from "@/components/newadds";
 import Banners from "@/components/Banners";
 
-// 1. Constants - මම මේවා එළියට ගත්තා Render වෙද්දී අලුතින් හැදෙන්නේ නැති වෙන්න
+// 1. Constants - Render වෙද්දී අලුතින් හැදෙන්නේ නැති වෙන්න එළියෙන් තිබ්බා
 const PROMO_DATA = ["🔥 Hot Deals Today!", "🚀 Free Shipping!", "✨ New Arrivals!", "🎁 Limited Offers!"];
 const ITEMS_PER_PAGE = 8;
 
-// 2. Memoized Promo Bar - මේක වෙනම Component එකක් විදිහට ගත්තම Main Page එක Render වෙද්දී මේක නැවත Render වෙන්නේ නැහැ
+// Slider එක සඳහා ලස්සන Casserole සහ Kitchenware images කිහිපයක්
+const SLIDE_IMAGES = [
+  "https://images.unsplash.com/photo-1584990344468-50cc2ec6562d?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1544233726-9f1d2b27be8b?auto=format&fit=crop&q=80&w=2000"
+];
+
+// 2. Memoized Promo Bar
 const MemoizedPromoBar = memo(() => (
   <div className="bg-slate-900 py-3 shadow-lg overflow-hidden border-b border-white/5">
     <NewAdsTitles speed={25}>
@@ -33,7 +40,7 @@ export default function HomeContainer() {
   const [loadingMore, setLoadingMore] = useState(false);
   const observerTarget = useRef(null);
 
-  // 3. Optimized Fetch - Axios shortcut පාවිච්චි කළා
+  // 3. Optimized Fetch
   const fetchProducts = useCallback(async () => {
     try {
       const { data } = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`);
@@ -49,7 +56,7 @@ export default function HomeContainer() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // 4. Turbo Processing - UseMemo මගින් array එක ඉතා වේගයෙන් slice කරයි
+  // 4. Turbo Processing (Slice logic)
   const displayedProducts = useMemo(() => 
     allProducts.slice(0, visibleCount), 
     [allProducts, visibleCount]
@@ -61,7 +68,6 @@ export default function HomeContainer() {
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    // UI එක හිර නොවී වැඩ කිරීමට කුඩා පමාවක් (Micro-task)
     requestAnimationFrame(() => {
       setVisibleCount(prev => prev + ITEMS_PER_PAGE);
       setLoadingMore(false);
@@ -74,7 +80,7 @@ export default function HomeContainer() {
     
     const observer = new IntersectionObserver(
       ([entry]) => entry.isIntersecting && loadMore(),
-      { threshold: 0.1, rootMargin: "400px" } // 400px කලින් Load වෙනවා (Fast UX)
+      { threshold: 0.1, rootMargin: "400px" }
     );
 
     if (observerTarget.current) observer.observe(observerTarget.current);
@@ -93,11 +99,13 @@ export default function HomeContainer() {
       <MemoizedPromoBar />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
-        <div className="mt-6 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/60">
-          <Banners images={[]} />
+        
+        {/* --- Image Slider Section --- */}
+        <div className="mt-6 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/60 transition-transform duration-500 hover:scale-[1.005]">
+          <Banners images={SLIDE_IMAGES} />
         </div>
 
-        {/* 7. Product Grid - GPU optimized rendering */}
+        {/* 7. Product Grid */}
         <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {displayedProducts.map(product => (
             <Card key={product._id || product.productId} {...product} />
