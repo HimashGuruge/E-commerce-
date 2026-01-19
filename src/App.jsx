@@ -5,10 +5,14 @@ import "./App.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 
+
 function App() {
+
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
   return (
     <div>
-      <GoogleOAuthProvider clientId="865120672100-nhmc7gk52kqk7h1obfhl2cv2v3an6e9d.apps.googleusercontent.com">
+      <GoogleOAuthProvider clientId={googleClientId}>
         <BrowserRouter>
           <Routes>
             <Route path="/*" element={<Homepage />} />
