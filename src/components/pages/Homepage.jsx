@@ -46,15 +46,11 @@ export default function Homepage() {
   }, []);
 
   return (
-    /* h-screen සහ overflow-hidden මගින් මුළු පිටුවම scroll වීම පාලනය කරයි */
+   
     <div className="w-full h-screen flex flex-col overflow-hidden bg-[#F9FAFB]">
       <Navbar />
 
-      {/* Main content area: 
-          1. pt-[80px]: Navbar එකට යටින් content පටන් ගැනීමට ඉඩ තැබීම.
-          2. flex-1: ඉතිරි උස ප්‍රමාණය සම්පූර්ණයෙන් ගැනීම.
-          3. overflow-y-auto: ඇතුළත content එක පමණක් scroll වීමට ඉඩ දීම.
-      */}
+
       <div className="flex-1 pt-[80px] overflow-y-auto">
         <Routes>
           <Route path="/" element={<HomeContainer />} />
