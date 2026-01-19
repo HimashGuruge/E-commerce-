@@ -17,6 +17,8 @@ import PaymentPage from "@/components/pages/admin/payment";
 import OrderPage from "@/components/pages/orderpage.jsx";
 import ProfilePage from "@/components/pages/ProfilePage.jsx";
 import ContactPage from "@/components/pages/contactPage.jsx";
+import ForgotPassword from "@/components/pages/ForgotPasswordpage";
+import ResetPassword from "@/components/pages/ResetPasswordPage.jsx";
 
 export default function Homepage() {
   const [user, setUser] = useState("customer");
@@ -54,13 +56,12 @@ export default function Homepage() {
       */}
       <div className="flex-1 pt-[80px] overflow-y-auto">
         <Routes>
-      
           <Route path="/" element={<HomeContainer />} />
           <Route path="/viewcart" element={<ViewCartPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/shipping/" element={<ShipingPage />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/singup" element={<Signup />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/orders" element={<OrderPage />} />
           <Route path="/orders/:orderId" element={<OrderPage />} />
@@ -68,12 +69,15 @@ export default function Homepage() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/admin/dashboard/*" element={<Dashboard />} />
-          <Route path="/productoverview/:productId" element={<Productoverview />} />
+          <Route
+            path="/productoverview/:productId"
+            element={<Productoverview />}
+          />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
-
-      
 
       {/* Show chatbot only for customer */}
       {user === "customer" && <AiChatBot />}

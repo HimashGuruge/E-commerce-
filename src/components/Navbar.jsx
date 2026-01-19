@@ -14,9 +14,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // API URL එක (Environment variable එක භාවිතා කිරීම වඩාත් ආරක්ෂිතයි)
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
+  // --- 1. USER DATA FETCH & SYNC ---
   const fetchUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
     
@@ -38,20 +38,21 @@ export default function Navbar() {
     } catch (error) {
       console.error("Navbar Auth Error:", error);
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        handleLogout();
+        handleLogout(); // Token එක අවලංගු නම් වහාම Logout කරන්න
       }
     }
   }, [BACKEND_URL]);
 
+  // --- 2. EVENT LISTENERS SETUP ---
   useEffect(() => {
     fetchUserData();
     
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     
-    // වෙනත් තැනක login වූ විට වහාම Navbar එක update වීමට
-    window.addEventListener("authChange", fetchUserData);
-    window.addEventListener("storage", fetchUserData); // localStorage වෙනස් වූ විට
+    // මේ Listeners දෙක මගින් Logout වූ බව දැනගනියි
+    window.addEventListener("authChange", fetchUserData); 
+    window.addEventListener("storage", fetchUserData); 
     
     return () => {
       window.removeEventListener("scroll", handleScroll);
@@ -60,11 +61,25 @@ export default function Navbar() {
     };
   }, [fetchUserData]);
 
+  // --- 3. CLEAN LOGOUT FUNCTION ---
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    // Local, Session සහ Cookies සම්පූර්ණයෙන්ම පිරිසිදු කිරීම
+    localStorage.clear();
+    sessionStorage.clear();
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    // State එක වහාම reset කිරීම
     setUser(null);
     setIsAdmin(false);
+
+    // Event Trigger කිරීම - මෙය අනෙකුත් Components වලට logout වූ බව පවසයි
     window.dispatchEvent(new Event("authChange"));
+    window.dispatchEvent(new Event("storage")); 
+
     navigate("/login");
   };
 
@@ -109,10 +124,10 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             {user && (
               <div className="flex items-center gap-1">
-                <Link title="Cart" to={`/viewcart?userId=${userId}`} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                <Link title="Cart" to="/viewcart" className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative">
                   <ShoppingCart size={20} />
                 </Link>
-                <Link title="Orders" to={`/orders?userId=${userId}`} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                <Link title="Orders" to="/orders" className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
                   <Package size={20} />
                 </Link>
               </div>
@@ -146,9 +161,8 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-3">
                 <Link to="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3">Login</Link>
-                {/* 🟢 FIXED TYPO: /singup -> /signup */}
                 <Link to="/signup" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
-                  Create New Account
+                  Join Now
                 </Link>
               </div>
             )}
@@ -176,13 +190,16 @@ export default function Navbar() {
               <MobileNavLink to="/contact" label="Contact" active={location.pathname === "/contact"} onClick={() => setMenuOpen(false)} />
               
               {user && (
-                 <MobileNavLink to={`/profile?userId=${userId}`} label="My Profile" active={location.pathname === "/profile"} onClick={() => setMenuOpen(false)} />
+                <>
+                  <MobileNavLink to="/viewcart" label="Shopping Cart" active={location.pathname === "/viewcart"} onClick={() => setMenuOpen(false)} />
+                  <MobileNavLink to="/orders" label="My Orders" active={location.pathname === "/orders"} onClick={() => setMenuOpen(false)} />
+                  <MobileNavLink to={`/profile?userId=${userId}`} label="My Profile" active={location.pathname === "/profile"} onClick={() => setMenuOpen(false)} />
+                </>
               )}
 
               {!user ? (
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <Link to="/login" onClick={() => setMenuOpen(false)} className="py-3 text-center text-sm font-bold text-slate-700 border border-slate-200 rounded-xl">Login</Link>
-                  {/* 🟢 FIXED CONSISTENCY: /register -> /signup */}
                   <Link to="/signup" onClick={() => setMenuOpen(false)} className="py-3 text-center text-sm font-bold bg-blue-600 text-white rounded-xl">Sign Up</Link>
                 </div>
               ) : (

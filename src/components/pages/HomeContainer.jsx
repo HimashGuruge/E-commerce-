@@ -74,6 +74,8 @@ export default function HomeContainer() {
     }
   };
 
+  console.log(allProducts)
+
   useEffect(() => {
     fetchData();
   }, []);
