@@ -5,16 +5,16 @@ import ImageSlider from "@/components/imageSlider";
 import { addToCart } from "../utils/cart";
 import {
   FiShoppingCart,
-  FiTag,
-  FiInfo,
   FiArrowLeft,
   FiTruck,
   FiShield,
+  FiInfo,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiClock
 } from "react-icons/fi";
-import { MdOutlineInventory2 } from "react-icons/md";
 import Swal from "sweetalert2";
 
-// Delivery Fee එක මෙතන fix කරලා තියෙනවා
 const DELIVERY_FEE = 350;
 
 export default function ProductOverview() {
@@ -50,25 +50,32 @@ export default function ProductOverview() {
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= (product?.product?.stock || 10)) {
+    const maxStock = product?.product?.stock || 0;
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
       setQuantity(newQuantity);
     }
   };
 
-  // --- FIXED BUY NOW HANDLER ---
   const handleBuyNow = () => {
-    if (!product?.product || product.product.stock <= 0) return;
+    if (!product?.product || product.product.stock <= 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Out of Stock',
+        text: 'Sorry, this item is currently unavailable.',
+      });
+      return;
+    }
 
     const subtotal = product.product.lastPrices * quantity;
-    const finalTotal = subtotal + DELIVERY_FEE; // Delivery fee එක එකතු කිරීම
+    const finalTotal = subtotal + DELIVERY_FEE;
 
     Swal.fire({
       title: "Proceed to Checkout?",
       html: `
-        <div class="text-left text-sm bg-gray-50 p-3 rounded-lg">
-          <p>Product: <b>${product.product.productName}</b></p>
-          <p>Subtotal: <b>Rs. ${subtotal.toLocaleString()}</b></p>
-          <p class="text-blue-600">Delivery Fee: <b>Rs. ${DELIVERY_FEE.toLocaleString()}</b></p>
+        <div class="text-left text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
+          <p class="mb-1">Product: <b>${product.product.productName}</b></p>
+          <p class="mb-1">Subtotal: <b>Rs. ${subtotal.toLocaleString()}</b></p>
+          <p class="text-blue-600 mb-1">Delivery Fee: <b>Rs. ${DELIVERY_FEE.toLocaleString()}</b></p>
           <hr class="my-2"/>
           <p class="text-lg text-green-600">Total: <b>Rs. ${finalTotal.toLocaleString()}</b></p>
         </div>
@@ -93,9 +100,9 @@ export default function ProductOverview() {
                   image: product.product.images?.[0] || "",
                 },
               ],
-              total: subtotal, // Original items total
-              deliveryFee: DELIVERY_FEE, // Delivery fee එක pass කරනවා
-              finalTotal: finalTotal, // මුළු මුදල pass කරනවා
+              total: subtotal,
+              deliveryFee: DELIVERY_FEE,
+              finalTotal: finalTotal,
               labeledTotal: product.product.price * quantity,
               discount: (product.product.price - product.product.lastPrices) * quantity,
               message: "Direct buy now",
@@ -114,7 +121,9 @@ export default function ProductOverview() {
       await Swal.fire({
         icon: "success",
         title: "Added to Cart!",
-        timer: 1500,
+        toast: true,
+        position: 'top-end',
+        timer: 2000,
         showConfirmButton: false,
       });
     } finally {
@@ -126,83 +135,149 @@ export default function ProductOverview() {
     return new Intl.NumberFormat("en-LK", {
       style: "currency",
       currency: "LKR",
+      minimumFractionDigits: 0
     }).format(price);
   };
 
-  if (loading) return <div className="text-center mt-20 font-bold text-gray-600">Loading Product...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      <p className="mt-4 font-bold text-gray-500">Loading Product...</p>
+    </div>
+  );
+
   if (error || !product?.product) return <div className="text-center mt-20 text-red-500 font-bold">{error || "Product Not Found"}</div>;
 
   const data = product.product;
+  const isOutOfStock = data.stock <= 0;
+  const isLowStock = data.stock > 0 && data.stock <= 5;
   const hasDiscount = data.price > data.lastPrices;
-  const discountPercentage = hasDiscount ? Math.round(((data.price - data.lastPrices) / data.price) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white shadow-sm mb-6">
+      <div className="bg-white shadow-sm mb-6 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 font-bold">
-            <FiArrowLeft /> Back
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 font-bold hover:text-slate-900 transition-colors">
+            <FiArrowLeft /> Back to Shop
           </button>
         </div>
       </div>
 
       <div className="container mx-auto px-4">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Images */}
-          <div className="lg:w-1/2 bg-white rounded-3xl p-6 shadow-sm">
-            <ImageSlider images={data.images} showThumbnails={true} />
-            <div className="mt-6 flex gap-4">
-               <div className="flex-1 bg-blue-50 p-3 rounded-xl flex items-center gap-2 text-blue-700 font-bold text-sm">
-                 <FiTruck /> Free Shipping
+          {/* Left Column: Images */}
+          <div className="lg:w-1/2 space-y-4">
+            <div className="bg-white rounded-3xl p-4 shadow-sm relative overflow-hidden">
+              {isOutOfStock && (
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <span className="bg-red-600 text-white px-8 py-3 rounded-full font-black text-2xl shadow-xl transform -rotate-12">SOLD OUT</span>
+                </div>
+              )}
+              <ImageSlider images={data.images} showThumbnails={true} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+               <div className="bg-blue-50 p-4 rounded-2xl flex items-center gap-3 text-blue-700 font-bold text-sm border border-blue-100">
+                 <div className="bg-blue-100 p-2 rounded-lg"><FiTruck size={20}/></div>
+                 <span>Islandwide Delivery</span>
                </div>
-               <div className="flex-1 bg-green-50 p-3 rounded-xl flex items-center gap-2 text-green-700 font-bold text-sm">
-                 <FiShield /> Warranty
+               <div className="bg-green-50 p-4 rounded-2xl flex items-center gap-3 text-green-700 font-bold text-sm border border-green-100">
+                 <div className="bg-green-100 p-2 rounded-lg"><FiShield size={20}/></div>
+                 <span>Quality Assured</span>
                </div>
             </div>
           </div>
 
-          {/* Details */}
-          <div className="lg:w-1/2 bg-white rounded-3xl p-8 shadow-sm">
-            <p className="text-sm text-gray-400 font-bold mb-2 uppercase tracking-widest">SKU: {data.productId}</p>
-            <h1 className="text-3xl font-black text-gray-800 mb-4">{data.productName}</h1>
-            
-            <div className="mb-6 flex items-center gap-4">
-              <span className="text-4xl font-black text-green-600">{formatPrice(data.lastPrices)}</span>
-              {hasDiscount && (
-                <span className="text-xl text-gray-300 line-through font-bold">{formatPrice(data.price)}</span>
+          {/* Right Column: Details */}
+          <div className="lg:w-1/2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+            {/* Stock Alert Badge */}
+            <div className="mb-4">
+              {isOutOfStock ? (
+                <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider">
+                  <FiAlertCircle /> Out of Stock
+                </div>
+              ) : isLowStock ? (
+                <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider animate-pulse">
+                  <FiClock /> Only {data.stock} Left - Order Soon!
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider">
+                  <FiCheckCircle /> In Stock & Ready to Ship
+                </div>
               )}
             </div>
 
-            <div className="mb-8 p-4 bg-gray-50 rounded-2xl">
-              <label className="block text-xs font-black text-gray-400 uppercase mb-3">Select Quantity</label>
-              <div className="flex items-center gap-4">
-                <button onClick={() => handleQuantityChange(-1)} className="w-12 h-12 bg-white border rounded-xl font-bold hover:bg-gray-100 transition">-</button>
-                <span className="text-xl font-black w-10 text-center">{quantity}</span>
-                <button onClick={() => handleQuantityChange(1)} className="w-12 h-12 bg-white border rounded-xl font-bold hover:bg-gray-100 transition">+</button>
-                <span className="text-sm text-gray-400 ml-4 font-bold">Only {data.stock} left in stock</span>
+            <p className="text-xs text-gray-400 font-bold mb-1 uppercase tracking-widest">SKU: {data.productId}</p>
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">{data.productName}</h1>
+            
+            <div className="mb-8 flex items-end gap-4">
+              <span className="text-4xl font-black text-slate-900">{formatPrice(data.lastPrices)}</span>
+              {hasDiscount && (
+                <div className="flex flex-col mb-1">
+                  <span className="text-lg text-gray-400 line-through font-bold decoration-red-400">{formatPrice(data.price)}</span>
+                  <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded font-black mt-1">SAVE {Math.round(((data.price - data.lastPrices)/data.price)*100)}%</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quantity Selector */}
+            <div className={`mb-8 p-5 rounded-2xl border-2 transition-colors ${isOutOfStock ? 'bg-gray-50 border-gray-100' : 'bg-slate-50 border-slate-100'}`}>
+              <label className="block text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">Select Quantity</label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-5">
+                  <button 
+                    disabled={isOutOfStock || quantity <= 1}
+                    onClick={() => handleQuantityChange(-1)} 
+                    className="w-12 h-12 bg-white border-2 border-slate-200 rounded-xl font-bold hover:border-slate-800 disabled:opacity-30 transition-all flex items-center justify-center text-xl shadow-sm"
+                  >
+                    -
+                  </button>
+                  <span className="text-2xl font-black w-8 text-center text-slate-800">{quantity}</span>
+                  <button 
+                    disabled={isOutOfStock || quantity >= data.stock}
+                    onClick={() => handleQuantityChange(1)} 
+                    className="w-12 h-12 bg-white border-2 border-slate-200 rounded-xl font-bold hover:border-slate-800 disabled:opacity-30 transition-all flex items-center justify-center text-xl shadow-sm"
+                  >
+                    +
+                  </button>
+                </div>
+                {!isOutOfStock && (
+                  <div className="text-right">
+                    <span className={`text-xs font-black uppercase ${isLowStock ? 'text-red-500' : 'text-slate-400'}`}>
+                      {isLowStock ? 'Low Stock' : 'Availability'}
+                    </span>
+                    <p className="text-sm font-bold text-slate-700">{data.stock} units left</p>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <button 
+                disabled={isOutOfStock || addingToCart}
                 onClick={handleAddToCart}
-                className="flex-1 py-4 px-6 bg-slate-800 text-white rounded-2xl font-black hover:bg-slate-900 transition flex items-center justify-center gap-2"
+                className="flex-1 py-4 px-6 bg-slate-900 text-white rounded-2xl font-black hover:bg-black disabled:bg-gray-200 disabled:text-gray-400 transition-all flex items-center justify-center gap-3 shadow-lg shadow-slate-200 active:scale-95"
               >
-                <FiShoppingCart /> Add to Cart
+                <FiShoppingCart size={20} /> {addingToCart ? 'Adding...' : 'Add to Cart'}
               </button>
               <button 
+                disabled={isOutOfStock}
                 onClick={handleBuyNow}
-                className="flex-1 py-4 px-6 bg-green-600 text-white rounded-2xl font-black hover:bg-green-700 transition"
+                className="flex-1 py-4 px-6 bg-green-600 text-white rounded-2xl font-black hover:bg-green-700 disabled:bg-gray-100 disabled:text-gray-300 transition-all shadow-lg shadow-green-100 active:scale-95"
               >
-                Buy Now
+                {isOutOfStock ? 'Out of Stock' : 'Buy It Now'}
               </button>
             </div>
 
-            <div className="mt-8 border-t pt-6">
-               <h3 className="font-black text-gray-800 mb-4 flex items-center gap-2">
-                 <FiInfo /> Description
+            {/* Tabs or Description */}
+            <div className="border-t border-slate-100 pt-8">
+               <h3 className="font-black text-slate-900 mb-4 flex items-center gap-2 text-lg">
+                 <FiInfo className="text-slate-400" /> Product Information
                </h3>
-               <p className="text-gray-600 leading-relaxed">{data.description}</p>
+               <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">
+                 {data.description}
+               </p>
             </div>
           </div>
         </div>

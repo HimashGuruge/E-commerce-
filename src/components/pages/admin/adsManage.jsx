@@ -107,7 +107,7 @@ export default function AdsManage() {
     }
     setUploading(true);
     try {
-      const publicUrl = await uploadMediaToSupabase(file);
+      const publicUrl = await uploadMediaToSupabase(file, 'banners');
       await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/ads`, {
         title: title,
         imageUrl: publicUrl,
