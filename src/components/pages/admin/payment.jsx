@@ -7,7 +7,6 @@ import { CreditCard, Truck } from "lucide-react";
 
 // --- constants ---
 const DELIVERY_FEE = 350;
-const MERCHANT_ID = import.meta.env.VITE_PAYHERE_MERCHANT_ID || "1233257";
 const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/payment`;
 
 export default function Payment() {
@@ -19,7 +18,6 @@ export default function Payment() {
   const [paymentMethod, setPaymentMethod] = useState(null);
 
   // --- computation ---
-  // useMemo භාවිතා කිරීමෙන් අනවශ්‍ය re-calculations වළක්වයි
   const { subTotal, finalTotal } = useMemo(() => {
     const sub = orderedata?.total || 0;
     const final = orderedata?.finalTotal || sub + DELIVERY_FEE;
@@ -35,16 +33,18 @@ export default function Payment() {
   // --- payhere event listeners ---
   useEffect(() => {
     if (window.payhere) {
-      window.payhere.onCompleted = (orderId) => {
+      window.payhere.onCompleted = () => {
         clearCart();
         handleSuccess("Payment Successful!", "Your order has been placed.");
       };
 
       window.payhere.onDismissed = () => {
+        setLoading(false);
         handleInfo("Payment Cancelled", "You closed the payment popup.");
       };
 
       window.payhere.onError = (error) => {
+        setLoading(false);
         handleError("Payment Error", "Something went wrong with the gateway.");
       };
     }
@@ -64,67 +64,63 @@ export default function Payment() {
     Swal.fire({ title, text, icon: "info" });
   };
 
-  // --- handlers ---
-
+  // --- 1. CARD PAYMENT HANDLER ---
   const handleCardPayment = async () => {
     if (!window.payhere || !orderedata) return;
     setLoading(true);
 
     try {
-      // පළමු item එකේ image එක පමණක් ලබා ගැනීම
-      const displayImage = orderedata.orderedItems?.[0]?.image || "";
-
-      // 1. Backend එකෙන් Secure Hash එක ලබා ගැනීම
+      // Backend එකට Hash එක සහ Pending Order එක සෑදීමට දත්ත යැවීම
       const { data } = await axios.post(
         `${API_URL}/generate-hash`,
         {
           amount: finalTotal,
           currency: "LKR",
-          address: orderedata.shippingAddress,
-          phone: orderedata.contactPhone,
-          imageUrl: displayImage,
+          orderedItems: orderedata.orderedItems,
+          shippingAddress: orderedata.shippingAddress,
+          contactPhone: orderedata.contactPhone,
         },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
-      // 2. PayHere Payment Object එක සකස් කිරීම
-      const payment = {
-        sandbox: true,
-        merchant_id: MERCHANT_ID,
-        return_url: `${window.location.origin}/orders`,
-        cancel_url: `${window.location.origin}/payment`,
-        notify_url: `${import.meta.env.VITE_BACKEND_URL}/api/payment/notify`,
-        order_id: data.order_id,
-        items: "Store Purchase",
-        amount: data.amount, 
-        currency: "LKR",
-        hash: data.hash,
-        first_name: orderedata.userFirstName || "Customer",
-        last_name: orderedata.userLastName || "",
-        email: orderedata.userEmail || "",
-        phone: orderedata.contactPhone,
-        address: orderedata.shippingAddress,
-        city: "Sri Lanka",
-        country: "Sri Lanka",
-        custom_1: displayImage,
-      };
-
-      window.payhere.startPayment(payment);
+      if (data.success) {
+        const payment = {
+          sandbox: true, // Live යන විට false කරන්න
+          merchant_id: data.merchant_id,
+          return_url: `${window.location.origin}/orders`,
+          cancel_url: `${window.location.origin}/payment`,
+          notify_url: `${import.meta.env.VITE_BACKEND_URL}/api/payment/notify`,
+          order_id: data.order_id,
+          items: "Online Store Purchase",
+          amount: data.amount, 
+          currency: "LKR",
+          hash: data.hash,
+          first_name: orderedata.userFirstName || "Customer",
+          last_name: orderedata.userLastName || "",
+          email: orderedata.userEmail || "",
+          phone: orderedata.contactPhone,
+          address: orderedata.shippingAddress,
+          city: "Sri Lanka",
+          country: "Sri Lanka",
+        };
+        window.payhere.startPayment(payment);
+      }
     } catch (err) {
+      console.error(err);
       handleError("Error", "Failed to initiate card payment.");
-    } finally {
       setLoading(false);
     }
   };
 
+  // --- 2. COD PAYMENT HANDLER ---
   const handleCOD = async () => {
     const result = await Swal.fire({
       title: "Confirm Order",
       html: `
         <div class="text-sm border-t pt-2">
           <p class="flex justify-between">Subtotal: <span>Rs. ${subTotal.toLocaleString()}</span></p>
-          <p class="flex justify-between">Delivery: <span>Rs. ${DELIVERY_FEE}</span></p>
-          <p class="flex justify-between font-bold text-lg mt-2">Total: <span>Rs. ${finalTotal.toLocaleString()}</span></p>
+          <p class="flex justify-between text-blue-600">Delivery: <span>Rs. ${DELIVERY_FEE}</span></p>
+          <p class="flex justify-between font-bold text-lg mt-2 pt-2 border-t">Total: <span>Rs. ${finalTotal.toLocaleString()}</span></p>
         </div>
       `,
       icon: "question",
@@ -137,15 +133,16 @@ export default function Payment() {
       setLoading(true);
       try {
         await axios.post(`${API_URL}/cod`, {
-          ...orderedata,
-          deliveryFee: DELIVERY_FEE,
+          orderedItems: orderedata.orderedItems,
+          shippingAddress: orderedata.shippingAddress,
+          contactPhone: orderedata.contactPhone,
           total: finalTotal,
-          paymentMethod: "cod",
         }, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
+        
         clearCart();
-        navigate("/orders");
+        handleSuccess("Order Placed!", "Your COD order is confirmed.");
       } catch (err) {
         handleError("Order Failed", "Could not process your COD order.");
       } finally {
@@ -163,7 +160,6 @@ export default function Payment() {
            </div>
         )}
 
-        {/* Header Section */}
         <div className="bg-slate-900 p-8 text-center text-white">
           <p className="text-slate-400 text-sm uppercase tracking-widest mb-2">Checkout Summary</p>
           <h1 className="text-4xl font-black">Rs. {finalTotal.toLocaleString()}</h1>
@@ -171,7 +167,6 @@ export default function Payment() {
         </div>
 
         <div className="p-8">
-          {/* Detailed Summary */}
           <div className="mb-8 space-y-3 bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200">
             <div className="flex justify-between text-slate-600">
               <span>Items Subtotal</span>
@@ -217,13 +212,11 @@ export default function Payment() {
   );
 }
 
-// Reusable UI Component for Payment Cards
 function PaymentOption({ active, onClick, icon, title, desc, color }) {
   const colorClasses = {
     blue: active ? "border-blue-500 bg-blue-50/50" : "border-slate-100 hover:border-blue-200",
     emerald: active ? "border-emerald-500 bg-emerald-50/50" : "border-slate-100 hover:border-emerald-200"
   };
-
   const iconColors = {
     blue: "text-blue-600",
     emerald: "text-emerald-600"
@@ -231,6 +224,7 @@ function PaymentOption({ active, onClick, icon, title, desc, color }) {
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`p-5 rounded-2xl border-2 text-left transition-all duration-300 transform active:scale-95 ${colorClasses[color]}`}
     >

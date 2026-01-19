@@ -7,6 +7,7 @@ import EditProducts from "../EditProducts";
 import Notification from "../notification";
 import StatCard from "../Dashboard/StatCard";
 import OrderedPage from "./OrderedPage";
+import AdsManage from "@/components/pages/admin/AdsManage";
 
 import { FiPackage, FiUsers, FiDollarSign } from "react-icons/fi";
 import { MdShoppingCart } from "react-icons/md";
@@ -57,9 +58,10 @@ export default function DashboardRoutes({ stats }) {
       />
       <Route path="adminviewproducts" element={<AdminAllProductView />} />
       <Route path="addproducts" element={<AddProducts />} />
-      <Route path="editproducts/:id" element={<EditProducts />} />
+      <Route path="editproducts" element={<EditProducts />} />
       <Route path="notification" element={<Notification />} />
       <Route path="orders" element={<OrderedPage />} />
+      <Route path="ads" element={<AdsManage />} />
     </Routes>
   );
 }
