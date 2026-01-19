@@ -3,10 +3,9 @@ import { loadCart, deleteItem, updateItemQty } from "@/components/utils/cart";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
-import { Trash2, ShoppingBag, AlertCircle, Package, CreditCard, Minus, Plus, Truck } from "lucide-react";
+import { Trash2, ShoppingBag, AlertCircle, Package, CreditCard, Minus, Plus, Truck, Info } from "lucide-react";
 
-// --- CONFIGURATION ---
-const DELIVERY_FEE = 350; // මෙතන තමයි ඔයාගේ Fixed Delivery Fee එක තියෙන්නේ.
+const DELIVERY_FEE = 350;
 
 const initialQuoteState = {
   orderedItems: [],
@@ -22,7 +21,6 @@ export default function ViewCart() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // --- 1. INITIALIZATION ---
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (!storedToken) {
@@ -33,7 +31,6 @@ export default function ViewCart() {
     setToken(storedToken);
   }, []);
 
-  // --- 2. FETCH QUOTE ---
   const fetchQuote = async (currentToken) => {
     const cart = loadCart();
     if (!cart.length) {
@@ -51,11 +48,7 @@ export default function ViewCart() {
       setQuoteData(data);
     } catch (error) {
       const serverMessage = error.response?.data?.message;
-      if (error.response?.status === 400 && serverMessage) {
-        setQuoteData(prev => ({ ...prev, message: serverMessage }));
-      } else {
-        setQuoteData({ ...initialQuoteState, message: "Failed to fetch prices." });
-      }
+      setQuoteData(prev => ({ ...prev, message: serverMessage || "Failed to fetch prices." }));
     } finally {
       setLoading(false);
     }
@@ -65,9 +58,22 @@ export default function ViewCart() {
     if (token) fetchQuote(token);
   }, [token]);
 
-  // --- 3. CART ACTIONS ---
-  const handleQtyChange = (productId, currentQty, change) => {
+  const handleQtyChange = (productId, currentQty, change, maxStock) => {
     const newQty = currentQty + change;
+    
+    // --- STOCK VALIDATION ---
+    if (newQty > maxStock) {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'warning',
+        title: 'Maximum stock reached',
+        showConfirmButton: false,
+        timer: 2000
+      });
+      return;
+    }
+
     if (newQty < 1) return;
     updateItemQty(productId, newQty);
     if (token) fetchQuote(token);
@@ -75,12 +81,13 @@ export default function ViewCart() {
 
   const handleDelete = (productId, productName) => {
     Swal.fire({
-      title: 'Remove Item',
-      text: `Are you sure you want to remove "${productName}"?`,
+      title: 'Remove Item?',
+      text: `Do you want to remove "${productName}" from cart?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      confirmButtonText: 'Yes, remove it!'
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, remove'
     }).then((result) => {
       if (result.isConfirmed) {
         deleteItem(productId);
@@ -94,9 +101,20 @@ export default function ViewCart() {
     });
   };
 
-  // --- 4. CHECKOUT HANDLER ---
   const handleCheckout = () => {
     if (!token) { navigate("/login"); return; }
+    
+    // --- FINAL STOCK CHECK BEFORE CHECKOUT ---
+    const outOfStockItems = quoteData.orderedItems.filter(item => item.stock <= 0);
+    if (outOfStockItems.length > 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Items Out of Stock',
+        text: 'Some items in your cart are no longer available. Please remove them to proceed.',
+      });
+      return;
+    }
+
     if (!quoteData.orderedItems.length || quoteData.total <= 0) return;
 
     const finalTotal = quoteData.total + DELIVERY_FEE;
@@ -104,24 +122,24 @@ export default function ViewCart() {
     Swal.fire({
       title: "Confirm Checkout",
       html: `
-        <div class="text-left text-sm p-2 bg-gray-50 rounded-lg">
-           <div class="flex justify-between mb-1"><span>Subtotal:</span> <b>Rs. ${quoteData.total.toLocaleString()}</b></div>
-           <div class="flex justify-between text-blue-600"><span>Delivery Fee:</span> <b>Rs. ${DELIVERY_FEE.toLocaleString()}</b></div>
-           <hr class="my-2 border-gray-300" />
-           <div class="flex justify-between text-lg text-amber-600"><span>Grand Total:</span> <b>Rs. ${finalTotal.toLocaleString()}</b></div>
+        <div class="text-left text-sm p-4 bg-gray-50 rounded-2xl border border-gray-100">
+           <div class="flex justify-between mb-2 text-gray-600 font-medium"><span>Items Subtotal:</span> <span>Rs. ${quoteData.total.toLocaleString()}</span></div>
+           <div class="flex justify-between text-blue-600 font-medium"><span>Delivery Charge:</span> <span>Rs. ${DELIVERY_FEE.toLocaleString()}</span></div>
+           <hr class="my-3 border-gray-200" />
+           <div class="flex justify-between text-lg font-black text-slate-900"><span>Grand Total:</span> <span>Rs. ${finalTotal.toLocaleString()}</span></div>
         </div>
       `,
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#f59e0b",
-      confirmButtonText: "Proceed to Shipping"
+      confirmButtonColor: "#10b981",
+      confirmButtonText: "Secure Checkout"
     }).then((result) => {
       if (result.isConfirmed) {
         const dataToPass = {
           ...quoteData,
           total: quoteData.total,
           deliveryFee: DELIVERY_FEE, 
-          finalTotal: finalTotal, // Grand total to be paid
+          finalTotal: finalTotal,
           orderedItems: quoteData.orderedItems.map(item => ({
             ...item,
             images: Array.isArray(item.images) ? item.images : (item.image ? [item.image] : [])
@@ -136,62 +154,106 @@ export default function ViewCart() {
   const finalTotalDisplay = total > 0 ? total + DELIVERY_FEE : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans">
+    <div className="min-h-screen bg-gray-50/50 py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex items-center space-x-3">
-          <ShoppingBag className="h-8 w-8 text-amber-500" />
-          <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+        <div className="mb-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="bg-amber-500 p-3 rounded-2xl shadow-lg shadow-amber-100">
+              <ShoppingBag className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900">Your Cart</h1>
+          </div>
+          <span className="text-gray-400 font-bold">{orderedItems.length} Items</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
           {/* LEFT COLUMN: Items */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             {message && (
-              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center text-amber-700">
-                <AlertCircle className="h-5 w-5 mr-2" /> {message}
+              <div className="p-4 bg-white border-l-4 border-amber-500 rounded-xl shadow-sm flex items-center text-amber-700 font-medium animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" /> {message}
               </div>
             )}
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
               {orderedItems.length > 0 ? (
                 <div className="divide-y divide-gray-100">
-                  {orderedItems.map((item) => (
-                    <div key={item.productId} className="p-6 flex flex-col sm:flex-row items-center gap-6 hover:bg-gray-50/50 transition-colors">
-                      <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                        {item.image ? (
-                          <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center"><Package className="text-gray-400" /></div>
-                        )}
-                      </div>
+                  {orderedItems.map((item) => {
+                    const isLowStock = item.stock > 0 && item.stock <= 5;
+                    const isOutOfStock = item.stock <= 0;
 
-                      <div className="flex-1 text-center sm:text-left">
-                        <h3 className="text-lg font-bold text-gray-800">{item.productName}</h3>
-                        <p className="text-blue-600 font-semibold">Rs. {item.lastPrice.toLocaleString()}</p>
-                        
-                        <div className="flex items-center justify-center sm:justify-start space-x-4 mt-4">
-                          <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-white">
-                            <button onClick={() => handleQtyChange(item.productId, item.qty, -1)} className="p-1 hover:bg-gray-100 rounded text-gray-500"><Minus size={16}/></button>
-                            <span className="px-4 font-bold text-gray-700">{item.qty}</span>
-                            <button onClick={() => handleQtyChange(item.productId, item.qty, 1)} className="p-1 hover:bg-gray-100 rounded text-gray-500"><Plus size={16}/></button>
+                    return (
+                      <div key={item.productId} className={`p-8 flex flex-col md:flex-row items-center gap-8 transition-all ${isOutOfStock ? 'bg-red-50/30 opacity-80' : 'hover:bg-gray-50/50'}`}>
+                        {/* Image */}
+                        <div className="relative w-28 h-28 flex-shrink-0">
+                          <div className="w-full h-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50">
+                            {item.image ? (
+                              <img src={item.image} alt={item.productName} className={`w-full h-full object-cover ${isOutOfStock && 'grayscale'}`} />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center"><Package className="text-gray-300" /></div>
+                            )}
                           </div>
-                          <button onClick={() => handleDelete(item.productId, item.productName)} className="text-red-500 hover:text-red-700 transition-colors"><Trash2 size={20}/></button>
+                          {isOutOfStock && (
+                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg">SOLD OUT</span>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 text-center md:text-left">
+                          <h3 className="text-xl font-bold text-slate-800 mb-1">{item.productName}</h3>
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-4">
+                            <span className="text-emerald-600 font-black text-lg">Rs. {item.lastPrice.toLocaleString()}</span>
+                            {isLowStock && (
+                              <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold animate-pulse">
+                                🔥 Only {item.stock} left
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center justify-center md:justify-start gap-6">
+                            <div className={`flex items-center border-2 rounded-xl p-1 bg-white ${isOutOfStock ? 'opacity-50 border-gray-100' : 'border-slate-100'}`}>
+                              <button 
+                                disabled={isOutOfStock}
+                                onClick={() => handleQtyChange(item.productId, item.qty, -1, item.stock)} 
+                                className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 disabled:cursor-not-allowed"
+                              >
+                                <Minus size={18}/>
+                              </button>
+                              <span className="px-5 font-black text-slate-700 min-w-[40px] text-center">{item.qty}</span>
+                              <button 
+                                disabled={isOutOfStock}
+                                onClick={() => handleQtyChange(item.productId, item.qty, 1, item.stock)} 
+                                className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 disabled:cursor-not-allowed"
+                              >
+                                <Plus size={18}/>
+                              </button>
+                            </div>
+                            <button onClick={() => handleDelete(item.productId, item.productName)} className="group p-2 text-gray-300 hover:text-red-500 transition-colors">
+                              <Trash2 size={22}/>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Total per Item */}
+                        <div className="text-right hidden md:block min-w-[120px]">
+                          <p className="text-xl font-black text-slate-900 leading-none mb-1">Rs. {(item.lastPrice * item.qty).toLocaleString()}</p>
+                          {item.discount > 0 && (
+                            <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-bold">Saved Rs. {(item.discount * item.qty).toLocaleString()}</span>
+                          )}
                         </div>
                       </div>
-
-                      <div className="text-right hidden sm:block">
-                        <p className="text-lg font-bold text-gray-900">Rs. {(item.lastPrice * item.qty).toLocaleString()}</p>
-                        {item.discount > 0 && <p className="text-xs text-green-600 font-medium italic">Saved Rs. {(item.discount * item.qty).toLocaleString()}</p>}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="p-20 text-center">
-                  <ShoppingBag className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                  <p className="text-gray-500 text-lg">Your cart is empty.</p>
-                  <button onClick={() => navigate("/")} className="mt-4 text-amber-600 font-bold hover:underline">Go Shopping →</button>
+                <div className="py-24 text-center">
+                  <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ShoppingBag className="h-10 w-10 text-slate-200" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Your cart is empty</h3>
+                  <p className="text-slate-400 mb-8">Looks like you haven't added anything yet.</p>
+                  <button onClick={() => navigate("/")} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black hover:bg-black transition-all shadow-lg shadow-slate-200">Start Shopping</button>
                 </div>
               )}
             </div>
@@ -199,47 +261,53 @@ export default function ViewCart() {
 
           {/* RIGHT COLUMN: Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-50 sticky top-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">Order Summary</h2>
-              <div className="space-y-4 text-gray-600 border-b pb-6">
-                
-                <div className="flex justify-between">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-gray-50 sticky top-10">
+              <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
+                Summary <Info size={18} className="text-slate-300" />
+              </h2>
+              
+              <div className="space-y-5 text-slate-500 border-b border-dashed border-slate-100 pb-8 mb-8">
+                <div className="flex justify-between font-medium">
                     <span>Subtotal</span>
-                    <span className="font-semibold text-gray-800">Rs. {labeledTotal.toLocaleString()}</span>
+                    <span className="text-slate-800 font-bold font-mono">Rs. {labeledTotal.toLocaleString()}</span>
                 </div>
                 
-                <div className="flex justify-between">
-                    <span>Discount</span>
-                    <span className="text-green-600 font-bold">- Rs. {discount.toLocaleString()}</span>
+                <div className="flex justify-between font-medium">
+                    <span>Total Discount</span>
+                    <span className="text-emerald-500 font-black">- Rs. {discount.toLocaleString()}</span>
                 </div>
 
-                {/* --- DELIVERY FEE DISPLAY --- */}
-                <div className="flex justify-between items-center bg-blue-50/50 p-2 rounded-lg">
-                    <span className="flex items-center gap-2 text-blue-700 font-medium">
-                        <Truck size={18} />
+                <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="flex items-center gap-2 text-slate-600 font-bold text-sm">
+                        <Truck size={18} className="text-blue-500" />
                         Delivery Fee
                     </span>
-                    <span className="text-blue-700 font-bold">
+                    <span className="text-slate-900 font-black font-mono">
                         Rs. {DELIVERY_FEE.toLocaleString()}
                     </span>
                 </div>
-
               </div>
               
-              <div className="flex justify-between items-center pt-6 mb-8">
-                <span className="text-xl font-bold text-gray-800">Grand Total</span>
-                <span className="text-2xl font-black text-amber-600">
-                    Rs. {finalTotalDisplay.toLocaleString()}
-                </span>
+              <div className="flex justify-between items-end mb-10">
+                <div>
+                  <p className="text-xs font-black text-slate-300 uppercase tracking-widest mb-1">Total Amount</p>
+                  <span className="text-3xl font-black text-slate-900 leading-none font-mono">
+                      Rs. {finalTotalDisplay.toLocaleString()}
+                  </span>
+                </div>
               </div>
 
               <button 
                 onClick={handleCheckout}
-                disabled={loading || total <= 0}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-4 rounded-2xl shadow-lg hover:shadow-orange-200 transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
+                disabled={loading || total <= 0 || orderedItems.some(i => i.stock <= 0)}
+                className="w-full bg-slate-900 text-white font-black py-5 rounded-[1.5rem] shadow-2xl shadow-slate-300 hover:bg-black transition-all flex items-center justify-center gap-3 uppercase tracking-wider disabled:opacity-30 disabled:grayscale transform active:scale-[0.98]"
               >
-                {loading ? "Processing..." : <><CreditCard size={20}/> Checkout</>}
+                {loading ? "Syncing..." : <><CreditCard size={20}/> Secure Checkout</>}
               </button>
+
+              <p className="text-center text-[10px] text-gray-400 mt-6 font-medium uppercase tracking-widest">
+                🔒 SSL Encrypted & Secure Payment
+              </p>
             </div>
           </div>
 
