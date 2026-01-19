@@ -88,10 +88,31 @@ export default function Sidebar({
           Notifications {unreadCount > 0 && `(${unreadCount})`}
         </NavLink>
 
-        <NavLink to="/admin/dashboard/orders" className={navItemClass} onClick={closeMobile}>
-          <MdShoppingCart size={20} className="text-indigo-600" />
-          Orders ({stats?.totalOrders || 0})
-        </NavLink>
+<NavLink to="/admin/dashboard/orders" className={navItemClass} onClick={closeMobile}>
+  <div className="relative">
+    <MdShoppingCart size={20} className="text-indigo-600" />
+    
+    {/* --- Orders Badge --- */}
+    {/* මෙතනදී අපි බලන්නේ stats වල තියෙන pendingOrders ගණනයි */}
+    {stats?.pendingOrders > 0 && (
+      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-600"></span>
+      </span>
+    )}
+  </div>
+  
+  <div className="flex justify-between items-center w-full">
+    <span>Orders</span>
+    
+    {/* ගණන පෙන්වන කුඩා කොටුව */}
+    {stats?.pendingOrders > 0 && (
+      <span className="ml-auto bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+        {stats.pendingOrders} NEW
+      </span>
+    )}
+  </div>
+</NavLink>
 
         <NavLink to="/admin/dashboard/ads" className={navItemClass} onClick={closeMobile}>
           <MdCampaign size={20} className="text-orange-600" />

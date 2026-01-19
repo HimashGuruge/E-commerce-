@@ -113,6 +113,7 @@ export default function Payment() {
   };
 
   // --- 2. COD PAYMENT HANDLER ---
+
   const handleCOD = async () => {
     const result = await Swal.fire({
       title: "Confirm Order",
@@ -137,12 +138,15 @@ export default function Payment() {
           shippingAddress: orderedata.shippingAddress,
           contactPhone: orderedata.contactPhone,
           total: finalTotal,
+          paymentMethod: "COD", // මේකත් ඇඩ් කරන්න
+          status: "Pending",     // මෙන්න මෙතනින් තමයි Status එක යවන්නේ
+          isPaid: false          // COD නිසා තාම සල්ලි ගෙවලා නැති බව සහතික කරන්න
         }, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
         
         clearCart();
-        handleSuccess("Order Placed!", "Your COD order is confirmed.");
+        handleSuccess("Order Placed!", "Your COD order is confirmed as Pending.");
       } catch (err) {
         handleError("Order Failed", "Could not process your COD order.");
       } finally {

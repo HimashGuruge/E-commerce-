@@ -11,18 +11,43 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hasUpdates, setHasUpdates] = useState(false); 
   const navigate = useNavigate();
   const location = useLocation();
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
-  // --- 1. USER DATA FETCH & SYNC ---
+  // --- 1. Notification Dot එක අයින් කරන Function එක ---
+  const handleMarkAsSeen = async () => {
+    // තිතක් තිබේ නම් පමණක් API call එක සිදු කරයි
+    if (!hasUpdates) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      await axios.put(`${BACKEND_URL}/api/orders/mark-seen`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // වහාම UI එකෙන් තිත අයින් කරයි
+      setHasUpdates(false);
+      
+      // වෙනත් tabs වලට දැනුම් දීම
+      window.dispatchEvent(new Event("storage"));
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+    }
+  };
+
+  // --- 2. USER DATA FETCH & SYNC ---
   const fetchUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
     
     if (!token) {
       setUser(null);
       setIsAdmin(false);
+      setHasUpdates(false);
       return;
     }
 
@@ -35,22 +60,34 @@ export default function Navbar() {
       setUser(userData);
       setIsAdmin(userData.role === "admin");
       
+      checkOrderUpdates(token);
+      
     } catch (error) {
       console.error("Navbar Auth Error:", error);
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        handleLogout(); // Token එක අවලංගු නම් වහාම Logout කරන්න
+        handleLogout();
       }
     }
   }, [BACKEND_URL]);
 
-  // --- 2. EVENT LISTENERS SETUP ---
+  const checkOrderUpdates = async (token) => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/orders/my-orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const unread = response.data.orders?.some(order => order.isViewedByUser === false);
+      setHasUpdates(unread);
+    } catch (error) {
+      console.error("Check Updates Error:", error);
+    }
+  };
+
   useEffect(() => {
     fetchUserData();
     
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
-    
-    // මේ Listeners දෙක මගින් Logout වූ බව දැනගනියි
     window.addEventListener("authChange", fetchUserData); 
     window.addEventListener("storage", fetchUserData); 
     
@@ -61,9 +98,7 @@ export default function Navbar() {
     };
   }, [fetchUserData]);
 
-  // --- 3. CLEAN LOGOUT FUNCTION ---
   const handleLogout = () => {
-    // Local, Session සහ Cookies සම්පූර්ණයෙන්ම පිරිසිදු කිරීම
     localStorage.clear();
     sessionStorage.clear();
     document.cookie.split(";").forEach((c) => {
@@ -72,14 +107,11 @@ export default function Navbar() {
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
 
-    // State එක වහාම reset කිරීම
     setUser(null);
     setIsAdmin(false);
-
-    // Event Trigger කිරීම - මෙය අනෙකුත් Components වලට logout වූ බව පවසයි
+    setHasUpdates(false);
     window.dispatchEvent(new Event("authChange"));
     window.dispatchEvent(new Event("storage")); 
-
     navigate("/login");
   };
 
@@ -127,8 +159,21 @@ export default function Navbar() {
                 <Link title="Cart" to="/viewcart" className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative">
                   <ShoppingCart size={20} />
                 </Link>
-                <Link title="Orders" to="/orders" className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                
+                {/* Orders Link with Click-to-Clear Logic */}
+                <Link 
+                  title="Orders" 
+                  to="/orders" 
+                  onClick={handleMarkAsSeen} 
+                  className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative"
+                >
                   <Package size={20} />
+                  {hasUpdates && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 border border-white"></span>
+                    </span>
+                  )}
                 </Link>
               </div>
             )}
@@ -192,7 +237,20 @@ export default function Navbar() {
               {user && (
                 <>
                   <MobileNavLink to="/viewcart" label="Shopping Cart" active={location.pathname === "/viewcart"} onClick={() => setMenuOpen(false)} />
-                  <MobileNavLink to="/orders" label="My Orders" active={location.pathname === "/orders"} onClick={() => setMenuOpen(false)} />
+                  <MobileNavLink 
+                    to="/orders" 
+                    label={
+                      <div className="flex items-center gap-2">
+                        My Orders 
+                        {hasUpdates && <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>}
+                      </div>
+                    } 
+                    active={location.pathname === "/orders"} 
+                    onClick={() => {
+                      handleMarkAsSeen();
+                      setMenuOpen(false);
+                    }} 
+                  />
                   <MobileNavLink to={`/profile?userId=${userId}`} label="My Profile" active={location.pathname === "/profile"} onClick={() => setMenuOpen(false)} />
                 </>
               )}
