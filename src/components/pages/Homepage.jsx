@@ -19,6 +19,7 @@ import ProfilePage from "@/components/pages/ProfilePage.jsx";
 import ContactPage from "@/components/pages/contactPage.jsx";
 import ForgotPassword from "@/components/pages/ForgotPasswordpage";
 import ResetPassword from "@/components/pages/ResetPasswordPage.jsx";
+import LoginSuccess from "@/components/pages/LoginSuccess";
 
 export default function Homepage() {
   const [user, setUser] = useState("customer");
@@ -75,6 +76,7 @@ export default function Homepage() {
           />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/login-success" element={<LoginSuccess />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
