@@ -1,9 +1,9 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { HiMenuAlt3, HiX } from "react-icons/hi";
-import { ShoppingCart, Package, LogOut, LayoutDashboard, ChevronRight } from "lucide-react";
+import { ShoppingCart, Package, LogOut, LayoutDashboard, ChevronRight, User } from "lucide-react";
 import NotificationsDropdown from "@/components/utils/notificationDrop";
 
 export default function Navbar() {
@@ -14,8 +14,10 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Backend එකෙන් User data ලබා ගන්නා function එක
-  const fetchUserData = async () => {
+  // API URL එක (Environment variable එක භාවිතා කිරීම වඩාත් ආරක්ෂිතයි)
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+
+  const fetchUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
     
     if (!token) {
@@ -25,40 +27,38 @@ export default function Navbar() {
     }
 
     try {
-      const response = await axios.get("http://localhost:4000/api/users/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axios.get(`${BACKEND_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      // ඔයාගේ API එකෙන් දත්ත එන්නේ { user: { ... } } ආකාරයට නම්:
       const userData = response.data.user; 
-      
       setUser(userData);
-      // Role එක පරීක්ෂා කිරීම (userData ඇතුළේ role එක තිබිය යුතුයි)
       setIsAdmin(userData.role === "admin");
       
     } catch (error) {
-      console.error("Error fetching user data:", error);
-      // Token එක අවුල් නම් පමණක් logout කරන්න
+      console.error("Navbar Auth Error:", error);
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
         handleLogout();
       }
     }
-  };
+  }, [BACKEND_URL]);
 
   useEffect(() => {
     fetchUserData();
     
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
+    
+    // වෙනත් තැනක login වූ විට වහාම Navbar එක update වීමට
     window.addEventListener("authChange", fetchUserData);
+    window.addEventListener("storage", fetchUserData); // localStorage වෙනස් වූ විට
     
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("authChange", fetchUserData);
+      window.removeEventListener("storage", fetchUserData);
     };
-  }, []);
+  }, [fetchUserData]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -68,7 +68,6 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  // User object එක ඇතුළේ තියෙන ID එක නිවැරදිව ගැනීම
   const userId = user?._id || user?.id || "";
 
   const navLinkClass = (path) => `
@@ -79,9 +78,9 @@ export default function Navbar() {
   `;
 
   return (
-    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 block ${
+    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${
       scrolled 
-      ? "bg-white/80 backdrop-blur-md shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border-b border-slate-100 py-2.5" 
+      ? "bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-100 py-2.5" 
       : "bg-white py-4"
     }`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
@@ -129,12 +128,16 @@ export default function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-2 ml-2">
-                <Link to={`/profile?userId=${userId}`} className="p-0.5 rounded-full border border-slate-100 hover:border-blue-400 transition-colors">
+                <Link to={`/profile?userId=${userId}`} className="flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-100 hover:border-blue-400 transition-all bg-slate-50/50">
                   <img 
-                    src={user.profileImage || "/default-avatar.png"} 
-                    className="w-8 h-8 rounded-full object-cover" 
+                    src={user.profileImage || user.picture || "/default-avatar.png"} 
+                    className="w-8 h-8 rounded-full object-cover border border-white shadow-sm" 
                     alt="profile"
+                    onError={(e) => { e.target.src = "/default-avatar.png"; }}
                   />
+                  <span className="text-sm font-semibold text-slate-700 hidden lg:block">
+                    {user.name?.split(' ')[0]}
+                  </span>
                 </Link>
                 <button onClick={handleLogout} title="Logout" className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
                   <LogOut size={18} />
@@ -143,7 +146,8 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-3">
                 <Link to="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3">Login</Link>
-                <Link to="/singup" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
+                {/* 🟢 FIXED TYPO: /singup -> /signup */}
+                <Link to="/signup" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
                   Create New Account
                 </Link>
               </div>
@@ -175,15 +179,14 @@ export default function Navbar() {
                  <MobileNavLink to={`/profile?userId=${userId}`} label="My Profile" active={location.pathname === "/profile"} onClick={() => setMenuOpen(false)} />
               )}
 
-              {!user && (
+              {!user ? (
                 <div className="grid grid-cols-2 gap-3 mt-4">
-                  <Link to="/login" className="py-3 text-center text-sm font-bold text-slate-700 border border-slate-200 rounded-xl">Login</Link>
-                  <Link to="/register" className="py-3 text-center text-sm font-bold bg-blue-600 text-white rounded-xl">Sign Up</Link>
+                  <Link to="/login" onClick={() => setMenuOpen(false)} className="py-3 text-center text-sm font-bold text-slate-700 border border-slate-200 rounded-xl">Login</Link>
+                  {/* 🟢 FIXED CONSISTENCY: /register -> /signup */}
+                  <Link to="/signup" onClick={() => setMenuOpen(false)} className="py-3 text-center text-sm font-bold bg-blue-600 text-white rounded-xl">Sign Up</Link>
                 </div>
-              )}
-
-              {user && (
-                <button onClick={handleLogout} className="mt-4 flex items-center justify-center gap-2 py-3 w-full text-sm font-bold text-rose-600 bg-rose-50 rounded-xl">
+              ) : (
+                <button onClick={() => { handleLogout(); setMenuOpen(false); }} className="mt-4 flex items-center justify-center gap-2 py-3 w-full text-sm font-bold text-rose-600 bg-rose-50 rounded-xl">
                   <LogOut size={16} /> Logout
                 </button>
               )}
