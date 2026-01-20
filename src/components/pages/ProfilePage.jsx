@@ -1,36 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  User, Mail, Phone, MapPin, Lock, Edit, Save, X, Package, ShoppingBag, 
-  Shield, LogOut, CreditCard, Truck, CheckCircle 
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Lock,
+  Edit,
+  Save,
+  X,
+  Shield,
+  Camera,
+  Loader2,
+  CheckCircle,
+} from "lucide-react";
+import Swal from "sweetalert2";
+import axios from "axios";
+import uploadMediaToSupabase from "@/components/utils/mediaupload";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState(null);
-  const [orders, setOrders] = useState([]);
   const [editing, setEditing] = useState(false);
+
   const [editForm, setEditForm] = useState({
-    name: '',
-    lastname: '',
-    email: '',
-    phone: '',
-    address: ''
+    name: "",
+    lastname: "",
+    email: "",
+    phone: "",
+    address: "",
+    profileImage: "",
   });
 
-  /* ===========================================================
-  🟢 NEW: IDENTIFY AUTHENTICATION METHOD
-  මෙමගින් පරිශීලකයා Google ද Manual ද යන්න හඳුනා ගනී.
-  ===========================================================
-  */
   const isGoogleUser = user && user.googleId;
-  /* ======================================================= */
 
   const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
@@ -38,32 +47,25 @@ export default function ProfilePage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const userRes = await axios.get(import.meta.env.VITE_BACKEND_URL + '/api/users/me', {
-          headers: getAuthHeader()
-        });
+        const userRes = await axios.get(
+          import.meta.env.VITE_BACKEND_URL + "/api/users/me",
+          { headers: getAuthHeader() }
+        );
 
-        if (userRes.data && userRes.data.user) {
+        if (userRes.data?.user) {
           const userData = userRes.data.user;
           setUser(userData);
           setEditForm({
-            name: userData.name || '',
-            lastname: userData.lastname || '',
-            email: userData.email || '',
-            phone: userData.phone || '',
-            address: userData.address || ''
+            name: userData.name || "",
+            lastname: userData.lastname || "",
+            email: userData.email || "",
+            phone: userData.phone || "",
+            address: userData.address || "",
+            profileImage: userData.profileImage || "",
           });
         }
-
-        const ordersRes = await axios.get(import.meta.env.VITE_BACKEND_URL + '/api/orders/my-orders', {
-          headers: getAuthHeader()
-        });
-        
-        if (ordersRes.data.success) {
-          setOrders(ordersRes.data.orders || []);
-        }
       } catch (error) {
-        console.error('Error:', error);
-        navigate('/login');
+        navigate("/login");
       } finally {
         setLoading(false);
       }
@@ -71,190 +73,353 @@ export default function ProfilePage() {
     fetchData();
   }, [navigate]);
 
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm(prev => ({ ...prev, [name]: value }));
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const publicUrl = await uploadMediaToSupabase(file, "profile-pictures");
+      setEditForm(prev => ({ ...prev, profileImage: publicUrl }));
+
+      if (!editing) {
+        await axios.put(
+          import.meta.env.VITE_BACKEND_URL + "/api/users/me",
+          { ...editForm, profileImage: publicUrl },
+          { headers: getAuthHeader() }
+        );
+        setUser(prev => ({ ...prev, profileImage: publicUrl }));
+        Swal.fire({
+          icon: "success",
+          title: "Photo Updated!",
+          timer: 1500,
+          showConfirmButton: false,
+          background: "#f0fdf4",
+        });
+      }
+    } catch (error) {
+      Swal.fire({ 
+        icon: "error", 
+        title: "Upload Failed", 
+        text: error.message 
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
-  /* ===========================================================
-  🟢 NOTE: ADDRESS & PHONE UPDATE WORK FOR ALL USERS
-  මෙම function එක Google සහ Manual යන දෙපාර්ශවයටම Address update කිරීමට ඉඩ දෙයි.
-  ===========================================================
-  */
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      const res = await axios.put(import.meta.env.VITE_BACKEND_URL + '/api/users/me', editForm, {
-        headers: getAuthHeader()
-      });
+      const res = await axios.put(
+        import.meta.env.VITE_BACKEND_URL + "/api/users/me",
+        editForm,
+        { headers: getAuthHeader() }
+      );
       if (res.data) {
         setUser(res.data.user || res.data);
-        Swal.fire({ icon: 'success', title: 'Profile Updated!', timer: 1500, showConfirmButton: false });
+        Swal.fire({
+          icon: "success",
+          title: "Profile Updated!",
+          timer: 1500,
+          showConfirmButton: false,
+          background: "#f0fdf4",
+        });
         setEditing(false);
       }
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Update Failed' });
+      Swal.fire({ 
+        icon: "error", 
+        title: "Update Failed",
+        text: error.response?.data?.message || "Something went wrong"
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    /* ===========================================================
-    🟢 UPDATED: PREVENT PASSWORD CHANGE FOR GOOGLE USERS
-    Google users ලාට Password වෙනස් කිරීමට ඉඩ නොදේ.
-    ===========================================================
-    */
     if (isGoogleUser) {
-      Swal.fire({ 
-        icon: 'info', 
-        title: 'Google Login Active', 
-        text: 'You don\'t have a local password. Please manage security via Google.' 
+      Swal.fire({
+        icon: "info",
+        title: "Google Login Active",
+        text: "Security settings are managed by Google.",
+        background: "#eff6ff",
       });
       return;
     }
-    /* ======================================================= */
 
     const { value: formValues } = await Swal.fire({
-      title: 'Change Password',
+      title: '<span class="text-gray-900 font-bold">Change Password</span>',
       html: `
-        <input id="current-password" type="password" class="swal2-input" placeholder="Current Password">
-        <input id="new-password" type="password" class="swal2-input" placeholder="New Password">
-        <input id="confirm-password" type="password" class="swal2-input" placeholder="Confirm New Password">
+        <div class="space-y-3">
+          <input id="current-password" type="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Current Password">
+          <input id="new-password" type="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="New Password">
+        </div>
       `,
       showCancelButton: true,
+      confirmButtonText: "Update Password",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#3b82f6",
+      showClass: { popup: "animate-fade-in" },
       preConfirm: () => {
-        const current = document.getElementById('current-password').value;
-        const newPass = document.getElementById('new-password').value;
-        const confirm = document.getElementById('confirm-password').value;
-        if (!current || !newPass || !confirm) return Swal.showValidationMessage('Fill all fields');
+        const current = document.getElementById("current-password").value;
+        const newPass = document.getElementById("new-password").value;
+        if (!current || !newPass)
+          return Swal.showValidationMessage("Fill all fields");
+        if (newPass.length < 6)
+          return Swal.showValidationMessage("Password must be at least 6 characters");
         return { currentPassword: current, newPassword: newPass };
-      }
+      },
     });
 
-    if (formValues) {
-       Swal.fire({ icon: 'success', title: 'Success!' });
-    }
+    if (formValues) Swal.fire({ 
+      icon: "success", 
+      title: "Password Updated!",
+      timer: 1500,
+      showConfirmButton: false,
+      background: "#f0fdf4",
+    });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
-
-  if (loading && !user) return <div className="text-center mt-20">Loading Profile...</div>;
-  if (!user) return <div className="text-center mt-20">No user logged in.</div>;
+  if (loading && !user) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600 font-medium">Loading Profile...</p>
+      </div>
+    </div>
+  );
+  
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center text-gray-600">No user logged in.</div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold flex items-center">
-            My Account
-            {isGoogleUser && <span className="ml-3 text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full border border-blue-200">Google User</span>}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8 text-center md:text-left">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Your Profile
           </h1>
-          <button onClick={handleLogout} className="text-red-600 flex items-center font-medium"><LogOut className="h-5 w-5 mr-2" /> Logout</button>
+          <p className="text-gray-600 mt-2">Manage your personal information</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold flex items-center"><User className="h-5 w-5 mr-2 text-blue-500" /> Personal Details</h2>
-                {!editing ? (
-                  <button onClick={() => setEditing(true)} className="text-blue-600 flex items-center"><Edit className="h-4 w-4 mr-1" /> Edit Profile</button>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button onClick={handleSaveProfile} className="bg-green-600 text-white px-4 py-1.5 rounded-lg flex items-center shadow-sm hover:bg-green-700 transition-colors"><Save className="h-4 w-4 mr-1" /> Save Details</button>
-                    <button onClick={() => setEditing(false)} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-lg flex items-center hover:bg-gray-200 transition-colors"><X className="h-4 w-4 mr-1" /> Cancel</button>
-                  </div>
-                )}
-              </div>
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          {/* Gradient Banner */}
+          <div className="h-40 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600"></div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-semibold text-gray-600 mb-1 block">First Name</label>
-                  {editing ? <input name="name" value={editForm.name} onChange={handleEditChange} className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" /> : <p className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">{user.name}</p>}
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-600 mb-1 block">Last Name</label>
-                  {editing ? <input name="lastname" value={editForm.lastname} onChange={handleEditChange} className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" /> : <p className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">{user.lastname || 'N/A'}</p>}
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-600 mb-1 block">Phone Number</label>
-                  {editing ? <input name="phone" value={editForm.phone} onChange={handleEditChange} className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" /> : <p className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">{user.phone || 'Not provided'}</p>}
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-600 mb-1 block">Email (Read-only)</label>
-                  <p className="p-2.5 bg-gray-100 rounded-lg border border-gray-200 text-gray-500 flex items-center"><Mail className="h-4 w-4 mr-2" /> {user.email}</p>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="text-sm font-semibold text-gray-600 mb-1 block">Delivery Address</label>
-                {editing ? (
-                  <textarea name="address" value={editForm.address} onChange={handleEditChange} rows="3" className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter your full shipping address"></textarea>
-                ) : (
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 flex items-start">
-                    <MapPin className="h-5 w-5 mr-2 text-gray-400 mt-0.5" />
-                    <p className="text-gray-700">{user.address || 'No address added yet.'}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* ===========================================================
-              🟢 UPDATED: SECURITY SECTION (CONDITIONAL)
-              Google user කෙනෙක් වුවද ඉහත Address update කිරීමට ඉඩ ඇති අතර, 
-              පහත Password කොටස පමණක් වෙනස් වේ.
-              ===========================================================
-              */}
-              <div className="mt-10 pt-6 border-t border-gray-100">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center"><Shield className="h-5 w-5 mr-2 text-green-500" /> Account Security</h3>
-                
-                {isGoogleUser ? (
-                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start text-blue-700">
-                    <Shield className="h-5 w-5 mr-3 mt-1" />
-                    <div>
-                      <p className="font-bold text-sm">Linked with Google</p>
-                      <p className="text-xs mt-1 leading-relaxed">Your account is secured by Google. Addresses and other info can be updated here, but password settings are managed by Google security.</p>
+          <div className="px-6 pb-8 relative">
+            {/* Profile Image with Floating Upload */}
+            <div className="relative -mt-20 mb-6">
+              <div className="relative inline-block group">
+                <div className="h-40 w-40 rounded-2xl border-4 border-white shadow-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                  {editForm.profileImage ? (
+                    <img
+                      src={editForm.profileImage}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-gray-400">
+                      <User size={60} />
                     </div>
-                  </div>
-                ) : (
-                  <button onClick={handleChangePassword} className="flex items-center text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 transition-all font-medium">
-                    <Lock className="h-4 w-4 mr-2" /> Change Password
+                  )}
+                  
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm rounded-2xl">
+                      <Loader2 className="animate-spin text-white" size={32} />
+                    </div>
+                  )}
+                </div>
+                
+                <button
+                  onClick={() => fileInputRef.current.click()}
+                  className="absolute -bottom-2 -right-2 p-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-200"
+                  disabled={uploading}
+                >
+                  <Camera size={20} />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  accept="image/*"
+                />
+              </div>
+
+              {/* Edit/Save Buttons */}
+              <div className="absolute right-0 top-0 flex space-x-3">
+                {!editing ? (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium shadow-md"
+                  >
+                    <Edit className="h-5 w-5 mr-2" /> Edit Profile
                   </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={loading}
+                      className="flex items-center px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium shadow-md disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-5 w-5 mr-2" />
+                      )}
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={() => setEditing(false)}
+                      className="flex items-center px-5 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all duration-200 font-medium"
+                    >
+                      <X className="h-5 w-5 mr-2" /> Cancel
+                    </button>
+                  </>
                 )}
               </div>
-              {/* ======================================================= */}
             </div>
-          </div>
 
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4">Quick Links</h3>
-              <div className="space-y-3">
-                <button onClick={() => navigate('/orders')} className="w-full text-left p-3.5 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center transition-colors">
-                  <Package className="h-5 w-5 mr-3 text-amber-500" /> 
-                  <span className="font-medium text-gray-700">My Orders</span>
-                </button>
-                
-                {/* =======================================================
-                🟢 UPDATED: Visual feedback for Password action
-                ======================================================= */}
-                <button 
-                  onClick={handleChangePassword} 
-                  disabled={isGoogleUser}
-                  className={`w-full text-left p-3.5 rounded-xl flex items-center transition-all ${
-                    isGoogleUser ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
-                >
-                  <Lock className={`h-5 w-5 mr-3 ${isGoogleUser ? 'text-gray-300' : 'text-blue-500'}`} /> 
-                  <div>
-                    <p className={`text-sm font-semibold ${isGoogleUser ? 'text-gray-400' : 'text-gray-700'}`}>Security Settings</p>
-                    {isGoogleUser && <p className="text-[10px] text-blue-500 uppercase font-bold tracking-wider">Google Managed</p>}
-                  </div>
-                </button>
+            {/* User Info Header */}
+            <div className="mb-8">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {user.name} {user.lastname}
+                </h1>
+                {isGoogleUser && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 text-xs font-bold uppercase tracking-wider border border-blue-100">
+                    <CheckCircle className="h-3 w-3 mr-1" /> Google Account
+                  </span>
+                )}
               </div>
+              <p className="text-gray-600 flex items-center">
+                <Mail className="h-4 w-4 mr-2 text-gray-400" /> {user.email}
+              </p>
+            </div>
+
+            {/* Form Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  First Name
+                </label>
+                {editing ? (
+                  <input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm"
+                  />
+                ) : (
+                  <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm">
+                    <span className="text-gray-900 font-medium">{user.name}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Last Name
+                </label>
+                {editing ? (
+                  <input
+                    value={editForm.lastname}
+                    onChange={(e) => setEditForm({ ...editForm, lastname: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm"
+                  />
+                ) : (
+                  <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm">
+                    <span className="text-gray-900 font-medium">{user.lastname || "N/A"}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Phone Number
+                </label>
+                {editing ? (
+                  <input
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm"
+                    placeholder="+1 (555) 000-0000"
+                  />
+                ) : (
+                  <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm flex items-center">
+                    <Phone className="h-4 w-4 mr-3 text-gray-500" />
+                    <span className="text-gray-900 font-medium">{user.phone || "Not provided"}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Email Address
+                </label>
+                <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm flex items-center">
+                  <Mail className="h-4 w-4 mr-3 text-blue-500" />
+                  <span className="text-gray-900 font-medium">{user.email}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Address Section */}
+            <div className="mb-10">
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                Shipping Address
+              </label>
+              {editing ? (
+                <textarea
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  rows="3"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm resize-none"
+                  placeholder="Enter your complete address"
+                />
+              ) : (
+                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm flex items-start">
+                  <MapPin className="h-5 w-5 mr-3 text-gray-500 mt-1" />
+                  <span className="text-gray-900 font-medium">
+                    {user.address || "No address added yet."}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Security Section */}
+            <div className="pt-8 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                  <Shield className="h-5 w-5 mr-2 text-emerald-500" /> Security
+                </h3>
+              </div>
+              
+              {isGoogleUser ? (
+                <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl flex items-center shadow-sm">
+                  <div className="p-3 bg-white rounded-xl mr-4 shadow-sm">
+                    <Shield className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Google Account</h4>
+                    <p className="text-gray-600 text-sm mt-1">
+                      Your security settings are managed through Google.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleChangePassword}
+                  className="w-full md:w-auto px-6 py-3.5 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center shadow-md hover:scale-[1.02]"
+                >
+                  <Lock className="h-5 w-5 mr-2" /> Change Account Password
+                </button>
+              )}
             </div>
           </div>
         </div>
