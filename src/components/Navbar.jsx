@@ -17,10 +17,10 @@ export default function Navbar() {
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
   
-  // 1. පින්තූර නොමැති විට පෙන්වන Default Image එක
+ 
   const DEFAULT_IMAGE = "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg";
 
-  // Notification පණිවිඩ කියවූ බව සලකුණු කිරීම
+
   const handleMarkAsSeen = async () => {
     if (!hasUpdates) return;
     try {
@@ -36,7 +36,7 @@ export default function Navbar() {
     }
   };
 
-  // පරිශීලක දත්ත ලබා ගැනීම (සහ Profile Update Listener එකට අදාළව මෙය නැවත ක්‍රියාත්මක වේ)
+
   const fetchUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
