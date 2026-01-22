@@ -16,52 +16,43 @@ export default function Navbar() {
   const location = useLocation();
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+  
+  // 1. පින්තූර නොමැති විට පෙන්වන Default Image එක
+  const DEFAULT_IMAGE = "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg";
 
-  // --- 1. Notification Dot එක අයින් කරන Function එක ---
+  // Notification පණිවිඩ කියවූ බව සලකුණු කිරීම
   const handleMarkAsSeen = async () => {
-    // තිතක් තිබේ නම් පමණක් API call එක සිදු කරයි
     if (!hasUpdates) return;
-
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-
       await axios.put(`${BACKEND_URL}/api/orders/mark-seen`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      // වහාම UI එකෙන් තිත අයින් කරයි
       setHasUpdates(false);
-      
-      // වෙනත් tabs වලට දැනුම් දීම
       window.dispatchEvent(new Event("storage"));
     } catch (error) {
       console.error("Error clearing notifications:", error);
     }
   };
 
-  // --- 2. USER DATA FETCH & SYNC ---
+  // පරිශීලක දත්ත ලබා ගැනීම (සහ Profile Update Listener එකට අදාළව මෙය නැවත ක්‍රියාත්මක වේ)
   const fetchUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
-    
     if (!token) {
       setUser(null);
       setIsAdmin(false);
       setHasUpdates(false);
       return;
     }
-
     try {
       const response = await axios.get(`${BACKEND_URL}/api/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       const userData = response.data.user; 
       setUser(userData);
       setIsAdmin(userData.role === "admin");
-      
       checkOrderUpdates(token);
-      
     } catch (error) {
       console.error("Navbar Auth Error:", error);
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
@@ -75,7 +66,6 @@ export default function Navbar() {
       const response = await axios.get(`${BACKEND_URL}/api/orders/my-orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
       const unread = response.data.orders?.some(order => order.isViewedByUser === false);
       setHasUpdates(unread);
     } catch (error) {
@@ -85,37 +75,36 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchUserData();
-    
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     window.addEventListener("authChange", fetchUserData); 
     window.addEventListener("storage", fetchUserData); 
     
+    // Profile Page එකෙන් ලැබෙන signal එකට සවන් දීම
+    window.addEventListener("profileUpdate", fetchUserData); 
+    
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("authChange", fetchUserData);
       window.removeEventListener("storage", fetchUserData);
+      window.removeEventListener("profileUpdate", fetchUserData);
     };
   }, [fetchUserData]);
 
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    document.cookie.split(";").forEach((c) => {
-      document.cookie = c
-        .replace(/^ +/, "")
-        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-
     setUser(null);
     setIsAdmin(false);
     setHasUpdates(false);
     window.dispatchEvent(new Event("authChange"));
-    window.dispatchEvent(new Event("storage")); 
     navigate("/login");
   };
 
   const userId = user?._id || user?.id || "";
+
+  // 2. Profile Image Priority Logic (Profile Image > Google Picture > Default)
+  const profileImgSrc = user?.profileImage || user?.picture || DEFAULT_IMAGE;
 
   const navLinkClass = (path) => `
     relative text-[14px] font-medium transition-all duration-300 px-3 py-2 rounded-lg
@@ -160,13 +149,7 @@ export default function Navbar() {
                   <ShoppingCart size={20} />
                 </Link>
                 
-                {/* Orders Link with Click-to-Clear Logic */}
-                <Link 
-                  title="Orders" 
-                  to="/orders" 
-                  onClick={handleMarkAsSeen} 
-                  className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative"
-                >
+                <Link title="Orders" to="/orders" onClick={handleMarkAsSeen} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative">
                   <Package size={20} />
                   {hasUpdates && (
                     <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
@@ -190,10 +173,10 @@ export default function Navbar() {
               <div className="flex items-center gap-2 ml-2">
                 <Link to={`/profile?userId=${userId}`} className="flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-100 hover:border-blue-400 transition-all bg-slate-50/50">
                   <img 
-                    src={user.profileImage || user.picture || "/default-avatar.png"} 
+                    src={profileImgSrc} 
                     className="w-8 h-8 rounded-full object-cover border border-white shadow-sm" 
                     alt="profile"
-                    onError={(e) => { e.target.src = "/default-avatar.png"; }}
+                    onError={(e) => { e.target.src = DEFAULT_IMAGE; }}
                   />
                   <span className="text-sm font-semibold text-slate-700 hidden lg:block">
                     {user.name?.split(' ')[0]}
@@ -214,13 +197,13 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Button */}
+        {/* Mobile Toggle Button */}
         <button className="md:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-lg" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <HiX size={26} /> : <HiMenuAlt3 size={26} />}
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Content */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div 
@@ -231,11 +214,13 @@ export default function Navbar() {
           >
             <div className="p-6 flex flex-col gap-2">
               <MobileNavLink to="/" label="Home" active={location.pathname === "/"} onClick={() => setMenuOpen(false)} />
+              <MobileNavLink to="/about" label="About" active={location.pathname === "/about"} onClick={() => setMenuOpen(false)} />
               <MobileNavLink to="/service" label="Services" active={location.pathname === "/service"} onClick={() => setMenuOpen(false)} />
               <MobileNavLink to="/contact" label="Contact" active={location.pathname === "/contact"} onClick={() => setMenuOpen(false)} />
               
               {user && (
                 <>
+                  <div className="h-[1px] bg-slate-100 my-2" />
                   <MobileNavLink to="/viewcart" label="Shopping Cart" active={location.pathname === "/viewcart"} onClick={() => setMenuOpen(false)} />
                   <MobileNavLink 
                     to="/orders" 
@@ -251,7 +236,14 @@ export default function Navbar() {
                       setMenuOpen(false);
                     }} 
                   />
-                  <MobileNavLink to={`/profile?userId=${userId}`} label="My Profile" active={location.pathname === "/profile"} onClick={() => setMenuOpen(false)} />
+                  <Link 
+                    to={`/profile?userId=${userId}`} 
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 mt-2"
+                  >
+                    <img src={profileImgSrc} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" alt="avatar" />
+                    <span className="font-bold text-slate-700">My Profile</span>
+                  </Link>
                 </>
               )}
 

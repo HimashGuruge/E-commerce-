@@ -2,14 +2,27 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import uploadMediaToSupabase from "@/components/utils/mediaUpload";
 import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  FiImage, FiPackage, FiTag, FiDollarSign, FiHash, 
-  FiRefreshCw, FiArrowLeft, FiTrash2, FiEdit2, 
-  FiUpload, FiInfo, FiCheck, FiPercent, FiBox
+import {
+  FiImage,
+  FiPackage,
+  FiTag,
+  FiDollarSign,
+  FiHash,
+  FiRefreshCw,
+  FiArrowLeft,
+  FiTrash2,
+  FiEdit2,
+  FiUpload,
+  FiInfo,
+  FiCheck,
+  FiPercent,
+  FiBox,
 } from "react-icons/fi";
-import { 
-  TbCategory, TbBarcode,
-  TbTrendingUp, TbTrendingDown 
+import {
+  TbCategory,
+  TbBarcode,
+  TbTrendingUp,
+  TbTrendingDown,
 } from "react-icons/tb";
 import Swal from "sweetalert2";
 
@@ -24,17 +37,17 @@ export default function EditProduct() {
   const [newImages, setNewImages] = useState([]);
   const [existingImageUrls, setExistingImageUrls] = useState([]);
   const [formData, setFormData] = useState({
-    productId: "", 
-    productName: "", 
-    altNames: "", 
-    price: "", 
-    lastPrices: "", 
-    stock: "", 
-    description: "", 
-    category: "General", 
+    productId: "",
+    productName: "",
+    altNames: "",
+    price: "",
+    lastPrices: "",
+    stock: "",
+    description: "",
+    category: "General",
     brand: "Unbranded",
     tags: [],
-    discount: 0
+    discount: 0,
   });
 
   const categories = [
@@ -44,7 +57,7 @@ export default function EditProduct() {
     { value: "sports", label: "Sports", icon: "⚽" },
     { value: "books", label: "Books", icon: "📚" },
     { value: "beauty", label: "Beauty", icon: "💄" },
-    { value: "general", label: "General", icon: "📦" }
+    { value: "general", label: "General", icon: "📦" },
   ];
 
   const brands = [
@@ -52,18 +65,18 @@ export default function EditProduct() {
     { value: "samsung", label: "Samsung", icon: "📱" },
     { value: "nike", label: "Nike", icon: "👟" },
     { value: "sony", label: "Sony", icon: "🎮" },
-    { value: "unbranded", label: "Unbranded", icon: "🏷️" }
+    { value: "unbranded", label: "Unbranded", icon: "🏷️" },
   ];
 
   useEffect(() => {
     if (!productData) {
       Swal.fire({
-        icon: 'error',
-        title: 'No Product Data',
-        text: 'Please select a product to edit',
-        background: '#1e293b',
-        color: '#f8fafc',
-        confirmButtonColor: '#3b82f6'
+        icon: "error",
+        title: "No Product Data",
+        text: "Please select a product to edit",
+        background: "#1e293b",
+        color: "#f8fafc",
+        confirmButtonColor: "#3b82f6",
       });
       navigate("/admin/dashboard/adminviewproducts");
       return;
@@ -79,7 +92,7 @@ export default function EditProduct() {
       category: productData.category || "General",
       brand: productData.brand || "Unbranded",
       tags: productData.tags || [],
-      discount: productData.discount || 0
+      discount: productData.discount || 0,
     });
     setExistingImageUrls(productData.images || []);
     setLoading(false);
@@ -87,9 +100,9 @@ export default function EditProduct() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -101,27 +114,30 @@ export default function EditProduct() {
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const validFiles = files.slice(0, 6 - existingImageUrls.length - newImages.length);
-    setNewImages(prev => [...prev, ...validFiles]);
+    const validFiles = files.slice(
+      0,
+      6 - existingImageUrls.length - newImages.length,
+    );
+    setNewImages((prev) => [...prev, ...validFiles]);
   };
 
-  const removeImage = (index, type = 'existing') => {
-    if (type === 'existing') {
-      setExistingImageUrls(prev => prev.filter((_, i) => i !== index));
+  const removeImage = (index, type = "existing") => {
+    if (type === "existing") {
+      setExistingImageUrls((prev) => prev.filter((_, i) => i !== index));
     } else {
-      setNewImages(prev => prev.filter((_, i) => i !== index));
+      setNewImages((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
   const handleSave = async () => {
     if (!formData.productName || !formData.price) {
       Swal.fire({
-        icon: 'warning',
-        title: 'Missing Fields',
-        text: 'Product name and price are required',
-        background: '#1e293b',
-        color: '#f8fafc',
-        confirmButtonColor: '#3b82f6'
+        icon: "warning",
+        title: "Missing Fields",
+        text: "Product name and price are required",
+        background: "#1e293b",
+        color: "#f8fafc",
+        confirmButtonColor: "#3b82f6",
       });
       return;
     }
@@ -131,7 +147,7 @@ export default function EditProduct() {
       let uploadedUrls = [];
       if (newImages.length > 0) {
         uploadedUrls = await Promise.all(
-          newImages.map(file => uploadMediaToSupabase(file, "images"))
+          newImages.map((file) => uploadMediaToSupabase(file, "images")),
         );
       }
 
@@ -140,40 +156,42 @@ export default function EditProduct() {
         price: parseFloat(formData.price),
         lastPrices: parseFloat(formData.lastPrices),
         stock: parseInt(formData.stock) || 0,
-        altNames: formData.altNames.split(",").map(n => n.trim()).filter(n => n),
+        altNames: formData.altNames
+          .split(",")
+          .map((n) => n.trim())
+          .filter((n) => n),
         images: [...existingImageUrls, ...uploadedUrls],
         updatedAt: new Date().toISOString(),
-        discountPercentage: calculateDiscountPercentage()
+        discountPercentage: calculateDiscountPercentage(),
       };
 
       await axios.patch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/products`, 
-        payload, 
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${import.meta.env.VITE_BACKEND_URL}/api/products`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       Swal.fire({
-        icon: 'success',
-        title: 'Product Updated!',
-        text: 'Changes have been saved successfully',
+        icon: "success",
+        title: "Product Updated!",
+        text: "Changes have been saved successfully",
         timer: 2000,
         showConfirmButton: false,
-        background: '#1e293b',
-        color: '#f8fafc'
+        background: "#1e293b",
+        color: "#f8fafc",
       });
-      
+
       setTimeout(() => {
         navigate("/admin/dashboard/adminviewproducts");
       }, 1500);
-      
     } catch (error) {
       Swal.fire({
-        icon: 'error',
-        title: 'Update Failed',
-        text: error.response?.data?.message || 'Please try again',
-        background: '#1e293b',
-        color: '#f8fafc',
-        confirmButtonColor: '#ef4444'
+        icon: "error",
+        title: "Update Failed",
+        text: error.response?.data?.message || "Please try again",
+        background: "#1e293b",
+        color: "#f8fafc",
+        confirmButtonColor: "#ef4444",
       });
     } finally {
       setSaving(false);
@@ -211,15 +229,21 @@ export default function EditProduct() {
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
                   Edit Product
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg border border-blue-200">Editing Mode</span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg border border-blue-200">
+                    Editing Mode
+                  </span>
                 </h1>
-                <p className="text-gray-600 mt-1">Update product information, media, and pricing</p>
+                <p className="text-gray-600 mt-1">
+                  Update product information, media, and pricing
+                </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Product ID</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wider">
+                  Product ID
+                </div>
                 <div className="flex items-center gap-2">
                   <TbBarcode className="text-blue-500" />
                   <code className="font-mono font-bold text-lg text-gray-900 bg-gray-100 px-3 py-1 rounded-lg border border-gray-200">
@@ -238,7 +262,9 @@ export default function EditProduct() {
                 <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
                   <FiEdit2 className="text-blue-600 text-xl" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">Product Details</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Product Details
+                </h2>
               </div>
 
               <div className="space-y-5">
@@ -270,7 +296,9 @@ export default function EditProduct() {
                     className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition hover:border-gray-400"
                     placeholder="iPhone 15 Pro, Smartphone, Mobile"
                   />
-                  <p className="text-xs text-gray-500 mt-2 italic">Separate multiple names with commas</p>
+                  <p className="text-xs text-gray-500 mt-2 italic">
+                    Separate multiple names with commas
+                  </p>
                 </div>
 
                 <div>
@@ -286,7 +314,7 @@ export default function EditProduct() {
                         onChange={handleChange}
                         className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-gray-400"
                       >
-                        {categories.map(cat => (
+                        {categories.map((cat) => (
                           <option key={cat.value} value={cat.value}>
                             {cat.icon} {cat.label}
                           </option>
@@ -300,7 +328,7 @@ export default function EditProduct() {
                         onChange={handleChange}
                         className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-gray-400"
                       >
-                        {brands.map(brand => (
+                        {brands.map((brand) => (
                           <option key={brand.value} value={brand.value}>
                             {brand.icon} {brand.label}
                           </option>
@@ -317,7 +345,9 @@ export default function EditProduct() {
                 <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-100">
                   <FiDollarSign className="text-emerald-600 text-xl" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">Pricing & Stock</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Pricing & Stock
+                </h2>
               </div>
 
               <div className="space-y-5">
@@ -328,7 +358,9 @@ export default function EditProduct() {
                       Current Price *
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                        $
+                      </span>
                       <input
                         type="number"
                         name="price"
@@ -346,7 +378,9 @@ export default function EditProduct() {
                       Previous Price
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                        $
+                      </span>
                       <input
                         type="number"
                         name="lastPrices"
@@ -367,7 +401,9 @@ export default function EditProduct() {
                       <div className="text-2xl font-bold text-rose-700 text-center">
                         {calculateDiscountPercentage()}%
                       </div>
-                      <div className="text-xs text-rose-600 text-center mt-1">Savings</div>
+                      <div className="text-xs text-rose-600 text-center mt-1">
+                        Savings
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -397,7 +433,9 @@ export default function EditProduct() {
                   <div className="p-2 bg-rose-50 rounded-lg border border-rose-100">
                     <FiImage className="text-rose-600 text-xl" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">Media Gallery</h2>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Media Gallery
+                  </h2>
                 </div>
                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                   {existingImageUrls.length + newImages.length}/6
@@ -409,29 +447,49 @@ export default function EditProduct() {
                   {existingImageUrls.map((url, index) => (
                     <div key={index} className="relative group">
                       <div className="aspect-square rounded-xl overflow-hidden border-2 border-gray-200 group-hover:border-rose-400 transition">
-                        <img src={url} alt="Product" className="w-full h-full object-cover" />
+                        <img
+                          src={url}
+                          alt="Product"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <button onClick={() => removeImage(index, 'existing')} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg">
+                      <button
+                        onClick={() => removeImage(index, "existing")}
+                        className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
+                      >
                         <FiTrash2 size={14} />
                       </button>
                     </div>
                   ))}
-                  
+
                   {newImages.map((file, index) => (
                     <div key={index} className="relative group">
                       <div className="aspect-square rounded-xl overflow-hidden border-2 border-blue-300 bg-blue-50">
-                        <img src={URL.createObjectURL(file)} alt="New upload" className="w-full h-full object-cover" />
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt="New upload"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <button onClick={() => removeImage(index, 'new')} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg">
+                      <button
+                        onClick={() => removeImage(index, "new")}
+                        className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
+                      >
                         <FiTrash2 size={14} />
                       </button>
                     </div>
                   ))}
-                  
+
                   {existingImageUrls.length + newImages.length < 6 && (
                     <label className="aspect-square flex flex-col items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group">
                       <FiUpload className="text-gray-400 group-hover:text-blue-500 text-xl" />
-                      <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
                     </label>
                   )}
                 </div>
@@ -463,9 +521,13 @@ export default function EditProduct() {
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold py-4 px-6 rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-3 group"
                 >
                   {saving ? (
-                    <><FiRefreshCw className="animate-spin" /> Saving...</>
+                    <>
+                      <FiRefreshCw className="animate-spin" /> Saving...
+                    </>
                   ) : (
-                    <><FiCheck /> Update Product</>
+                    <>
+                      <FiCheck /> Update Product
+                    </>
                   )}
                 </button>
 
@@ -483,3 +545,7 @@ export default function EditProduct() {
     </div>
   );
 }
+
+
+
+//total of codes lines = 10978
