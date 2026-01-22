@@ -22,7 +22,7 @@ export default function AdminOrdersCenter() {
   }, []);
 
   /**
-   * සියලුම ඇණවුම් ලබා ගැනීම
+   * Fetch all orders from the server
    */
   const loadAllOrders = async () => {
     try {
@@ -35,21 +35,21 @@ export default function AdminOrdersCenter() {
         }
       );
 
-      // දත්ත වල අනුපිළිවෙල (අලුත්ම ඒවා උඩට එන ලෙස) සකසමු
+      // Sort orders (Newest first)
       const sortedOrders = (response.data.orders || []).sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
       setOrders(sortedOrders);
     } catch (err) {
       console.error("Order Fetch Error:", err);
-      setError("ඇණවුම් ලබා ගැනීමට නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න.");
+      setError("Failed to load orders. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   /**
-   * පාරිභෝගික විස්තර ලබා ගැනීම
+   * Fetch specific customer details
    */
   const fetchCustomerDetails = async (userId) => {
     if (!userId || userInfo[userId]) return;
@@ -75,7 +75,7 @@ export default function AdminOrdersCenter() {
   };
 
   /**
-   * Order Status එක Update කිරීම
+   * Update the order status
    */
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
@@ -96,14 +96,14 @@ export default function AdminOrdersCenter() {
         );
       }
     } catch (err) {
-      alert("තත්වය යාවත්කාලීන කිරීම අසාර්ථකයි.");
+      alert("Failed to update order status.");
     } finally {
       setUpdatingId(null);
     }
   };
 
   /**
-   * Row එක Click කළ විට ක්‍රියාත්මක වන Function එක
+   * Handle Row Click Expansion
    */
   const onRowClick = (order) => {
     const userId = order.userId?._id;
@@ -116,12 +116,12 @@ export default function AdminOrdersCenter() {
     }
   };
 
-  // --- නව විශේෂාංග (New Features) ---
+  // --- Logic Helpers ---
 
-  // 1. Pending orders ගණන ගණනය කිරීම
+  // 1. Calculate Pending Orders Count
   const pendingCount = orders.filter((order) => order.status === "Pending").length;
 
-  // 2. අද දින ලැබුණු ඇණවුමක්දැයි පරීක්ෂා කිරීම
+  // 2. Check if the order was placed today
   const isToday = (dateString) => {
     const orderDate = new Date(dateString).toDateString();
     const today = new Date().toDateString();
@@ -132,7 +132,7 @@ export default function AdminOrdersCenter() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-10 text-center">
         <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-600 font-medium">ඇණවුම් පූරණය වෙමින් පවතී...</p>
+        <p className="text-gray-600 font-medium">Loading orders, please wait...</p>
       </div>
     );
 
@@ -141,7 +141,9 @@ export default function AdminOrdersCenter() {
       <div className="flex flex-col items-center justify-center min-h-screen p-10 text-center text-red-500">
         <span className="text-4xl mb-2">⚠️</span>
         <p>{error}</p>
-        <button onClick={loadAllOrders} className="mt-4 text-blue-500 underline">නැවත උත්සාහ කරන්න</button>
+        <button onClick={loadAllOrders} className="mt-4 text-blue-500 font-bold hover:underline">
+          Try Again
+        </button>
       </div>
     );
 
@@ -155,7 +157,7 @@ export default function AdminOrdersCenter() {
           {/* --- Notification Badge --- */}
           {pendingCount > 0 && (
             <span className="flex items-center justify-center bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full animate-bounce shadow-lg shadow-red-200">
-              {pendingCount} PENDING
+              {pendingCount} NEW PENDING
             </span>
           )}
         </div>
@@ -164,7 +166,7 @@ export default function AdminOrdersCenter() {
           onClick={loadAllOrders}
           className="flex items-center gap-2 text-sm bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-semibold text-gray-700"
         >
-          <span className={loading ? "animate-spin" : ""}>🔄</span> Refresh
+          <span className={loading ? "animate-spin" : ""}>🔄</span> Refresh Dashboard
         </button>
       </div>
 
@@ -178,13 +180,13 @@ export default function AdminOrdersCenter() {
                 <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Customer</th>
                 <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Total (Rs.)</th>
                 <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Status</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Actions</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Date</th>
+                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Update Status</th>
+                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Date Placed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {orders.map((order) => {
-                // අලුත් Order එකක්දැයි තීරණය කිරීම (අද දින ලැබුණු සහ Pending)
+                // Determine if it's a "New" order (Today + Pending)
                 const isNew = isToday(order.createdAt) && order.status === "Pending";
 
                 return (
@@ -199,10 +201,10 @@ export default function AdminOrdersCenter() {
                         {isNew && (
                           <span className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-yellow-500 rounded-full animate-ping"></span>
                         )}
-                        #{order.orderId}
+                        #{order.orderId || order._id.slice(-6)}
                       </td>
                       <td className="p-4 font-medium text-gray-700">
-                        {order.userId?.name || "නමක් නොමැත"}
+                        {order.userId?.name || "Anonymous User"}
                       </td>
                       <td className="p-4 font-black text-gray-800">
                         {order.totalAmount?.toLocaleString()}
@@ -237,7 +239,11 @@ export default function AdminOrdersCenter() {
                         </select>
                       </td>
                       <td className="p-4 text-xs text-gray-400 font-medium">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        })}
                       </td>
                     </tr>
 
@@ -246,14 +252,15 @@ export default function AdminOrdersCenter() {
                       <tr className="bg-gray-50/50">
                         <td colSpan="6" className="p-8 border-l-4 border-blue-500 animate-in fade-in slide-in-from-top-2 duration-300">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            {/* Customer Info Section */}
                             <div>
                               <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">
-                                Customer Contact
+                                Customer Contact Details
                               </h4>
                               {loadingUserId === order.userId?._id ? (
                                 <div className="flex items-center gap-2 text-gray-400 italic text-sm">
                                   <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
-                                  Loading details...
+                                  Fetching details...
                                 </div>
                               ) : userInfo[order.userId?._id] ? (
                                 <div className="space-y-3">
@@ -263,7 +270,7 @@ export default function AdminOrdersCenter() {
                                   </div>
                                   <div className="flex flex-col">
                                     <span className="text-[10px] text-gray-400 font-bold">PHONE NUMBER</span>
-                                    <span className="text-sm text-gray-700 font-semibold">{userInfo[order.userId._id].phone || "ලබා දී නැත"}</span>
+                                    <span className="text-sm text-gray-700 font-semibold">{userInfo[order.userId._id].phone || "Not Provided"}</span>
                                   </div>
                                   <div className="flex flex-col">
                                     <span className="text-[10px] text-gray-400 font-bold">SHIPPING ADDRESS</span>
@@ -271,31 +278,33 @@ export default function AdminOrdersCenter() {
                                       {userInfo[order.userId._id].address || 
                                        (userInfo[order.userId._id].shippingAddress ? 
                                         `${userInfo[order.userId._id].shippingAddress.addressLine1}, ${userInfo[order.userId._id].shippingAddress.city}` : 
-                                        "ලිපිනයක් නොමැත")}
+                                        "No address on file")}
                                     </span>
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-sm text-red-400">විස්තර ලබා ගත නොහැක.</p>
+                                <p className="text-sm text-red-400">Details unavailable.</p>
                               )}
                             </div>
+
+                            {/* Payment Section */}
                             <div>
                               <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">
-                                Payment Information
+                                Order & Payment Summary
                               </h4>
                               <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-xs text-gray-500 font-medium">Method</span>
+                                  <span className="text-xs text-gray-500 font-medium">Payment Method</span>
                                   <span className="text-xs font-bold text-gray-700 uppercase">{order.paymentMethod}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                  <span className="text-xs text-gray-500 font-medium">Status</span>
+                                  <span className="text-xs text-gray-500 font-medium">Payment Status</span>
                                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${order.isPaid ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                                     {order.isPaid ? "PAID" : "UNPAID"}
                                   </span>
                                 </div>
                                 <div className="pt-2 mt-2 border-t border-gray-50 flex justify-between items-center">
-                                  <span className="text-sm text-gray-800 font-bold">Total Amount</span>
+                                  <span className="text-sm text-gray-800 font-bold">Grand Total</span>
                                   <span className="text-sm text-blue-600 font-black">Rs. {order.totalAmount?.toLocaleString()}</span>
                                 </div>
                               </div>
@@ -311,7 +320,7 @@ export default function AdminOrdersCenter() {
           </table>
           {orders.length === 0 && (
             <div className="p-20 text-center text-gray-400 font-medium">
-              තවමත් ඇණවුම් කිසිවක් ලැබී නැත.
+              No orders have been placed yet.
             </div>
           )}
         </div>
