@@ -31,7 +31,7 @@ export default function ViewCart() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  console.log(quoteData);
+
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
