@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { NavLink, Link } from "react-router-dom";
 import axios from "axios";
 import { RxDashboard, RxExit } from "react-icons/rx";
@@ -12,38 +12,53 @@ import {
 
 export default function Sidebar({
   user,
-  unreadCount,
   handleLogout,
   closeMobile,
 }) {
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-  // ඇණවුම් ගණන ලබා ගැනීමේ Logic එක
-  const fetchPendingOrders = async () => {
+  // --- MANUAL REFETCH LOGIC ---
+  // useCallback භාවිතයෙන් function එක memoize කර ඇත
+  const fetchBadgeData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/orders/userplace/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (!token) return;
       
-      // Status එක "Pending" වන ඕඩර් පමණක් ගණනය කිරීම
-      const count = (response.data.orders || []).filter(
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // 1. ඇණවුම් ගණන ලබා ගැනීම
+      const ordersResponse = await axios.get(`${API_BASE_URL}/api/orders/userplace/orders`, { headers });
+      const oCount = (ordersResponse.data.orders || []).filter(
         (order) => order.status === "Pending"
       ).length;
+      setPendingOrdersCount(oCount);
 
-      setPendingOrdersCount(count);
+      // 2. නොකියවූ පණිවිඩ ගණන ලබා ගැනීම
+      const notifyResponse = await axios.get(`${API_BASE_URL}/api/notifications/unread-count`, { headers });
+      if (notifyResponse.data.success) {
+        setUnreadNotifications(notifyResponse.data.count);
+      }
+      
+      console.log("Sidebar data refetched manually");
     } catch (err) {
-      console.error("Sidebar Badge Error:", err);
+      console.error("Sidebar Badge Fetch Error:", err);
     }
-  };
+  }, [API_BASE_URL]);
+
+  // Global access ලබා දීම (වෙනත් components වල සිට manually refetch කිරීමට)
+  useEffect(() => {
+    window.refetchSidebarBadges = fetchBadgeData;
+    return () => delete window.refetchSidebarBadges;
+  }, [fetchBadgeData]);
 
   useEffect(() => {
-    fetchPendingOrders();
-    // සෑම තත්පර 60 කට වරක්ම අලුත් ඕඩර් තිබේදැයි පරීක්ෂා කිරීම (Polling)
-    const interval = setInterval(fetchPendingOrders, 60000);
+    fetchBadgeData();
+    // Auto polling (every 60s)
+    const interval = setInterval(fetchBadgeData, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchBadgeData]);
 
   const navItemClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -111,17 +126,24 @@ export default function Sidebar({
         <NavLink to="/admin/dashboard/notification" className={navItemClass} onClick={closeMobile}>
           <div className="relative">
             <MdNotifications size={20} className="text-red-600" />
-            {unreadCount > 0 && (
+            {unreadNotifications > 0 && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
               </span>
             )}
           </div>
-          Notifications
+          <div className="flex justify-between items-center w-full">
+            <span>Notifications</span>
+            {unreadNotifications > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {unreadNotifications}
+              </span>
+            )}
+          </div>
         </NavLink>
 
-        {/* Orders with NEW Badge Logic */}
+        {/* Orders */}
         <NavLink to="/admin/dashboard/orders" className={navItemClass} onClick={closeMobile}>
           <div className="relative">
             <MdShoppingCart size={20} className="text-indigo-600" />

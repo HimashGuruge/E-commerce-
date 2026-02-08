@@ -2,21 +2,28 @@ import axios from "axios";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import Swal from "sweetalert2";
 import { 
-  MessageSquare, 
-  User, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle,
-  Send,
-  Zap,
-  RefreshCw,
-  ChevronRight,
-  Bell,
-  Shield,
-  Sparkles
+  MessageSquare, User, Clock, CheckCircle, 
+  RefreshCw, Bell, Shield 
 } from "lucide-react";
 
 const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api/notifications`;
+
+// --- HELPER: පණිවිඩය ලැබුණු වේලාව ගණනය කිරීම ---
+const formatRelativeTime = (date) => {
+  if (!date) return "";
+  const now = new Date();
+  const msgDate = new Date(date);
+  const diffInSeconds = Math.floor((now - msgDate) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) return "Yesterday";
+  return msgDate.toLocaleDateString();
+};
 
 export default function Notification() {
   const [notifications, setNotifications] = useState([]);
@@ -25,19 +32,37 @@ export default function Notification() {
   const [refreshing, setRefreshing] = useState(false);
   const pollingRef = useRef(null);
 
-  const filteredNotifications = notifications.filter(n => {
-    if (activeFilter === 'unread') return !n.isRead;
-    if (activeFilter === 'archived') return n.isRead;
-    return true;
+  const getHeaders = () => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
   });
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  // --- LOGIC: එකම User ගේ පණිවිඩ Group කිරීම ---
+  const groupNotifications = (data) => {
+    const grouped = data.reduce((acc, current) => {
+      const userId = current.userId;
+      // දැනටමත් මේ user ගේ record එකක් තිබේ නම්, වඩාත් අලුත් (latest) එක තබා ගන්න
+      if (!acc[userId] || new Date(current.sentAt) > new Date(acc[userId].sentAt)) {
+        acc[userId] = current;
+      }
+      return acc;
+    }, {});
+    
+    // Array එකක් බවට පත් කර අලුත්ම පණිවිඩය ඉහලට එනසේ Sort කිරීම
+    return Object.values(grouped).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+  };
 
   const fetchNotifications = useCallback(async (showLoading = false) => {
     if (showLoading) setIsLoading(true);
+    setRefreshing(true);
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/getNotifications`);
-      setNotifications(Array.isArray(data) ? data : []);
+      const { data } = await axios.get(`${API_BASE_URL}/getNotifications`, getHeaders());
+      const uniqueUsers = groupNotifications(Array.isArray(data) ? data : []);
+      setNotifications(uniqueUsers);
+      
+      // Sidebar Badge එක update කිරීම (Manual Refetch Logic)
+      if (window.refetchSidebarBadges) {
+        window.refetchSidebarBadges();
+      }
     } catch (err) {
       console.error("Fetch Error:", err);
     } finally {
@@ -46,135 +71,84 @@ export default function Notification() {
     }
   }, []);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications(false);
-  };
-
   useEffect(() => {
     fetchNotifications(true);
-    pollingRef.current = setInterval(() => fetchNotifications(false), 5000);
+    pollingRef.current = setInterval(() => fetchNotifications(false), 15000);
     return () => clearInterval(pollingRef.current);
   }, [fetchNotifications]);
 
-  // --- 1. REFINED MESSAGE BUBBLES ---
-  const renderMessageHtml = (msg) => {
-    const isAdmin = msg.sender === 'admin';
-    return `
-      <div style="display: flex; flex-direction: column; align-items: ${isAdmin ? 'flex-end' : 'flex-start'}; margin-bottom: 20px; width: 100%; animation: slideIn 0.3s ease-out;">
-        <div style="
-          max-width: 85%;
-          padding: 14px 18px;
-          font-size: 0.92rem;
-          line-height: 1.5;
-          border-radius: ${isAdmin ? '22px 22px 4px 22px' : '22px 22px 22px 4px'};
-          background: ${isAdmin ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' : '#ffffff'}; 
-          color: ${isAdmin ? '#ffffff' : '#1e293b'};
-          box-shadow: ${isAdmin ? '0 10px 15px -3px rgba(79, 70, 229, 0.2)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)'};
-          border: ${isAdmin ? 'none' : '1px solid #e2e8f0'};
-          font-weight: ${isAdmin ? '500' : '400'};
-        ">
-          ${msg.text}
-        </div>
-        <div style="font-size: 0.65rem; color: #94a3b8; margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px; padding: 0 4px;">
-          ${isAdmin ? 'You' : 'User'} • ${new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
-      </div>
-    `;
+  const markAsRead = async (userId) => {
+    try {
+      await axios.post(`${API_BASE_URL}/markRead`, { userId }, getHeaders());
+      fetchNotifications(false);
+    } catch (err) { console.error("Mark Read Error:", err); }
   };
 
-  // --- 2. REFINED CHAT MODAL ---
   const openChatModal = async (notification) => {
+    if (!notification.isRead) markAsRead(notification.userId);
+
     try {
-      const { data: chatHistory } = await axios.get(`${API_BASE_URL}/getChat/${notification.userId}`);
+      const { data: chatHistory } = await axios.get(`${API_BASE_URL}/getChat/${notification.userId}`, getHeaders());
       
       const renderBubble = (msg) => {
         const isAdmin = msg.sender === 'admin';
         return `
           <div style="display: flex; flex-direction: column; align-items: ${isAdmin ? 'flex-end' : 'flex-start'}; margin-bottom: 20px;">
-            <div style="
-              max-width: 80%;
-              padding: 12px 16px;
-              font-size: 0.9rem;
-              line-height: 1.5;
-              border-radius: ${isAdmin ? '20px 20px 4px 20px' : '20px 20px 20px 4px'};
-              background: ${isAdmin ? '#4f46e5' : '#f1f5f9'}; 
-              color: ${isAdmin ? '#ffffff' : '#334155'};
-              box-shadow: ${isAdmin ? '0 4px 12px rgba(79, 70, 229, 0.25)' : 'none'};
-            ">
+            <div style="max-width: 85%; padding: 12px 16px; border-radius: ${isAdmin ? '18px 18px 4px 18px' : '18px 18px 18px 4px'}; background: ${isAdmin ? '#4f46e5' : '#f1f5f9'}; color: ${isAdmin ? '#ffffff' : '#334155'}; font-size: 0.95rem;">
               ${msg.text}
             </div>
-            <span style="font-size: 0.65rem; color: #94a3b8; margin-top: 6px; font-weight: 500; margin-${isAdmin ? 'right' : 'left'}: 8px;">
-              ${new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <span style="font-size: 0.7rem; color: #94a3b8; margin-top: 6px; padding: 0 4px;">
+              ${new Date(msg.createdAt || msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
         `;
       };
 
-      const chatHtml = chatHistory.map(msg => renderBubble(msg)).join('');
-
       Swal.fire({
         html: `
-          <div style="display: flex; flex-direction: column; height: 600px; text-align: left; font-family: sans-serif;">
-            
-            <div style="padding: 24px; background: #ffffff; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="position: relative;">
-                  <img src="${notification.userImage || 'https://ui-avatars.com/api/?name=' + notification.userId}" 
-                       style="width: 44px; height: 44px; border-radius: 12px; object-fit: cover;">
-                  <div style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; background: #22c55e; border: 2px solid #fff; border-radius: 50%;"></div>
-                </div>
-                <div>
-                  <h4 style="margin: 0; font-size: 1rem; font-weight: 700; color: #1e293b;">${notification.userName || 'Guest User'}</h4>
-                  <p style="margin: 0; font-size: 0.75rem; color: #64748b;">Support Ticket: #${notification.userId.slice(-5).toUpperCase()}</p>
+          <div style="display: flex; flex-direction: column; height: 550px; text-align: left; font-family: 'Inter', sans-serif;">
+            <div style="padding: 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px;">
+              <img src="${notification.userImage || 'https://ui-avatars.com/api/?name=' + notification.userName}" style="width: 40px; height: 40px; border-radius: 10px; object-fit: cover;">
+              <div>
+                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #1e293b;">${notification.userName}</h4>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                   <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%;"></span>
+                   <p style="margin: 0; font-size: 0.7rem; color: #64748b; font-weight: 500;">Active Conversation</p>
                 </div>
               </div>
             </div>
-
-            <div id="chat-box" style="flex: 1; overflow-y: auto; padding: 24px; background: #ffffff; display: flex; flex-direction: column;">
-              ${chatHtml || '<p style="text-align: center; color: #94a3b8; font-size: 0.8rem; margin-top: 50px;">Starting a new conversation...</p>'}
+            <div id="chat-box" style="flex: 1; overflow-y: auto; padding: 20px; background: #ffffff;">
+              ${chatHistory.map(msg => renderBubble(msg)).join('')}
             </div>
-
-            <div style="padding: 20px; background: #ffffff; border-top: 1px solid #f1f5f9;">
-              <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 6px 6px 6px 16px; transition: border-color 0.2s;" id="input-wrap">
-                <input id="inline-input" type="text" placeholder="Type a message..." 
-                  style="flex: 1; border: none; background: transparent; outline: none; font-size: 0.9rem; color: #334155; padding: 8px 0;">
-                <button id="inline-send-btn" style="background: #4f46e5; color: white; border: none; width: 38px; height: 38px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <div style="padding: 15px; border-top: 1px solid #f1f5f9; background: #fff;">
+              <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 5px 12px;">
+                <input id="inline-input" type="text" placeholder="Type your message..." style="flex: 1; border: none; background: transparent; outline: none; padding: 10px 5px; font-size: 0.9rem;">
+                <button id="inline-send-btn" style="background: #4f46e5; color: white; border: none; width: 35px; height: 35px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 </button>
               </div>
             </div>
-
           </div>
         `,
         showConfirmButton: false,
         showCloseButton: true,
-        width: '500px',
+        width: '450px',
         padding: '0',
-        background: '#ffffff',
-        customClass: {
-          popup: 'rounded-3xl shadow-2xl border-none',
-          closeButton: 'bg-slate-100 rounded-full p-1'
-        },
+        customClass: { popup: 'rounded-2xl shadow-2xl overflow-hidden' },
         didOpen: () => {
           const chatBox = document.getElementById('chat-box');
           const input = document.getElementById('inline-input');
           const btn = document.getElementById('inline-send-btn');
-          const wrap = document.getElementById('input-wrap');
-
           chatBox.scrollTop = chatBox.scrollHeight;
           input.focus();
-
-          input.onfocus = () => wrap.style.borderColor = '#4f46e5';
-          input.onblur = () => wrap.style.borderColor = '#e2e8f0';
 
           const sendMessage = async () => {
             const message = input.value.trim();
             if (!message || btn.disabled) return;
             btn.disabled = true;
             try {
-              await axios.post(`${API_BASE_URL}/reply/${notification.userId}`, { message });
-              chatBox.insertAdjacentHTML('beforeend', renderBubble({ sender: 'admin', text: message, createdAt: new Date() }));
+              await axios.post(`${API_BASE_URL}/reply/${notification.userId}`, { message }, getHeaders());
+              chatBox.insertAdjacentHTML('beforeend', renderBubble({ sender: 'admin', text: message, sentAt: new Date() }));
               input.value = '';
               chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
               fetchNotifications();
@@ -186,125 +160,125 @@ export default function Notification() {
           input.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(); };
         }
       });
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const markAllAsRead = async () => {
     try {
-      await axios.post(`${API_BASE_URL}/markAllRead`);
+      await axios.post(`${API_BASE_URL}/markAllRead`, {}, getHeaders());
       fetchNotifications(false);
-    } catch (err) {
-      console.error("Mark all read error:", err);
-    }
+    } catch (err) { console.error("Mark all read error:", err); }
   };
 
+  const filteredNotifications = notifications.filter(n => {
+    if (activeFilter === 'unread') return !n.isRead;
+    if (activeFilter === 'archived') return n.isRead;
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-slate-50/50 font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans">
+      <div className="max-w-7xl mx-auto">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
           <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200">
-              <MessageSquare className="w-7 h-7 text-white" />
+            <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100 text-white">
+              <MessageSquare className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Support Hub</h1>
-              <p className="text-slate-500 font-medium text-sm flex items-center gap-2 mt-0.5">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                System active and monitoring user requests
+              <h1 className="text-2xl font-bold text-slate-900">Customer Inquiries</h1>
+              <p className="text-slate-500 text-sm font-medium flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Real-time updates active
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
              <button 
-                onClick={handleRefresh}
-                className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
-              >
+               onClick={() => fetchNotifications(false)} 
+               className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+               title="Refresh Data"
+             >
                 <RefreshCw className={`w-5 h-5 text-slate-600 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
               <button 
-                onClick={markAllAsRead}
-                className="px-6 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-all shadow-lg flex items-center gap-2"
+                onClick={markAllAsRead} 
+                className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-md"
               >
-                <CheckCircle className="w-4 h-4" />
-                Mark All Read
+                <CheckCircle className="w-4 h-4" /> Mark All Read
               </button>
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Total Tickets" value={notifications.length} icon={<MessageSquare className="text-blue-600" />} color="blue" />
-          <StatCard title="Unread" value={unreadCount} icon={<Bell className="text-rose-600" />} color="rose" />
-          <StatCard title="SLA Status" value="99.9%" icon={<Shield className="text-emerald-600" />} color="emerald" />
-          <StatCard title="Avg Time" value="4m" icon={<Clock className="text-amber-600" />} color="amber" />
-        </div>
-
-        {/* Filter Section */}
+        {/* Filters */}
         <div className="flex gap-2 mb-6">
-          {['all', 'unread', 'archived'].map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${activeFilter === filter ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+          {['all', 'unread', 'archived'].map((f) => (
+            <button 
+              key={f} 
+              onClick={() => setActiveFilter(f)} 
+              className={`px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${activeFilter === f ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:border-indigo-300'}`}
             >
-              {filter}
+              {f}
             </button>
           ))}
         </div>
 
-        {/* Table Section */}
-        <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
+        {/* Main Table Container */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50/50 border-b border-slate-100">
-                <tr className="text-slate-400 text-[10px] font-black uppercase tracking-[0.15em]">
-                  <th className="px-8 py-5">User Account</th>
-                  <th className="px-8 py-5">Message Snippet</th>
-                  <th className="px-8 py-5">Time Received</th>
-                  <th className="px-8 py-5 text-right">Actions</th>
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Customer</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Latest Message</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Received</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
-                  <tr><td colSpan="4" className="py-20 text-center animate-pulse text-slate-400 font-bold uppercase text-xs tracking-widest">Initialising Secure Stream...</td></tr>
+                  <tr><td colSpan="4" className="py-20 text-center text-slate-400 font-medium">Fetching messages...</td></tr>
                 ) : filteredNotifications.length === 0 ? (
-                  <tr><td colSpan="4" className="py-20 text-center text-slate-300 italic">No messages match your filter.</td></tr>
+                  <tr><td colSpan="4" className="py-20 text-center text-slate-400">No conversations found.</td></tr>
                 ) : (
                   filteredNotifications.map((n) => (
-                    <tr key={n._id} className={`group transition-all ${!n.isRead ? "bg-indigo-50/30" : "hover:bg-slate-50/50"}`}>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-11 h-11 rounded-2xl overflow-hidden flex items-center justify-center transition-all ${!n.isRead ? 'ring-2 ring-indigo-600 ring-offset-2 shadow-lg shadow-indigo-100' : 'bg-slate-100'}`}>
+                    <tr key={n.userId} className={`hover:bg-slate-50/50 transition-colors ${!n.isRead ? 'bg-indigo-50/20' : ''}`}>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`relative w-10 h-10 rounded-xl overflow-hidden ${!n.isRead ? 'ring-2 ring-indigo-500 ring-offset-2' : 'bg-slate-100'}`}>
                             {n.userImage ? (
-                               <img src={n.userImage} alt="" className="w-full h-full object-cover" />
+                              <img src={n.userImage} className="w-full h-full object-cover" alt="User" />
                             ) : (
-                               <User className={`w-5 h-5 ${!n.isRead ? 'text-indigo-600' : 'text-slate-400'}`} />
+                              <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-bold">
+                                {n.userName?.charAt(0)}
+                              </div>
                             )}
                           </div>
                           <div className="flex flex-col">
-                             <span className="text-sm font-bold text-slate-800">{n.userName || "Unknown User"}</span>
-                             <span className="font-mono text-[10px] font-bold text-slate-400">USR-{n.userId.slice(-6).toUpperCase()}</span>
+                            <span className="text-sm font-bold text-slate-800">{n.userName}</span>
+                            <span className="text-[10px] font-medium text-slate-400">ID: {n.userId.slice(-6).toUpperCase()}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6">
-                        <p className={`text-sm max-w-xs truncate ${!n.isRead ? 'font-bold text-slate-900' : 'text-slate-500 font-medium'}`}>{n.message}</p>
+                      <td className="px-6 py-5">
+                        <p className={`text-sm max-w-[250px] truncate ${!n.isRead ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
+                          {n.message}
+                        </p>
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-6 py-5 text-center">
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-700">{new Date(n.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{new Date(n.updatedAt).toDateString()}</span>
+                          <span className="text-xs font-bold text-slate-700">{formatRelativeTime(n.sentAt)}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {new Date(n.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-8 py-6 text-right">
+                      <td className="px-6 py-5 text-right">
                         <button 
-                          onClick={() => openChatModal(n)}
-                          className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${!n.isRead ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100' : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-600 hover:text-indigo-600'}`}
+                          onClick={() => openChatModal(n)} 
+                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${!n.isRead ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                         >
                           OPEN CHAT
                         </button>
@@ -317,19 +291,6 @@ export default function Notification() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon, color }) {
-  const colors = { blue: 'bg-blue-50 text-blue-600', rose: 'bg-rose-50 text-rose-600', emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600' };
-  return (
-    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm shadow-slate-200/50 flex items-center justify-between">
-      <div>
-        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-        <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
-      </div>
-      <div className={`p-3 rounded-xl ${colors[color]}`}>{icon}</div>
     </div>
   );
 }
