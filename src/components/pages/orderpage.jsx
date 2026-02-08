@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import Swal from "sweetalert2";
 
 // --- Constants ---
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -69,22 +70,48 @@ export default function OrderPage() {
   }, [fetchOrders]);
 
   const handleCancelOrder = async (orderId) => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const { data } = await axios.post(
-        `${BACKEND_URL}/api/payment/cancel/${orderId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (data.success) {
-        alert("Order cancelled successfully!");
-        fetchOrders();
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you really want to cancel this order? This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, cancel it!",
+      cancelButtonText: "No, keep it",
+      borderRadius: "1.25rem",
+      customClass: {
+        popup: 'rounded-[1.5rem] font-sans'
       }
-    } catch (error) {
-      alert(error.response?.data?.message || "Could not cancel order.");
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem("token");
+        const { data } = await axios.post(
+          `${BACKEND_URL}/api/payment/cancel/${orderId}`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (data.success) {
+          Swal.fire({
+            title: "Cancelled!",
+            text: "Your order has been successfully cancelled.",
+            icon: "success",
+            confirmButtonColor: "#2563eb",
+            timer: 2000
+          });
+          fetchOrders();
+        }
+      } catch (error) {
+        Swal.fire({
+          title: "Failed!",
+          text: error.response?.data?.message || "Could not cancel order.",
+          icon: "error",
+          confirmButtonColor: "#2563eb"
+        });
+      }
     }
   };
 
@@ -145,19 +172,17 @@ function OrderCard({ order, index, onOpen, onCancel }) {
   const firstItemImage = order.items[0]?.image || order.items[0]?.imageUrl;
   const [canCancel, setCanCancel] = useState(false);
 
-  // වැදගත්ම කොටස: Card Payment ද නැද්ද කියලා මෙතනින් බලනවා
+  const isCancelled = order.status?.toLowerCase() === "cancelled";
   const isCardPayment = order.paymentMethod?.toLowerCase() === "card" || 
                         order.paymentMethod?.toLowerCase() === "payhere";
 
   useEffect(() => {
     const checkCancelEligibility = () => {
-      // 1. Card Payment එකක් නම් කිසිසේත්ම Cancel කරන්න බැහැ
-      if (isCardPayment) {
+      if (isCardPayment || isCancelled) {
         setCanCancel(false);
         return;
       }
 
-      // 2. COD නම් විනාඩි 10ක් ඇතුළත සහ Status එක Pending නම් පමණක් Cancel කළ හැක
       const orderTime = new Date(order.createdAt).getTime();
       const currentTime = new Date().getTime();
       const diffInMinutes = (currentTime - orderTime) / (1000 * 60);
@@ -172,16 +197,29 @@ function OrderCard({ order, index, onOpen, onCancel }) {
     checkCancelEligibility();
     const timer = setInterval(checkCancelEligibility, 10000);
     return () => clearInterval(timer);
-  }, [order.createdAt, order.status, isCardPayment]);
+  }, [order.createdAt, order.status, isCardPayment, isCancelled]);
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-      className="group bg-white p-5 rounded-3xl border border-slate-200/60 hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-300"
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ delay: index * 0.05 }}
+      className={`group bg-white p-5 rounded-3xl border transition-all duration-500 relative overflow-hidden
+        ${isCancelled 
+          ? "opacity-50 grayscale border-slate-200 bg-slate-50/50 shadow-none pointer-events-none" 
+          : "border-slate-200/60 hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-900/5"
+        }`}
     >
-      <div className="flex flex-wrap justify-between items-start gap-4">
+      {/* Cancelled Watermark */}
+      {isCancelled && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none opacity-10">
+            <h1 className="text-6xl font-black text-rose-600 border-4 border-rose-600 px-4">CANCELLED</h1>
+        </div>
+      )}
+
+      <div className="flex flex-wrap justify-between items-start gap-4 relative z-10">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 group-hover:scale-105 transition-transform">
+          <div className="w-16 h-16 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100">
             {firstItemImage ? (
               <img src={firstItemImage} alt="product" className="w-full h-full object-cover" />
             ) : (
@@ -199,7 +237,7 @@ function OrderCard({ order, index, onOpen, onCancel }) {
         </div>
       </div>
 
-      <div className="mt-6 pt-5 border-t border-slate-50 flex flex-wrap justify-between items-end gap-4">
+      <div className="mt-6 pt-5 border-t border-slate-50 flex flex-wrap justify-between items-end gap-4 relative z-10">
         <div className="flex gap-6">
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Date</p>
@@ -207,21 +245,26 @@ function OrderCard({ order, index, onOpen, onCancel }) {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</p>
-            <p className="text-lg font-black text-blue-600">Rs. {order.totalAmount?.toLocaleString()}</p>
+            <p className={`text-lg font-black ${isCancelled ? 'text-slate-400' : 'text-blue-600'}`}>
+              Rs. {order.totalAmount?.toLocaleString()}
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* මෙතනදී condition එක පරීක්ෂා කරනවා */}
           {canCancel && (
             <button
               onClick={() => onCancel(order._id)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 pointer-events-auto"
             >
               <X size={14} /> Cancel Order
             </button>
           )}
-          <button onClick={() => onOpen(order)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-blue-600 transition-all shadow-lg active:scale-95 flex items-center gap-2">
+          <button 
+            onClick={() => onOpen(order)} 
+            className={`pointer-events-auto px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 
+              ${isCancelled ? 'bg-slate-400 text-white' : 'bg-slate-900 text-white hover:bg-blue-600'}`}
+          >
             Details <ArrowRight size={16} />
           </button>
         </div>

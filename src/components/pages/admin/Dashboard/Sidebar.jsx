@@ -11,16 +11,16 @@ import {
 } from "react-icons/md";
 
 export default function Sidebar({
-  user,
+  user: initialUser,
   handleLogout,
   closeMobile,
 }) {
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [currentUser, setCurrentUser] = useState(initialUser);
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
   // --- MANUAL REFETCH LOGIC ---
-  // useCallback භාවිතයෙන් function එක memoize කර ඇත
   const fetchBadgeData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -28,14 +28,21 @@ export default function Sidebar({
       
       const headers = { Authorization: `Bearer ${token}` };
 
-      // 1. ඇණවුම් ගණන ලබා ගැනීම
+      // 1. User Profile Fetch (Using /api/users/me)
+      const userResponse = await axios.get(`${API_BASE_URL}/api/users/me`, { headers });
+      // ඔබේ API එකේ දත්ත පවතින්නේ response.data.user තුළ බැවින්:
+      if (userResponse.data && userResponse.data.success) {
+        setCurrentUser(userResponse.data.user);
+      }
+
+      // 2. ඇණවුම් ගණන ලබා ගැනීම
       const ordersResponse = await axios.get(`${API_BASE_URL}/api/orders/userplace/orders`, { headers });
       const oCount = (ordersResponse.data.orders || []).filter(
         (order) => order.status === "Pending"
       ).length;
       setPendingOrdersCount(oCount);
 
-      // 2. නොකියවූ පණිවිඩ ගණන ලබා ගැනීම
+      // 3. නොකියවූ පණිවිඩ ගණන ලබා ගැනීම
       const notifyResponse = await axios.get(`${API_BASE_URL}/api/notifications/unread-count`, { headers });
       if (notifyResponse.data.success) {
         setUnreadNotifications(notifyResponse.data.count);
@@ -47,10 +54,12 @@ export default function Sidebar({
     }
   }, [API_BASE_URL]);
 
-  // Global access ලබා දීම (වෙනත් components වල සිට manually refetch කිරීමට)
+  // Global access ලබා දීම
   useEffect(() => {
     window.refetchSidebarBadges = fetchBadgeData;
-    return () => delete window.refetchSidebarBadges;
+    return () => {
+      delete window.refetchSidebarBadges;
+    };
   }, [fetchBadgeData]);
 
   useEffect(() => {
@@ -78,24 +87,29 @@ export default function Sidebar({
         </Link>
       </div>
 
-      {/* User Info */}
+      {/* User Info (Fetch කළ Profile Picture එක මෙහි දිස්වේ) */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center">
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-100 flex items-center justify-center bg-blue-500 mr-3 shadow-sm">
-            {user?.profileImage ? (
-              <img src={user.profileImage} alt="Admin" className="w-full h-full object-cover" />
+            {currentUser?.profileImage ? (
+              <img 
+                src={currentUser.profileImage} 
+                alt="Admin" 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.target.src = "https://ui-avatars.com/api/?name=Admin"; }}
+              />
             ) : (
               <span className="text-white font-bold text-lg">
-                {user?.name?.charAt(0).toUpperCase() || "A"}
+                {currentUser?.name?.charAt(0).toUpperCase() || "A"}
               </span>
             )}
           </div>
           <div className="overflow-hidden">
             <div className="font-semibold text-gray-800 truncate text-sm">
-              {user?.name || "Admin User"}
+              {currentUser?.name || "Admin User"}
             </div>
             <div className="text-[10px] mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full inline-block font-bold uppercase">
-              Administrator
+              {currentUser?.role || "Administrator"}
             </div>
           </div>
         </div>
