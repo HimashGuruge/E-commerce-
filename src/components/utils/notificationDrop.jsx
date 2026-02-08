@@ -8,7 +8,6 @@ export default function NotificationDrop() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   
-  // 🎯 Reply සඳහා නිවැරදි මැසේජ් එක තෝරාගන්නා State එක
   const [replyingToMsgId, setReplyingToMsgId] = useState(null); 
   const [replyText, setReplyText] = useState("");
   
@@ -24,7 +23,23 @@ export default function NotificationDrop() {
     } catch (err) { console.error(err); }
   }, []);
 
-  // ✅ Mark as Seen & Open Reply field for THAT specific message
+  // Dropdown එකෙන් පිටත click කළොත් වහන්න
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
   const handleMarkAsRead = async (msgId, userId) => {
     try {
       await axios.post(`${API_BASE}/markRead`, { userId });
@@ -32,8 +47,6 @@ export default function NotificationDrop() {
         prev.map(n => n.userId === userId ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => (prev > 0 ? prev - 1 : 0));
-      
-      // ඒ මැසේජ් එක යටම Reply box එක පෙන්වන්න
       setReplyingToMsgId(msgId);
     } catch (err) { console.error("Mark read error:", err); }
   };
@@ -48,12 +61,7 @@ export default function NotificationDrop() {
     } catch (err) { console.error("Reply error:", err); }
   };
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
+  // ✅ නිවැරදිව පෙන්විය යුතු ප්‍රමාණය තෝරාගැනීම
   const displayedNotifications = showAll ? notifications : notifications.slice(0, 5);
 
   return (
@@ -65,15 +73,16 @@ export default function NotificationDrop() {
 
       {dropdownOpen && (
         <div className="absolute right-0 mt-2 w-[400px] bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="px-4 py-3 border-b bg-slate-50 flex justify-between items-center">
-            <span className="font-bold text-slate-700 text-sm">Recent Activity</span>
+          <div className="px-4 py-3 border-b bg-slate-50 flex justify-between items-center text-sm font-bold text-slate-700">
+            <span>Recent Activity</span>
+            {unreadCount > 0 && <span className="text-[10px] text-indigo-600 px-2 py-0.5 bg-indigo-50 rounded-full">{unreadCount} New</span>}
           </div>
 
           <div className="max-h-[450px] overflow-y-auto">
-            {notifications.map((n) => (
+            {/* 👇 මෙතන notifications වෙනුවට displayedNotifications පාවිච්චි කළා */}
+            {displayedNotifications.map((n) => (
               <div key={n._id} className={`px-4 py-4 border-b border-slate-50 transition-all ${!n.isRead ? "bg-indigo-50/40" : "hover:bg-slate-50"}`}>
                 <div className="flex items-start gap-4">
-                  {/* Profile Pic */}
                   <div className="flex-shrink-0">
                     {n.userImage ? (
                       <img src={n.userImage} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
@@ -89,17 +98,12 @@ export default function NotificationDrop() {
                     </div>
                     <p className="text-[12px] text-slate-600 mb-3">{n.message}</p>
 
-                    {/* --- ACTIONS --- */}
                     <div className="flex flex-col gap-2">
                       {!n.isRead ? (
-                        <button 
-                          onClick={() => handleMarkAsRead(n._id, n.userId)} 
-                          className="w-fit flex items-center gap-1.5 text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-all"
-                        >
+                        <button onClick={() => handleMarkAsRead(n._id, n.userId)} className="w-fit flex items-center gap-1.5 text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-all">
                           <FiCheckCircle size={12} /> Mark as Seen
                         </button>
                       ) : (
-                        // පණිවිඩය Seen නම් සහ reply කරන්න click කරලා නම් විතරක් Input එක පෙන්වන්න
                         replyingToMsgId === n._id ? (
                           <div className="flex items-center gap-2 mt-1 animate-in slide-in-from-top-1 duration-200">
                             <input 
@@ -110,13 +114,13 @@ export default function NotificationDrop() {
                               placeholder={`Reply to ${n.userName}...`} 
                               className="flex-1 text-[11px] border border-slate-200 rounded-md px-2 py-2 outline-none focus:border-indigo-500 shadow-sm"
                             />
-                            <button onClick={() => handleSendReply(n.userId)} className="p-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"><FiSend size={12} /></button>
+                            <button onClick={() => handleSendReply(n.userId)} className="p-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"><FiSend size={12} /></button>
                             <button onClick={() => setReplyingToMsgId(null)} className="p-2 text-slate-400 hover:text-slate-600"><FiX size={14} /></button>
                           </div>
                         ) : (
                           <button 
                             onClick={() => { setReplyingToMsgId(n._id); setReplyText(""); }} 
-                            className="w-fit text-[10px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-tighter"
+                            className="w-fit text-[10px] font-bold text-indigo-600 hover:text-indigo-800 uppercase"
                           >
                             Reply
                           </button>
@@ -129,11 +133,18 @@ export default function NotificationDrop() {
             ))}
           </div>
 
-          {/* View All Footer */}
+          {/* Footer - Show All / Show Less */}
           {notifications.length > 5 && (
             <div className="p-2 border-t bg-slate-50">
-              <button onClick={() => setShowAll(!showAll)} className="w-full py-2 text-[11px] font-bold text-indigo-600 flex items-center justify-center gap-2 uppercase">
-                {showAll ? "Show Less" : "View More"}
+              <button 
+                onClick={() => setShowAll(!showAll)} 
+                className="w-full py-2 text-[11px] font-bold text-indigo-600 flex items-center justify-center gap-2 uppercase hover:bg-indigo-50 rounded-lg transition-all"
+              >
+                {showAll ? (
+                  <><FiChevronUp /> Show Less</>
+                ) : (
+                  <><FiChevronDown /> View More ({notifications.length - 5} More)</>
+                )}
               </button>
             </div>
           )}
