@@ -1,16 +1,16 @@
 import axios from "axios";
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  FiSearch, 
-  FiFilter, 
-  FiEdit, 
-  FiTrash2, 
-  FiEye, 
-  FiCopy, 
-  FiDownload, 
+import {
+  FiSearch,
+  FiFilter,
+  FiEdit,
+  FiTrash2,
+  FiEye,
+  FiCopy,
+  FiDownload,
   FiRefreshCw,
-  FiPlus
+  FiPlus,
 } from "react-icons/fi";
 import { MdGridView, MdList } from "react-icons/md";
 import Swal from "sweetalert2";
@@ -28,7 +28,7 @@ export default function AdminAllProductView() {
   const [bulkAction, setBulkAction] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
+
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
@@ -41,19 +41,22 @@ export default function AdminAllProductView() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          import.meta.env.VITE_BACKEND_URL + "/api/products",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         const productsData = res.data?.data || res.data || [];
         setProducts(productsData);
         setFilteredProducts(productsData);
       } catch (err) {
         console.error("Error fetching products:", err);
         Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to load products',
-          confirmButtonColor: '#d33',
+          icon: "error",
+          title: "Error",
+          text: "Failed to load products",
+          confirmButtonColor: "#d33",
         });
       } finally {
         setLoading(false);
@@ -65,12 +68,12 @@ export default function AdminAllProductView() {
 
   // Get unique categories and brands for filters
   const categories = useMemo(() => {
-    const allCategories = products.map(p => p.category).filter(Boolean);
+    const allCategories = products.map((p) => p.category).filter(Boolean);
     return ["all", ...new Set(allCategories)];
   }, [products]);
 
   const brands = useMemo(() => {
-    const allBrands = products.map(p => p.brand).filter(Boolean);
+    const allBrands = products.map((p) => p.brand).filter(Boolean);
     return ["all", ...new Set(allBrands)];
   }, [products]);
 
@@ -81,22 +84,25 @@ export default function AdminAllProductView() {
     // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      result = result.filter(product => 
-        product.productName?.toLowerCase().includes(term) ||
-        product.productId?.toLowerCase().includes(term) ||
-        product.description?.toLowerCase().includes(term) ||
-        product.altNames?.some(name => name.toLowerCase().includes(term))
+      result = result.filter(
+        (product) =>
+          product.productName?.toLowerCase().includes(term) ||
+          product.productId?.toLowerCase().includes(term) ||
+          product.description?.toLowerCase().includes(term) ||
+          product.altNames?.some((name) => name.toLowerCase().includes(term)),
       );
     }
 
     // Category filter
     if (selectedCategory !== "all") {
-      result = result.filter(product => product.category === selectedCategory);
+      result = result.filter(
+        (product) => product.category === selectedCategory,
+      );
     }
 
     // Brand filter
     if (selectedBrand !== "all") {
-      result = result.filter(product => product.brand === selectedBrand);
+      result = result.filter((product) => product.brand === selectedBrand);
     }
 
     // Sorting
@@ -114,10 +120,14 @@ export default function AdminAllProductView() {
         result.sort((a, b) => b.stock - a.stock);
         break;
       case "newest":
-        result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        result.sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+        );
         break;
       case "oldest":
-        result.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+        result.sort(
+          (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
+        );
         break;
       default:
         break;
@@ -135,40 +145,43 @@ export default function AdminAllProductView() {
 
   const handleDelete = async (productId, productName) => {
     const result = await Swal.fire({
-      title: 'Delete Product?',
+      title: "Delete Product?",
       html: `Are you sure you want to delete <strong>"${productName}"</strong>?<br>This action cannot be undone.`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
     });
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
+        await axios.delete(
+          import.meta.env.VITE_BACKEND_URL + `/api/products/${productId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
         Swal.fire({
-          icon: 'success',
-          title: 'Deleted!',
-          text: 'Product has been deleted.',
+          icon: "success",
+          title: "Deleted!",
+          text: "Product has been deleted.",
           timer: 2000,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
 
         // Remove from state
-        setProducts(prev => prev.filter(p => p.productId !== productId));
+        setProducts((prev) => prev.filter((p) => p.productId !== productId));
       } catch (err) {
         console.error("Delete error:", err);
         Swal.fire({
-          icon: 'error',
-          title: 'Delete Failed',
-          text: err.response?.data?.message || 'Failed to delete product',
-          confirmButtonColor: '#d33',
+          icon: "error",
+          title: "Delete Failed",
+          text: err.response?.data?.message || "Failed to delete product",
+          confirmButtonColor: "#d33",
         });
       }
     }
@@ -177,54 +190,59 @@ export default function AdminAllProductView() {
   const handleBulkDelete = async () => {
     if (selectedProducts.size === 0) {
       Swal.fire({
-        icon: 'warning',
-        title: 'No Selection',
-        text: 'Please select products to delete',
-        confirmButtonColor: '#3085d6',
+        icon: "warning",
+        title: "No Selection",
+        text: "Please select products to delete",
+        confirmButtonColor: "#3085d6",
       });
       return;
     }
 
     const result = await Swal.fire({
-      title: 'Bulk Delete?',
+      title: "Bulk Delete?",
       html: `Are you sure you want to delete ${selectedProducts.size} product(s)?`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
       confirmButtonText: `Delete ${selectedProducts.size} Items`,
-      cancelButtonText: 'Cancel',
-      reverseButtons: true
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
     });
 
     if (result.isConfirmed) {
       try {
-        const deletePromises = Array.from(selectedProducts).map(productId =>
-          axios.delete(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
+        const deletePromises = Array.from(selectedProducts).map((productId) =>
+          axios.delete(
+            import.meta.env.VITE_BACKEND_URL + `/api/products/${productId}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
         );
 
         await Promise.all(deletePromises);
 
         Swal.fire({
-          icon: 'success',
-          title: 'Success!',
+          icon: "success",
+          title: "Success!",
           text: `${selectedProducts.size} product(s) deleted`,
           timer: 2000,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
 
         // Refresh products
-        setProducts(prev => prev.filter(p => !selectedProducts.has(p.productId)));
+        setProducts((prev) =>
+          prev.filter((p) => !selectedProducts.has(p.productId)),
+        );
         setSelectedProducts(new Set());
       } catch (err) {
         console.error("Bulk delete error:", err);
         Swal.fire({
-          icon: 'error',
-          title: 'Delete Failed',
-          text: 'Failed to delete selected products',
-          confirmButtonColor: '#d33',
+          icon: "error",
+          title: "Delete Failed",
+          text: "Failed to delete selected products",
+          confirmButtonColor: "#d33",
         });
       }
     }
@@ -234,7 +252,7 @@ export default function AdminAllProductView() {
     if (selectedProducts.size === currentProducts.length) {
       setSelectedProducts(new Set());
     } else {
-      const allIds = new Set(currentProducts.map(p => p.productId));
+      const allIds = new Set(currentProducts.map((p) => p.productId));
       setSelectedProducts(allIds);
     }
   };
@@ -252,11 +270,11 @@ export default function AdminAllProductView() {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     Swal.fire({
-      icon: 'success',
-      title: 'Copied!',
-      text: 'Product ID copied to clipboard',
+      icon: "success",
+      title: "Copied!",
+      text: "Product ID copied to clipboard",
       timer: 1500,
-      showConfirmButton: false
+      showConfirmButton: false,
     });
   };
 
@@ -274,9 +292,12 @@ export default function AdminAllProductView() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Products Management</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
+            Products Management
+          </h1>
           <p className="text-gray-600 mt-2">
-            {filteredProducts.length} products • {selectedProducts.size} selected
+            {filteredProducts.length} products • {selectedProducts.size}{" "}
+            selected
           </p>
         </div>
         <div className="flex items-center space-x-3 mt-4 lg:mt-0">
@@ -332,13 +353,15 @@ export default function AdminAllProductView() {
         {/* Advanced Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {categories.map(cat => (
+              {categories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat === "all" ? "All Categories" : cat}
                 </option>
@@ -347,13 +370,15 @@ export default function AdminAllProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Brand
+            </label>
             <select
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {brands.map(brand => (
+              {brands.map((brand) => (
                 <option key={brand} value={brand}>
                   {brand === "all" ? "All Brands" : brand}
                 </option>
@@ -362,7 +387,9 @@ export default function AdminAllProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sort By
+            </label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -378,7 +405,9 @@ export default function AdminAllProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bulk Actions</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Bulk Actions
+            </label>
             <div className="flex space-x-2">
               <select
                 value={bulkAction}
@@ -435,7 +464,10 @@ export default function AdminAllProductView() {
                   <th className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedProducts.size === currentProducts.length && currentProducts.length > 0}
+                      checked={
+                        selectedProducts.size === currentProducts.length &&
+                        currentProducts.length > 0
+                      }
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
@@ -463,12 +495,17 @@ export default function AdminAllProductView() {
               <tbody className="divide-y divide-gray-200">
                 {currentProducts.length > 0 ? (
                   currentProducts.map((product) => (
-                    <tr key={product.productId} className="hover:bg-gray-50 transition">
+                    <tr
+                      key={product.productId}
+                      className="hover:bg-gray-50 transition"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={selectedProducts.has(product.productId)}
-                          onChange={() => handleSelectProduct(product.productId)}
+                          onChange={() =>
+                            handleSelectProduct(product.productId)
+                          }
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
@@ -492,9 +529,13 @@ export default function AdminAllProductView() {
                               {product.productName}
                             </div>
                             <div className="text-sm text-gray-500 flex items-center">
-                              <span className="font-mono">{product.productId}</span>
+                              <span className="font-mono">
+                                {product.productId}
+                              </span>
                               <button
-                                onClick={() => copyToClipboard(product.productId)}
+                                onClick={() =>
+                                  copyToClipboard(product.productId)
+                                }
                                 className="ml-2 text-gray-400 hover:text-gray-600"
                                 title="Copy ID"
                               >
@@ -511,14 +552,17 @@ export default function AdminAllProductView() {
                         <div className="text-sm font-bold text-gray-900">
                           ${parseFloat(product.price).toFixed(2)}
                         </div>
-                        {product.lastPrices && product.lastPrices > product.price && (
-                          <div className="text-xs text-gray-500 line-through">
-                            ${parseFloat(product.lastPrices).toFixed(2)}
-                          </div>
-                        )}
+                        {product.lastPrices &&
+                          product.lastPrices > product.price && (
+                            <div className="text-xs text-gray-500 line-through">
+                              ${parseFloat(product.lastPrices).toFixed(2)}
+                            </div>
+                          )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-medium px-3 py-1 rounded-full ${product.stock > 10 ? 'bg-green-100 text-green-800' : product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                        <div
+                          className={`text-sm font-medium px-3 py-1 rounded-full ${product.stock > 10 ? "bg-green-100 text-green-800" : product.stock > 0 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
+                        >
                           {product.stock} units
                         </div>
                       </td>
@@ -528,28 +572,41 @@ export default function AdminAllProductView() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 text-xs rounded-full ${product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                        <span
+                          className={`px-3 py-1 text-xs rounded-full ${product.stock > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                        >
+                          {product.stock > 0 ? "In Stock" : "Out of Stock"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => navigate(`/product/${product.productId}`)}
+                            onClick={() =>
+                              navigate(`/product/${product.productId}`)
+                            }
                             className="text-blue-600 hover:text-blue-900"
                             title="View"
                           >
                             <FiEye />
                           </button>
                           <button
-                            onClick={() => navigate("/admin/dashboard/editproducts", { state: { product } })}
+                            onClick={() =>
+                              navigate("/admin/dashboard/editproducts", {
+                                state: { product },
+                              })
+                            }
                             className="text-yellow-600 hover:text-yellow-900"
                             title="Edit"
                           >
                             <FiEdit />
                           </button>
                           <button
-                            onClick={() => handleDelete(product.productId, product.productName)}
+                            onClick={() =>
+                              handleDelete(
+                                product.productId,
+                                product.productName,
+                              )
+                            }
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >
@@ -562,8 +619,12 @@ export default function AdminAllProductView() {
                 ) : (
                   <tr>
                     <td colSpan="7" className="px-6 py-12 text-center">
-                      <div className="text-gray-400 text-lg mb-2">No products found</div>
-                      <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+                      <div className="text-gray-400 text-lg mb-2">
+                        No products found
+                      </div>
+                      <p className="text-gray-500 mb-4">
+                        Try adjusting your search or filters
+                      </p>
                       <button
                         onClick={() => {
                           setSearchTerm("");
@@ -588,7 +649,10 @@ export default function AdminAllProductView() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {currentProducts.length > 0 ? (
             currentProducts.map((product) => (
-              <div key={product.productId} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition">
+              <div
+                key={product.productId}
+                className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition"
+              >
                 <div className="relative">
                   {product.images?.[0] ? (
                     <img
@@ -609,31 +673,45 @@ export default function AdminAllProductView() {
                   />
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-800 truncate">{product.productName}</h3>
+                  <h3 className="font-semibold text-gray-800 truncate">
+                    {product.productName}
+                  </h3>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-lg font-bold text-blue-600">${parseFloat(product.price).toFixed(2)}</span>
-                    <span className={`px-2 py-1 text-xs rounded-full ${product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className="text-lg font-bold text-blue-600">
+                      ${parseFloat(product.price).toFixed(2)}
+                    </span>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${product.stock > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                    >
                       {product.stock} in stock
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => navigate("/admin/dashboard/editproducts", { state: { product } })}
+                        onClick={() =>
+                          navigate("/admin/dashboard/editproducts", {
+                            state: { product },
+                          })
+                        }
                         className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition"
                         title="Edit"
                       >
                         <FiEdit size={16} />
                       </button>
                       <button
-                        onClick={() => handleDelete(product.productId, product.productName)}
+                        onClick={() =>
+                          handleDelete(product.productId, product.productName)
+                        }
                         className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
                         title="Delete"
                       >
                         <FiTrash2 size={16} />
                       </button>
                     </div>
-                    <span className="text-xs text-gray-500">{product.category}</span>
+                    <span className="text-xs text-gray-500">
+                      {product.category}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -641,8 +719,12 @@ export default function AdminAllProductView() {
           ) : (
             <div className="col-span-full text-center py-12">
               <div className="text-gray-400 text-4xl mb-4">📦</div>
-              <div className="text-gray-600 text-xl mb-2">No products found</div>
-              <p className="text-gray-500">Try adjusting your search or filters</p>
+              <div className="text-gray-600 text-xl mb-2">
+                No products found
+              </div>
+              <p className="text-gray-500">
+                Try adjusting your search or filters
+              </p>
             </div>
           )}
         </div>
@@ -652,11 +734,13 @@ export default function AdminAllProductView() {
       {filteredProducts.length > itemsPerPage && (
         <div className="flex items-center justify-between mt-8">
           <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} products
+            Showing {startIndex + 1} to{" "}
+            {Math.min(endIndex, filteredProducts.length)} of{" "}
+            {filteredProducts.length} products
           </div>
           <div className="flex space-x-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
@@ -677,14 +761,16 @@ export default function AdminAllProductView() {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`px-4 py-2 rounded-lg ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'border border-gray-300 hover:bg-gray-50'}`}
+                  className={`px-4 py-2 rounded-lg ${currentPage === pageNum ? "bg-blue-600 text-white" : "border border-gray-300 hover:bg-gray-50"}`}
                 >
                   {pageNum}
                 </button>
               );
             })}
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
