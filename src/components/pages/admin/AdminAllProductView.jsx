@@ -3,12 +3,9 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiSearch,
-  FiFilter,
   FiEdit,
   FiTrash2,
-  FiEye,
   FiCopy,
-  FiDownload,
   FiRefreshCw,
   FiPlus,
 } from "react-icons/fi";
@@ -45,7 +42,7 @@ export default function AdminAllProductView() {
           import.meta.env.VITE_BACKEND_URL + "/api/products",
           {
             headers: { Authorization: `Bearer ${token}` },
-          },
+          }
         );
         const productsData = res.data?.data || res.data || [];
         setProducts(productsData);
@@ -89,14 +86,14 @@ export default function AdminAllProductView() {
           product.productName?.toLowerCase().includes(term) ||
           product.productId?.toLowerCase().includes(term) ||
           product.description?.toLowerCase().includes(term) ||
-          product.altNames?.some((name) => name.toLowerCase().includes(term)),
+          product.altNames?.some((name) => name.toLowerCase().includes(term))
       );
     }
 
     // Category filter
     if (selectedCategory !== "all") {
       result = result.filter(
-        (product) => product.category === selectedCategory,
+        (product) => product.category === selectedCategory
       );
     }
 
@@ -121,12 +118,12 @@ export default function AdminAllProductView() {
         break;
       case "newest":
         result.sort(
-          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
         );
         break;
       case "oldest":
         result.sort(
-          (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
+          (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
         );
         break;
       default:
@@ -134,7 +131,7 @@ export default function AdminAllProductView() {
     }
 
     setFilteredProducts(result);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [products, searchTerm, selectedCategory, selectedBrand, sortBy]);
 
   // Pagination
@@ -162,7 +159,7 @@ export default function AdminAllProductView() {
           import.meta.env.VITE_BACKEND_URL + `/api/products/${productId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
-          },
+          }
         );
 
         Swal.fire({
@@ -173,7 +170,6 @@ export default function AdminAllProductView() {
           showConfirmButton: false,
         });
 
-        // Remove from state
         setProducts((prev) => prev.filter((p) => p.productId !== productId));
       } catch (err) {
         console.error("Delete error:", err);
@@ -188,15 +184,7 @@ export default function AdminAllProductView() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedProducts.size === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "No Selection",
-        text: "Please select products to delete",
-        confirmButtonColor: "#3085d6",
-      });
-      return;
-    }
+    if (selectedProducts.size === 0) return;
 
     const result = await Swal.fire({
       title: "Bulk Delete?",
@@ -217,8 +205,8 @@ export default function AdminAllProductView() {
             import.meta.env.VITE_BACKEND_URL + `/api/products/${productId}`,
             {
               headers: { Authorization: `Bearer ${token}` },
-            },
-          ),
+            }
+          )
         );
 
         await Promise.all(deletePromises);
@@ -231,9 +219,8 @@ export default function AdminAllProductView() {
           showConfirmButton: false,
         });
 
-        // Refresh products
         setProducts((prev) =>
-          prev.filter((p) => !selectedProducts.has(p.productId)),
+          prev.filter((p) => !selectedProducts.has(p.productId))
         );
         setSelectedProducts(new Set());
       } catch (err) {
@@ -296,8 +283,7 @@ export default function AdminAllProductView() {
             Products Management
           </h1>
           <p className="text-gray-600 mt-2">
-            {filteredProducts.length} products • {selectedProducts.size}{" "}
-            selected
+            {filteredProducts.length} products • {selectedProducts.size} selected
           </p>
         </div>
         <div className="flex items-center space-x-3 mt-4 lg:mt-0">
@@ -321,7 +307,6 @@ export default function AdminAllProductView() {
       {/* Filters & Controls */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Search */}
           <div className="relative flex-1">
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
@@ -333,7 +318,6 @@ export default function AdminAllProductView() {
             />
           </div>
 
-          {/* View Toggle */}
           <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setViewMode("table")}
@@ -350,12 +334,9 @@ export default function AdminAllProductView() {
           </div>
         </div>
 
-        {/* Advanced Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
@@ -370,9 +351,7 @@ export default function AdminAllProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Brand
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
             <select
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
@@ -387,9 +366,7 @@ export default function AdminAllProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sort By
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -405,9 +382,7 @@ export default function AdminAllProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Bulk Actions
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bulk Actions</label>
             <div className="flex space-x-2">
               <select
                 value={bulkAction}
@@ -416,12 +391,11 @@ export default function AdminAllProductView() {
               >
                 <option value="">Select Action</option>
                 <option value="delete">Delete Selected</option>
-                <option value="export">Export Selected</option>
               </select>
               <button
                 onClick={() => bulkAction === "delete" && handleBulkDelete()}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                disabled={!bulkAction}
+                disabled={!bulkAction || selectedProducts.size === 0}
               >
                 Apply
               </button>
@@ -429,19 +403,15 @@ export default function AdminAllProductView() {
           </div>
         </div>
 
-        {/* Bulk Selection */}
         {selectedProducts.size > 0 && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-            <div className="text-blue-700 font-medium">
-              {selectedProducts.size} product(s) selected
-            </div>
+            <div className="text-blue-700 font-medium">{selectedProducts.size} product(s) selected</div>
             <div className="flex space-x-2">
               <button
                 onClick={handleBulkDelete}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center"
               >
-                <FiTrash2 className="mr-2" />
-                Delete Selected
+                <FiTrash2 className="mr-2" /> Delete Selected
               </button>
               <button
                 onClick={() => setSelectedProducts(new Set())}
@@ -464,48 +434,28 @@ export default function AdminAllProductView() {
                   <th className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={
-                        selectedProducts.size === currentProducts.length &&
-                        currentProducts.length > 0
-                      }
+                      checked={selectedProducts.size === currentProducts.length && currentProducts.length > 0}
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Product
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Stock
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Stock</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {currentProducts.length > 0 ? (
                   currentProducts.map((product) => (
-                    <tr
-                      key={product.productId}
-                      className="hover:bg-gray-50 transition"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={product.productId} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4">
                         <input
                           type="checkbox"
                           checked={selectedProducts.has(product.productId)}
-                          onChange={() =>
-                            handleSelectProduct(product.productId)
-                          }
+                          onChange={() => handleSelectProduct(product.productId)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
@@ -513,11 +463,7 @@ export default function AdminAllProductView() {
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-16 w-16">
                             {product.images?.[0] ? (
-                              <img
-                                className="h-16 w-16 object-cover rounded-lg"
-                                src={product.images[0]}
-                                alt={product.productName}
-                              />
+                              <img className="h-16 w-16 object-cover rounded-lg" src={product.images[0]} alt={product.productName} />
                             ) : (
                               <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
                                 <span className="text-gray-400">No Image</span>
@@ -525,88 +471,43 @@ export default function AdminAllProductView() {
                             )}
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {product.productName}
-                            </div>
+                            <div className="text-sm font-medium text-gray-900">{product.productName}</div>
                             <div className="text-sm text-gray-500 flex items-center">
-                              <span className="font-mono">
-                                {product.productId}
-                              </span>
-                              <button
-                                onClick={() =>
-                                  copyToClipboard(product.productId)
-                                }
-                                className="ml-2 text-gray-400 hover:text-gray-600"
-                                title="Copy ID"
-                              >
+                              <span className="font-mono">{product.productId}</span>
+                              <button onClick={() => copyToClipboard(product.productId)} className="ml-2 text-gray-400 hover:text-gray-600">
                                 <FiCopy size={14} />
                               </button>
-                            </div>
-                            <div className="text-xs text-gray-400 truncate max-w-xs">
-                              {product.description?.substring(0, 60)}...
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-gray-900">
-                          ${parseFloat(product.price).toFixed(2)}
-                        </div>
-                        {product.lastPrices &&
-                          product.lastPrices > product.price && (
-                            <div className="text-xs text-gray-500 line-through">
-                              ${parseFloat(product.lastPrices).toFixed(2)}
-                            </div>
-                          )}
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-bold text-gray-900">${parseFloat(product.price).toFixed(2)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div
-                          className={`text-sm font-medium px-3 py-1 rounded-full ${product.stock > 10 ? "bg-green-100 text-green-800" : product.stock > 0 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
-                        >
+                      <td className="px-6 py-4">
+                        <div className={`text-sm font-medium px-3 py-1 rounded-full ${product.stock > 10 ? "bg-green-100 text-green-800" : product.stock > 0 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
                           {product.stock} units
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                          {product.category}
-                        </span>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{product.category}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1 text-xs rounded-full ${product.stock > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                        >
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 text-xs rounded-full ${product.stock > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                           {product.stock > 0 ? "In Stock" : "Out of Stock"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-3">
                           <button
-                            onClick={() =>
-                              navigate(`/product/${product.productId}`)
-                            }
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View"
-                          >
-                            <FiEye />
-                          </button>
-                          <button
-                            onClick={() =>
-                              navigate("/admin/dashboard/editproducts", {
-                                state: { product },
-                              })
-                            }
+                            onClick={() => navigate("/admin/dashboard/editproducts", { state: { product } })}
                             className="text-yellow-600 hover:text-yellow-900"
                             title="Edit"
                           >
                             <FiEdit />
                           </button>
                           <button
-                            onClick={() =>
-                              handleDelete(
-                                product.productId,
-                                product.productName,
-                              )
-                            }
+                            onClick={() => handleDelete(product.productId, product.productName)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >
@@ -618,24 +519,7 @@ export default function AdminAllProductView() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
-                      <div className="text-gray-400 text-lg mb-2">
-                        No products found
-                      </div>
-                      <p className="text-gray-500 mb-4">
-                        Try adjusting your search or filters
-                      </p>
-                      <button
-                        onClick={() => {
-                          setSearchTerm("");
-                          setSelectedCategory("all");
-                          setSelectedBrand("all");
-                        }}
-                        className="text-blue-600 hover:text-blue-700 underline"
-                      >
-                        Clear all filters
-                      </button>
-                    </td>
+                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No products found</td>
                   </tr>
                 )}
               </tbody>
@@ -647,86 +531,37 @@ export default function AdminAllProductView() {
       {/* Grid View */}
       {viewMode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {currentProducts.length > 0 ? (
-            currentProducts.map((product) => (
-              <div
-                key={product.productId}
-                className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition"
-              >
-                <div className="relative">
-                  {product.images?.[0] ? (
-                    <img
-                      className="w-full h-48 object-cover"
-                      src={product.images[0]}
-                      alt={product.productName}
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-                      <span className="text-gray-400">No Image</span>
-                    </div>
-                  )}
-                  <input
-                    type="checkbox"
-                    checked={selectedProducts.has(product.productId)}
-                    onChange={() => handleSelectProduct(product.productId)}
-                    className="absolute top-2 left-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
+          {currentProducts.map((product) => (
+            <div key={product.productId} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+              <div className="relative">
+                <img className="w-full h-48 object-cover" src={product.images?.[0] || ""} alt={product.productName} />
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.has(product.productId)}
+                  onChange={() => handleSelectProduct(product.productId)}
+                  className="absolute top-2 left-2 rounded border-gray-300 text-blue-600"
+                />
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-gray-800 truncate">{product.productName}</h3>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-lg font-bold text-blue-600">${parseFloat(product.price).toFixed(2)}</span>
+                  <span className="text-xs text-gray-500">{product.stock} stock</span>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-800 truncate">
-                    {product.productName}
-                  </h3>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-lg font-bold text-blue-600">
-                      ${parseFloat(product.price).toFixed(2)}
-                    </span>
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${product.stock > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                    >
-                      {product.stock} in stock
-                    </span>
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex space-x-2">
+                    <button onClick={() => navigate("/admin/dashboard/editproducts", { state: { product } })} className="p-2 bg-blue-100 text-blue-600 rounded">
+                      <FiEdit size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(product.productId, product.productName)} className="p-2 bg-red-100 text-red-600 rounded">
+                      <FiTrash2 size={16} />
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() =>
-                          navigate("/admin/dashboard/editproducts", {
-                            state: { product },
-                          })
-                        }
-                        className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition"
-                        title="Edit"
-                      >
-                        <FiEdit size={16} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleDelete(product.productId, product.productName)
-                        }
-                        className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
-                        title="Delete"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {product.category}
-                    </span>
-                  </div>
+                  <span className="text-xs text-gray-400">{product.category}</span>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <div className="text-gray-400 text-4xl mb-4">📦</div>
-              <div className="text-gray-600 text-xl mb-2">
-                No products found
-              </div>
-              <p className="text-gray-500">
-                Try adjusting your search or filters
-              </p>
             </div>
-          )}
+          ))}
         </div>
       )}
 
@@ -734,45 +569,20 @@ export default function AdminAllProductView() {
       {filteredProducts.length > itemsPerPage && (
         <div className="flex items-center justify-between mt-8">
           <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to{" "}
-            {Math.min(endIndex, filteredProducts.length)} of{" "}
-            {filteredProducts.length} products
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length}
           </div>
           <div className="flex space-x-2">
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              onClick={() => setCurrentPage(prev => prev - 1)}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50"
             >
               Previous
             </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`px-4 py-2 rounded-lg ${currentPage === pageNum ? "bg-blue-600 text-white" : "border border-gray-300 hover:bg-gray-50"}`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
             <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
               disabled={currentPage === totalPages}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50"
             >
               Next
             </button>

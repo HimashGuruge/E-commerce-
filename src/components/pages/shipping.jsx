@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+// Optional: Use Lucide icons for a pro look
+import { MapPin, Phone, Truck, CreditCard, ChevronRight, Edit3 } from "lucide-react";
 
 export default function Shipping() {
   const location = useLocation();
@@ -15,7 +17,6 @@ export default function Shipping() {
     phone: "",
   });
 
-  // Delivery fee එක මෙතන variable එකක් විදිහට තියාගමු
   const DELIVERY_FEE = 350;
 
   useEffect(() => {
@@ -49,8 +50,11 @@ export default function Shipping() {
 
   if (!orderData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600 font-semibold">No order data found!</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-3xl shadow-xl">
+          <p className="text-gray-400 mb-4 italic text-lg">No order data found!</p>
+          <button onClick={() => navigate('/')} className="text-blue-600 font-bold underline">Go back to Shop</button>
+        </div>
       </div>
     );
   }
@@ -59,9 +63,7 @@ export default function Shipping() {
     setShippingInfo({ ...shippingInfo, [e.target.name]: e.target.value });
   };
 
-  // --- FIXED HANDLE PROCEED FUNCTION ---
   const handleProceed = () => {
-    // භාණ්ඩ වල මිලට delivery fee එක එකතු කරලා final total එක හදනවා
     const itemsTotal = orderData.total || 0;
     const calculatedFinalTotal = itemsTotal + DELIVERY_FEE;
 
@@ -69,111 +71,142 @@ export default function Shipping() {
       ...orderData,
       shippingAddress: shippingInfo.address,
       contactPhone: shippingInfo.phone,
-      deliveryFee: DELIVERY_FEE, // Payment page එකට මේක ඕනේ
-      finalTotal: calculatedFinalTotal, // Payment page එකට මේක ඕනේ
+      deliveryFee: DELIVERY_FEE,
+      finalTotal: calculatedFinalTotal,
     };
     
     navigate("/payment", { state: finalOrderData });
   };
 
-  if (loading) return <div className="text-center mt-10 font-bold">Loading details...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+       <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+       <p className="mt-4 text-gray-500 font-bold tracking-widest animate-pulse uppercase text-xs">Loading Details</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+    <div className="min-h-screen bg-[#F8F9FD] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[480px] bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white overflow-hidden">
         
-        {/* Step Header */}
-        <div className="bg-white border-b p-6 flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-gray-800">Shipping</h1>
-          <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">Step 2 of 3</span>
+        {/* Header Section */}
+        <div className="pt-10 px-10 pb-6 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-200">
+               <Truck className="text-white w-6 h-6" />
+            </div>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Shipping</h1>
+          <p className="text-gray-400 text-sm mt-1 font-medium italic">Enter your delivery destination</p>
+          
+          {/* Progress Indicator */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+             <div className="h-1.5 w-8 bg-blue-600 rounded-full"></div>
+             <div className="h-1.5 w-12 bg-blue-600 rounded-full"></div>
+             <div className="h-1.5 w-8 bg-gray-200 rounded-full"></div>
+          </div>
         </div>
 
-        <div className="p-8">
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-700">Delivery Information</h2>
+        <div className="px-8 pb-10">
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4 px-2">
+              <h2 className="text-sm font-black text-gray-500 uppercase tracking-widest">Delivery Info</h2>
               <button 
                 onClick={() => setIsEditing(!isEditing)}
-                className="text-sm font-bold text-blue-600 hover:text-blue-800 transition underline"
+                className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-all"
               >
-                {isEditing ? "Cancel Editing" : "Change Address"}
+                <Edit3 size={14} />
+                {isEditing ? "Cancel" : "Edit"}
               </button>
             </div>
 
             {!isEditing ? (
-              <div className="p-5 bg-blue-50/50 rounded-xl border-2 border-dashed border-blue-200">
-                <div className="mb-4">
-                  <p className="text-xs uppercase text-gray-400 font-bold mb-1">Deliver To</p>
-                  <p className="text-gray-700 leading-relaxed">
-                    {shippingInfo.address || <span className="text-red-400 italic font-medium">Please add an address to continue</span>}
-                  </p>
+              <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100 space-y-5">
+                <div className="flex gap-4">
+                  <div className="mt-1 bg-white p-2 rounded-lg shadow-sm h-fit">
+                    <MapPin size={18} className="text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-400 font-black tracking-widest mb-1">Address</p>
+                    <p className="text-gray-700 font-bold leading-tight">
+                      {shippingInfo.address || <span className="text-rose-400">Not provided</span>}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs uppercase text-gray-400 font-bold mb-1">Contact Number</p>
-                  <p className="text-gray-700 font-mono">
-                    {shippingInfo.phone || <span className="text-red-400 italic font-medium">No phone number</span>}
-                  </p>
+                
+                <div className="flex gap-4">
+                  <div className="mt-1 bg-white p-2 rounded-lg shadow-sm h-fit">
+                    <Phone size={18} className="text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-400 font-black tracking-widest mb-1">Contact</p>
+                    <p className="text-gray-700 font-black font-mono">
+                      {shippingInfo.phone || <span className="text-rose-400 italic">Not provided</span>}
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-2">Temporary Shipping Address</label>
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="group">
                   <textarea
                     name="address"
                     value={shippingInfo.address}
                     onChange={handleChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition"
-                    placeholder="Enter the address for this delivery..."
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                    placeholder="Residential address..."
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-2">Contact Number</label>
+                <div className="group">
                   <input
                     type="text"
                     name="phone"
                     value={shippingInfo.phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition"
-                    placeholder="e.g. 077 123 4567"
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                    placeholder="Phone number"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {/* --- TOTALS SECTION --- */}
-          <div className="bg-gray-900 rounded-2xl p-6 text-white mb-8 shadow-lg space-y-3">
-            <div className="flex justify-between items-center text-sm border-b border-gray-700 pb-3">
-              <span className="text-gray-400 font-medium">Items Subtotal:</span>
-              <span className="font-bold">Rs. {orderData.total?.toLocaleString()}</span>
+          {/* Checkout Summary Card */}
+          <div className="bg-gradient-to-br from-gray-800 to-gray-950 rounded-[2rem] p-6 text-white mb-8 shadow-2xl shadow-blue-100 space-y-4">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-gray-400 font-bold">Items Total</span>
+              <span className="font-mono">Rs. {orderData.total?.toLocaleString()}</span>
             </div>
             
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-400 font-medium">Delivery Fee:</span>
-              <span className="text-green-400 font-bold">+ Rs. {DELIVERY_FEE.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-gray-400 font-bold">Delivery Fee</span>
+              <span className="text-blue-400 font-mono">+ Rs. {DELIVERY_FEE.toLocaleString()}</span>
             </div>
 
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-gray-300 font-bold uppercase tracking-wide">Total Payable:</span>
-              <span className="text-2xl font-black text-white">
-                Rs. {(orderData.total + DELIVERY_FEE).toLocaleString()}
-              </span>
+            <div className="pt-3 border-t border-gray-700 flex justify-between items-end">
+              <div>
+                <p className="text-[10px] uppercase font-black text-gray-500 tracking-tighter">Total Payable</p>
+                <p className="text-3xl font-black tracking-tight font-mono text-white">
+                  Rs. {(orderData.total + DELIVERY_FEE).toLocaleString()}
+                </p>
+              </div>
+              <CreditCard className="text-gray-600 mb-1" />
             </div>
           </div>
 
-          {/* Action Button */}
+          {/* Final Button */}
           <button
             onClick={handleProceed}
             disabled={!shippingInfo.address || !shippingInfo.phone}
-            className={`w-full py-4 rounded-xl font-black text-lg transition-all transform active:scale-95 shadow-lg ${
+            className={`group w-full py-5 rounded-[1.5rem] font-black text-lg transition-all transform active:scale-95 flex items-center justify-center gap-3 ${
               !shippingInfo.address || !shippingInfo.phone
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+                ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700 shadow-[0_15px_30px_rgba(37,99,235,0.3)]"
             }`}
           >
-            Confirm & Pay →
+            Confirm & Continue
+            <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </div>

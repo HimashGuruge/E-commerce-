@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { FiRefreshCw, FiPackage, FiUser, FiMapPin, FiPhone, FiMail, FiShoppingCart } from "react-icons/fi";
 
 // Constants
 const STATUS_OPTIONS = ["Pending", "Confirmed", "Delivered", "Cancelled"];
@@ -21,9 +22,6 @@ export default function AdminOrdersCenter() {
     loadAllOrders();
   }, []);
 
-  /**
-   * Fetch all orders from the server
-   */
   const loadAllOrders = async () => {
     try {
       setLoading(true);
@@ -35,7 +33,6 @@ export default function AdminOrdersCenter() {
         }
       );
 
-      // Sort orders (Newest first)
       const sortedOrders = (response.data.orders || []).sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
@@ -48,9 +45,6 @@ export default function AdminOrdersCenter() {
     }
   };
 
-  /**
-   * Fetch specific customer details
-   */
   const fetchCustomerDetails = async (userId) => {
     if (!userId || userInfo[userId]) return;
 
@@ -62,7 +56,6 @@ export default function AdminOrdersCenter() {
       });
 
       const data = response.data.user || response.data;
-
       setUserInfo((prev) => ({
         ...prev,
         [userId]: data,
@@ -74,35 +67,22 @@ export default function AdminOrdersCenter() {
     }
   };
 
-  /**
-   * Update the order status
-   */
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       setUpdatingId(orderId);
       const token = localStorage.getItem("token");
-
-      const response = await axios.put(
+      await axios.put(
         `${API_BASE_URL}/api/orders/admin/getplaceorders/${orderId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.data) {
-        // UI එකේ පේන order එකේ status එක update කිරීම
-        setOrders((prev) =>
-          prev.map((order) =>
-            order._id === orderId ? { ...order, status: newStatus } : order
-          )
-        );
-
-        /** * ✅ DISPATCH EVENT:
-         * මෙතැනදී "storage" event එක නිකුත් කරනවා. 
-         * එවිට Navbar එකේ ඇති Listener එක ක්‍රියාත්මක වී Navbar එකේ 
-         * notification dot එක පෙන්වීමට අවශ්‍ය කටයුතු සලසයි.
-         */
-        window.dispatchEvent(new Event("storage"));
-      }
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+      window.dispatchEvent(new Event("storage"));
     } catch (err) {
       console.error("Status Update Error:", err);
       alert("Failed to update order status.");
@@ -111,12 +91,8 @@ export default function AdminOrdersCenter() {
     }
   };
 
-  /**
-   * Handle Row Click Expansion
-   */
   const onRowClick = (order) => {
     const userId = order.userId?._id;
-
     if (expandedOrderId === order._id) {
       setExpandedOrderId(null);
     } else {
@@ -125,67 +101,53 @@ export default function AdminOrdersCenter() {
     }
   };
 
-  // Logic Helpers
-  const pendingCount = orders.filter((order) => order.status === "Pending").length;
-
   const isToday = (dateString) => {
-    const orderDate = new Date(dateString).toDateString();
-    const today = new Date().toDateString();
-    return orderDate === today;
+    return new Date(dateString).toDateString() === new Date().toDateString();
   };
 
-  if (loading)
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-10 text-center">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-600 font-medium">Loading orders, please wait...</p>
-      </div>
-    );
+  const pendingCount = orders.filter((order) => order.status === "Pending").length;
 
-  if (error)
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-10 text-center text-red-500">
-        <span className="text-4xl mb-2">⚠️</span>
-        <p>{error}</p>
-        <button onClick={loadAllOrders} className="mt-4 text-blue-500 font-bold hover:underline">
-          Try Again
-        </button>
-      </div>
-    );
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+      <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-gray-500 font-medium">Fetching orders...</p>
+    </div>
+  );
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header Section */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-gray-800">Admin Orders Center</h2>
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Orders Center</h2>
           {pendingCount > 0 && (
-            <span className="flex items-center justify-center bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full animate-bounce shadow-lg shadow-red-200">
-              {pendingCount} NEW PENDING
+            <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full animate-bounce shadow-lg">
+              {pendingCount} NEW
             </span>
           )}
         </div>
 
         <button
           onClick={loadAllOrders}
-          className="flex items-center gap-2 text-sm bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-semibold text-gray-700"
+          className="flex items-center gap-2 text-sm bg-white border border-gray-200 px-5 py-2.5 rounded-2xl shadow-sm hover:shadow-md transition-all font-bold text-gray-600 active:scale-95"
         >
-          <span className={loading ? "animate-spin" : ""}>🔄</span> Refresh Dashboard
+          <FiRefreshCw className={loading ? "animate-spin" : ""} /> Refresh
         </button>
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50/80 border-b border-gray-100">
+            <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Order ID</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Customer</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Total (Rs.)</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Status</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Update Status</th>
-                <th className="p-4 font-bold text-gray-500 text-xs uppercase tracking-wider">Date Placed</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">ID</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">Products</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">Customer</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">Total Amount</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">Status</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">Action</th>
+                <th className="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-widest">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -195,77 +157,142 @@ export default function AdminOrdersCenter() {
                   <React.Fragment key={order._id}>
                     <tr
                       onClick={() => onRowClick(order)}
-                      className={`cursor-pointer transition-all duration-300 hover:bg-blue-50/30 ${
-                        expandedOrderId === order._id ? "bg-blue-50/50" : ""
-                      } ${isNew ? "bg-yellow-50/60 border-l-4 border-l-yellow-400" : ""}`}
+                      className={`group cursor-pointer transition-all duration-300 hover:bg-blue-50/40 ${
+                        expandedOrderId === order._id ? "bg-blue-50/60" : ""
+                      } ${isNew ? "bg-amber-50/50" : ""}`}
                     >
-                      <td className="p-4 font-bold text-blue-600 relative">
-                        {isNew && (
-                          <span className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-yellow-500 rounded-full animate-ping"></span>
-                        )}
-                        #{order.orderId || order._id.slice(-6)}
+                      <td className="p-5">
+                        <span className="font-mono font-bold text-blue-600 text-sm">
+                          #{order.orderId || order._id.slice(-6)}
+                        </span>
                       </td>
-                      <td className="p-4 font-medium text-gray-700">
-                        {order.userId?.name || "Anonymous User"}
+
+                      {/* IMAGE STACK COLUMN */}
+                      <td className="p-5">
+                        <div className="flex -space-x-4 group-hover:-space-x-1 transition-all duration-500">
+                          {order.items?.slice(0, 3).map((item, idx) => (
+                            <img
+                              key={idx}
+                              src={item.imageUrl}
+                              alt=""
+                              className="w-10 h-10 rounded-xl object-cover border-2 border-white shadow-sm"
+                            />
+                          ))}
+                          {order.items?.length > 3 && (
+                            <div className="w-10 h-10 rounded-xl bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-gray-400 shadow-sm">
+                              +{order.items.length - 3}
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="p-4 font-black text-gray-800">
-                        {order.totalAmount?.toLocaleString()}
+
+                      <td className="p-5">
+                        <div className="font-bold text-gray-700 text-sm">
+                          {order.userId?.name || "Guest User"}
+                        </div>
                       </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight ${
-                            order.status === "Delivered"
-                              ? "bg-green-100 text-green-700 border border-green-200"
-                              : order.status === "Cancelled"
-                              ? "bg-red-100 text-red-700 border border-red-200"
-                              : isNew
-                              ? "bg-yellow-100 text-yellow-700 border border-yellow-200 animate-pulse"
-                              : "bg-orange-100 text-orange-700 border border-orange-200"
-                          }`}
-                        >
+
+                      <td className="p-5">
+                        <div className="font-black text-gray-900 text-sm">
+                          Rs. {order.totalAmount?.toLocaleString()}
+                        </div>
+                      </td>
+
+                      <td className="p-5">
+                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter border ${
+                          order.status === "Delivered" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : 
+                          order.status === "Cancelled" ? "bg-rose-50 text-rose-600 border-rose-100" : 
+                          "bg-blue-50 text-blue-600 border-blue-100"
+                        }`}>
                           {order.status}
                         </span>
                       </td>
-                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+
+                      <td className="p-5" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={order.status}
                           disabled={updatingId === order._id}
                           onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                          className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-400 transition-all cursor-pointer"
+                          className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-[11px] font-bold text-gray-600 outline-none focus:ring-2 focus:ring-blue-400 transition-all cursor-pointer"
                         >
                           {STATUS_OPTIONS.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
+                            <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
                       </td>
-                      <td className="p-4 text-xs text-gray-400 font-medium">
-                        {new Date(order.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric"
-                        })}
+
+                      <td className="p-5 text-[11px] text-gray-400 font-bold uppercase">
+                        {new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </td>
                     </tr>
 
-                    {/* Expanded Row Code ... (same as you provided) */}
+                    {/* EXPANDED DETAIL VIEW */}
                     {expandedOrderId === order._id && (
                       <tr className="bg-gray-50/50">
-                        <td colSpan="6" className="p-8 border-l-4 border-blue-500 animate-in fade-in slide-in-from-top-2 duration-300">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            {/* Customer and Payment Info Sections ... */}
+                        <td colSpan="7" className="p-8 border-l-4 border-blue-500 animate-in fade-in slide-in-from-top-4 duration-500">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            
+                            {/* Left: Item List */}
                             <div>
-                                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Customer Contact Details</h4>
-                                {loadingUserId === order.userId?._id ? (
-                                    <div className="flex items-center gap-2 text-gray-400 italic text-sm">Fetching...</div>
-                                ) : userInfo[order.userId?._id] && (
-                                    <div className="space-y-3">
-                                        <p className="text-sm text-gray-700">Email: {userInfo[order.userId._id].email}</p>
-                                        <p className="text-sm text-gray-700">Phone: {userInfo[order.userId._id].phone || "N/A"}</p>
-                                    </div>
-                                )}
+                                <h4 className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-6">
+                                    <FiShoppingCart /> Ordered Items ({order.items?.length})
+                                </h4>
+                                <div className="space-y-4">
+                                    {order.items?.map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm transition-transform hover:scale-[1.02]">
+                                            <img src={item.imageUrl} className="w-14 h-14 rounded-xl object-cover" alt="" />
+                                            <div className="flex-1">
+                                                <p className="text-sm font-black text-gray-800">{item.name}</p>
+                                                <p className="text-xs text-gray-400 font-bold">Qty: {item.qty} × Rs.{item.price}</p>
+                                            </div>
+                                            <div className="text-sm font-black text-gray-900">
+                                                Rs.{ (item.qty * item.price).toLocaleString() }
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* Right: Customer & Logistics */}
+                            <div className="space-y-8">
+                                <div>
+                                    <h4 className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-6">
+                                        <FiUser /> Delivery Details
+                                    </h4>
+                                    {loadingUserId === order.userId?._id ? (
+                                        <div className="flex items-center gap-2 text-blue-500 italic text-sm font-bold animate-pulse">Loading contact data...</div>
+                                    ) : userInfo[order.userId?._id] ? (
+                                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                <FiMail className="text-blue-500" /> {userInfo[order.userId?._id].email}
+                                            </div>
+                                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                <FiPhone className="text-blue-500" /> {userInfo[order.userId?._id].phone || "No phone provided"}
+                                            </div>
+                                            <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                <FiMapPin className="text-blue-500 mt-1" /> 
+                                                <span className="leading-relaxed">
+                                                    {userInfo[order.userId?._id].address || "Address not specified"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-rose-500 font-bold">Contact info unavailable</p>
+                                    )}
+                                </div>
+
+                                <div className="bg-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-200">
+                                    <div className="flex justify-between items-center mb-2 opacity-80 text-[10px] font-black uppercase tracking-widest">
+                                        <span>Payment Method</span>
+                                        <span>{order.paymentMethod || "COD"}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-sm font-bold">Grand Total</span>
+                                        <span className="text-2xl font-black">Rs. {order.totalAmount?.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                           </div>
                         </td>
                       </tr>
@@ -275,6 +302,12 @@ export default function AdminOrdersCenter() {
               })}
             </tbody>
           </table>
+          {orders.length === 0 && (
+            <div className="p-20 text-center flex flex-col items-center">
+              <FiPackage className="text-gray-200 text-6xl mb-4" />
+              <p className="text-gray-400 font-bold">No orders found</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
