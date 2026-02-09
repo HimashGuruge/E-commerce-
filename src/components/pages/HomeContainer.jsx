@@ -1,45 +1,86 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { Loader2, ArrowDown, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
-
+import { 
+  Loader2, 
+  ArrowDown, 
+  CheckCircle2, 
+  AlertCircle, 
+  RefreshCw, 
+  Sparkles, 
+  Shield, 
+  Truck, 
+  Star, 
+  ChevronLeft, 
+  ChevronRight,
+  Zap,
+  Gift,
+  Award,
+  Clock
+} from "lucide-react";
 import Card from "@/components/Card";
 import NewAdsTitles from "@/components/newadds";
 
-// --- 1. Banner Slider (පින්තූර මාරු වන කොටස) ---
+// --- 1. Full-Width Premium Banner Slider ---
 const InternalBannerSlider = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    if (ads.length === 0) return;
-    
-    // තත්පර 5කට සැරයක් ඊළඟ පින්තූරයට යන්න
+    if (ads.length === 0 || isHovered) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev === ads.length - 1 ? 0 : prev + 1));
-    }, 5000);
-
+    }, 6000);
     return () => clearInterval(timer);
-  }, [ads.length]);
+  }, [ads.length, isHovered]);
+
+  const goToPrev = () => setCurrentIndex(currentIndex === 0 ? ads.length - 1 : currentIndex - 1);
+  const goToNext = () => setCurrentIndex(currentIndex === ads.length - 1 ? 0 : currentIndex + 1);
+
+  if (!ads || ads.length === 0) return null;
 
   return (
-    <div className="relative w-full h-full group overflow-hidden bg-slate-100">
+    <div 
+      className="relative w-full h-[50vh] md:h-[70vh] lg:h-[85vh] group overflow-hidden bg-slate-900"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Cinematic Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 z-10 pointer-events-none" />
+      
+      {/* Navigation Controls */}
+      <div className="absolute inset-0 z-20 flex items-center justify-between px-4 md:px-8 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
+        <button onClick={goToPrev} className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/30 transition-all active:scale-90 shadow-2xl">
+          <ChevronLeft className="w-8 h-8 text-white" />
+        </button>
+        <button onClick={goToNext} className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/30 transition-all active:scale-90 shadow-2xl">
+          <ChevronRight className="w-8 h-8 text-white" />
+        </button>
+      </div>
+
       {ads.map((ad, index) => (
         <div
           key={index}
-          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-            index === currentIndex ? "opacity-100" : "opacity-0"
+          className={`absolute inset-0 transition-all duration-[1500ms] ease-in-out ${
+            index === currentIndex ? "opacity-100 scale-100 visible" : "opacity-0 scale-110 invisible"
           }`}
         >
-          <img src={ad.imageUrl} className="w-full h-full object-cover transition-transform duration-[5000ms] scale-105" alt="" />
+          <img 
+            src={ad.imageUrl} 
+            className="w-full h-full object-cover object-center"
+            alt={`Promotion ${index + 1}`} 
+          />
         </div>
       ))}
       
-      {/* යටින් තියෙන පොඩි රවුම් (Dots) */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
+      {/* Minimalist Progress Indicators */}
+      <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-3 z-20">
         {ads.map((_, i) => (
           <button
             key={i}
             onClick={() => setCurrentIndex(i)}
-            className={`h-1.5 rounded-full transition-all ${i === currentIndex ? "w-10 bg-white" : "w-2 bg-white/40"}`}
+            className={`transition-all duration-700 rounded-full h-1 ${
+              i === currentIndex ? "w-16 bg-white" : "w-4 bg-white/30 hover:bg-white/60"
+            }`}
           />
         ))}
       </div>
@@ -47,122 +88,143 @@ const InternalBannerSlider = ({ ads }) => {
   );
 };
 
-// --- 2. Main Container ---
+// --- 2. Premium Features Section ---
+const PremiumFeatures = () => {
+  const features = [
+    { icon: Shield, title: "Secure Payment", desc: "SSL Encrypted" },
+    { icon: Truck, title: "Free Shipping", desc: "Orders over 5k" },
+    { icon: Zap, title: "Fast Delivery", desc: "1-2 Days" },
+    { icon: Gift, title: "Gift Cards", desc: "Perfect Gifting" },
+    { icon: Award, title: "Quality Assured", desc: "Premium Only" },
+    { icon: Clock, title: "24/7 Support", desc: "Always Here" },
+  ];
+
+  return (
+    <div className="py-16 bg-white border-b border-slate-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-4">
+          {features.map((feature, index) => (
+            <div key={index} className="flex flex-col items-center p-6 rounded-[2rem] bg-slate-50/50 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 border border-transparent hover:border-blue-50">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center mb-4 shadow-xl">
+                <feature.icon className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">{feature.title}</h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 text-center">{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 3. Main Container ---
 export default function HomeContainer() {
   const [allProducts, setAllProducts] = useState([]);
   const [adsData, setAdsData] = useState([]);
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [visibleCount, setVisibleCount] = useState(12);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef(null);
 
-  // ඉන්ටර්නෙට් එකෙන් දත්ත ගේන හැටි (Fetching Data)
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const productRes = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`);
-      const adsRes = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/ads`);
-      
+      const [productRes, adsRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/ads`)
+      ]);
       setAllProducts(productRes.data);
       setAdsData(adsRes.data);
     } catch (err) {
-      setError("දත්ත ලබා ගැනීමට නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න.");
+      setError("Failed to synchronize with server.");
     } finally {
       setLoading(false);
     }
   };
 
- 
+  useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // "තව පෙන්වන්න" වැඩේ කරන්න (Load More)
-  const loadMore = () => {
-    setVisibleCount((prev) => prev + 8);
-  };
-
-  // පහළට යද්දී ඉබේම Load වෙන්න (Infinite Scroll Logic)
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && allProducts.length > visibleCount) {
-        loadMore();
+      if (entries[0].isIntersecting && allProducts.length > visibleCount && !isLoadingMore) {
+        setIsLoadingMore(true);
+        setTimeout(() => {
+          setVisibleCount(prev => prev + 8);
+          setIsLoadingMore(false);
+        }, 800);
       }
     }, { threshold: 0.1 });
 
     if (observerTarget.current) observer.observe(observerTarget.current);
     return () => observer.disconnect();
-  }, [allProducts.length, visibleCount]);
+  }, [allProducts.length, visibleCount, isLoadingMore]);
 
-  if (error) return (
-    <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
-      <AlertCircle className="text-red-500" size={48} />
-      <p>{error}</p>
-      <button onClick={fetchData} className="px-6 py-2 bg-slate-900 text-white rounded-full flex items-center gap-2">
-        <RefreshCw size={18} /> Retry
-      </button>
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <Loader2 className="w-12 h-12 text-slate-900 animate-spin mb-4" />
+      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Initializing Storefront</span>
     </div>
   );
 
   return (
-    <div className="w-full bg-[#fcfcfc] min-h-screen">
-      
-      {/* උඩින්ම යන Promo Bar එක */}
-      <div className="bg-slate-900 py-3 overflow-hidden border-b border-white/5">
-        <NewAdsTitles speed={25}>
-          <div className="flex text-white font-black text-xs uppercase tracking-widest">
-            <span className="mx-10">🔥 Hot Deals Today!</span>
-            <span className="mx-10">🚀 Free Shipping!</span>
-            <span className="mx-10">✨ New Arrivals!</span>
+    <div className="w-full bg-white min-h-screen selection:bg-blue-100 selection:text-blue-900">
+      {/* 1. Promo Ticker (Full Width) */}
+      <div className="bg-slate-950 py-3.5 border-b border-white/5">
+        <NewAdsTitles speed={35}>
+          <div className="flex text-white font-black text-[10px] uppercase tracking-[0.3em]">
+            <span className="mx-12 flex items-center gap-2"><Sparkles size={12} className="text-blue-400"/> New Arrivals Available Now</span>
+            <span className="mx-12 flex items-center gap-2"><Star size={12} className="text-blue-400"/> Premium Curation 2026</span>
+            <span className="mx-12 flex items-center gap-2"><Zap size={12} className="text-blue-400"/> Islandwide Fast Tracking</span>
           </div>
         </NewAdsTitles>
       </div>
 
-      {/* Banner එක */}
-      <section className="w-full bg-slate-200">
-        <div className="relative w-full aspect-[16/9] md:aspect-[25/6] max-h-[650px] overflow-hidden">
-          {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="animate-spin" /></div>
-          ) : (
-            <InternalBannerSlider ads={adsData} />
-          )}
-        </div>
+      {/* 2. Full Width Hero Section */}
+      <section className="w-full">
+         <InternalBannerSlider ads={adsData} />
       </section>
 
-      {/* බඩු ටික පෙන්වන තැන (Product Grid) */}
-      <main className="max-w-7xl mx-auto px-4 pb-20">
-        <header className="mt-16 mb-10 flex flex-col items-center">
-          <h2 className="text-3xl font-black uppercase italic">Our Collection</h2>
-          <div className="h-1.5 w-14 bg-blue-600 mt-2 rounded-full" />
-        </header>
+      {/* 3. Contained Content Sections */}
+      <div className="max-w-7xl mx-auto px-4">
+        <PremiumFeatures />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {allProducts.slice(0, visibleCount).map((product) => (
-            <Card key={product._id} {...product} />
-          ))}
-        </div>
-
-        {/* Load More Button සහ Infinite Scroll සෙන්සර් එක */}
-        <div className="mt-16 flex flex-col items-center">
-          {allProducts.length > visibleCount ? (
-            <div ref={observerTarget} className="flex flex-col items-center">
-              <button onClick={loadMore} className="px-10 py-4 bg-slate-900 text-white rounded-2xl flex items-center gap-3">
-                View More <ArrowDown size={18} />
-              </button>
+        <main className="pb-32">
+          <header className="py-24 text-center">
+            <div className="inline-block px-4 py-1.5 rounded-full bg-slate-50 text-[10px] font-black tracking-[0.3em] text-slate-400 uppercase mb-6 border border-slate-100">
+              Handpicked Styles
             </div>
-          ) : (
-            !loading && (
-              <div className="flex flex-col items-center opacity-60">
-                <CheckCircle2 className="text-green-500" size={30} />
-                <p className="mt-2 text-[10px] uppercase tracking-widest">You've seen it all</p>
-              </div>
-            )
-          )}
-        </div>
-      </main>
+            <h2 className="text-6xl md:text-8xl font-black text-slate-950 tracking-tighter mb-6">THE EDIT</h2>
+            <p className="text-slate-400 font-bold max-w-lg mx-auto uppercase text-xs tracking-[0.2em] leading-relaxed">
+              Experience the fusion of craftsmanship and modern design
+            </p>
+          </header>
+
+          {/* Product Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
+            {allProducts.slice(0, visibleCount).map((product) => (
+              <Card key={product._id} {...product} />
+            ))}
+          </div>
+
+          {/* Infinite Scroll Trigger */}
+          <div ref={observerTarget} className="h-40 w-full flex flex-col items-center justify-center mt-12">
+            {isLoadingMore && (
+              <>
+                <Loader2 className="w-8 h-8 text-slate-300 animate-spin mb-2" />
+                <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Loading More</span>
+              </>
+            )}
+            {!isLoadingMore && visibleCount >= allProducts.length && (
+               <div className="flex flex-col items-center">
+                  <div className="w-12 h-px bg-slate-100 mb-4" />
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">End of Collection</p>
+               </div>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
