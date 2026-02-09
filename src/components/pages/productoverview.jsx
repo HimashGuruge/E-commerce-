@@ -62,6 +62,7 @@ export default function ProductOverview() {
         icon: 'error',
         title: 'Out of Stock',
         text: 'Sorry, this item is currently unavailable.',
+        confirmButtonColor: "#0f172a",
       });
       return;
     }
@@ -70,20 +71,52 @@ export default function ProductOverview() {
     const finalTotal = subtotal + DELIVERY_FEE;
 
     Swal.fire({
-      title: "Proceed to Checkout?",
+      title: `<span class="text-xl font-black uppercase tracking-tight text-slate-900">Order Preview</span>`,
       html: `
-        <div class="text-left text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
-          <p class="mb-1">Product: <b>${product.product.productName}</b></p>
-          <p class="mb-1">Subtotal: <b>Rs. ${subtotal.toLocaleString()}</b></p>
-          <p class="text-blue-600 mb-1">Delivery Fee: <b>Rs. ${DELIVERY_FEE.toLocaleString()}</b></p>
-          <hr class="my-2"/>
-          <p class="text-lg text-green-600">Total: <b>Rs. ${finalTotal.toLocaleString()}</b></p>
+        <div class="mt-4 text-left font-sans">
+          <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100 mb-4">
+            <img src="${product.product.images?.[0]}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm" />
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black text-slate-900 truncate">${product.product.productName}</p>
+              <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">Qty: ${quantity} units</p>
+            </div>
+          </div>
+
+          <div class="space-y-2 px-1">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-500 font-medium italic text-xs">Items Subtotal</span>
+              <span class="font-bold text-slate-900">Rs. ${subtotal.toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-500 font-medium italic text-xs">Standard Delivery</span>
+              <span class="font-bold text-blue-600">+ Rs. ${DELIVERY_FEE.toLocaleString()}</span>
+            </div>
+            
+            <div class="border-t border-dashed border-slate-300 my-3"></div>
+            
+            <div class="flex justify-between items-center">
+              <div>
+                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Payable</span>
+                <span class="text-2xl font-black text-slate-900">Rs. ${finalTotal.toLocaleString()}</span>
+              </div>
+              <div class="bg-emerald-100 text-emerald-700 p-2.5 rounded-2xl">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+              </div>
+            </div>
+          </div>
         </div>
       `,
-      icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#10b981",
-      confirmButtonText: "Yes, Buy Now",
+      confirmButtonText: "Secure Checkout",
+      cancelButtonText: "Maybe Later",
+      confirmButtonColor: "#0f172a", 
+      cancelButtonColor: "#ffffff", // Changed to White to use custom text color via CSS
+      customClass: {
+        popup: 'rounded-[2.5rem] border-none shadow-2xl',
+        confirmButton: 'rounded-2xl px-8 py-4 font-black uppercase text-[11px] tracking-widest shadow-xl shadow-slate-200 order-2',
+        cancelButton: 'rounded-2xl px-8 py-4 font-black uppercase text-[11px] tracking-widest text-slate-400 border border-slate-200 hover:text-slate-600 order-1'
+      },
+      buttonsStyling: false, // Set to false to allow Tailwind classes in customClass to work fully
     }).then((result) => {
       if (result.isConfirmed) {
         navigate(
@@ -113,6 +146,15 @@ export default function ProductOverview() {
     });
   };
 
+/*************  ✨ Windsurf Command ⭐  *************/
+/**
+ * Handle adding product to cart.
+ * If product is not available or out of stock, exit early.
+ * Set addingToCart state to true, add product to cart using addToCart utility,
+ * and show a success toast using Swal. Finally, set addingToCart state to false.
+ * @returns {void} nothing
+ */
+/*******  344abf37-2251-4fb4-833d-538e3c5b86aa  *******/
   const handleAddToCart = async () => {
     if (!product?.product || product.product.stock <= 0) return;
     setAddingToCart(true);
