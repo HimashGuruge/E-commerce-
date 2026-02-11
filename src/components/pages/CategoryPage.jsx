@@ -9,6 +9,8 @@ export default function CategoryPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  console.log(slug)
+
   useEffect(() => {
     const fetchData = async () => {
       try {

@@ -141,12 +141,15 @@ export default function HomeContainer() {
       setAllProducts(productRes.data);
       setAdsData(adsRes.data);
       setCategories(categoryRes.data);
+      
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
   };
+
+  console.log(categories)
 
   useEffect(() => { fetchData(); }, []);
 

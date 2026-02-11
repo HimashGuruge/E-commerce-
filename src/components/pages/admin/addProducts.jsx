@@ -142,7 +142,8 @@ export default function AddProducts() {
     const token = localStorage.getItem("token");
     
     try {
-      let finalCategoryName = formData.category;
+      // TRIM INPUTS
+      let finalCategoryName = formData.category.trim();
 
       // 1. IF NEW CATEGORY, UPLOAD CAT IMAGE AND POST IT FIRST
       if (isNewCategory) {
@@ -153,9 +154,9 @@ export default function AddProducts() {
           const catRes = await axios.post(
             import.meta.env.VITE_BACKEND_URL + "/api/categories",
             { 
-              name: formData.category,
+              name: finalCategoryName,
               image: catImageUrl, // Sending the uploaded image URL
-              slug: formData.category.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') 
+              slug: finalCategoryName.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') 
             },
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -174,12 +175,16 @@ export default function AddProducts() {
         images.map(file => uploadMediaToSupabase(file))
       );
 
-      // 3. Prepare payload
+      // 3. Prepare payload with TRIMMED values
       const payload = {
         ...formData,
+        productName: formData.productName.trim(),
+        description: formData.description.trim(),
+        brand: formData.brand.trim(),
         category: finalCategoryName,
-        productId: `PROD-${formData.productId}`,
-        altNames: formData.altNames ? formData.altNames.split(",").map(n => n.trim()).filter(n => n) : [],
+        productId: `PROD-${formData.productId.trim()}`,
+        // Split, trim each, and filter out empty strings
+        altNames: formData.altNames ? formData.altNames.split(",").map(n => n.trim()).filter(n => n !== "") : [],
         price: parseFloat(formData.price),
         lastPrices: formData.lastPrices ? parseFloat(formData.lastPrices) : parseFloat(formData.price),
         stock: parseInt(formData.stock) || 0,
@@ -312,7 +317,7 @@ export default function AddProducts() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Previous Price
+                      Last Price
                     </label>
                     <input
                       type="number"
