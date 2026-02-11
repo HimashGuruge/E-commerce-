@@ -1,11 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import { 
   Loader2, 
-  ArrowDown, 
-  CheckCircle2, 
-  AlertCircle, 
-  RefreshCw, 
   Sparkles, 
   Shield, 
   Truck, 
@@ -20,34 +17,60 @@ import {
 import Card from "@/components/Card";
 import NewAdsTitles from "@/components/newadds";
 
-// --- 1. Full-Width Premium Banner Slider ---
+// --- 1. Category Grid Component (Props හරහා දත්ත ගනී) ---
+const CategoryGrid = ({ categories }) => {
+  if (!categories || categories.length === 0) return null;
+
+  return (
+    <section className="py-12 bg-white">
+      <h2 className="text-2xl font-black text-slate-900 mb-8 uppercase tracking-tighter">Categories</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 border-t border-l border-slate-100">
+        {categories.map((cat) => (
+          <Link 
+            key={cat._id || cat.slug} 
+            to={`/category/${cat.slug}`} 
+            className="group flex flex-col items-center p-0 border-r border-b border-slate-100 hover:bg-slate-50 transition-all duration-300"
+          >
+            <div className="w-full aspect-square overflow-hidden flex items-center justify-center bg-slate-100">
+              <img 
+                src={cat.image} 
+                alt={cat.name} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+              />
+            </div>
+            <div className="py-4 px-2 w-full flex items-center justify-center">
+              <span className="text-[10px] font-black text-slate-600 text-center uppercase tracking-widest leading-tight">
+                {cat.name}
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+// --- 2. Banner Slider ---
 const InternalBannerSlider = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    if (ads.length === 0 || isHovered) return;
+    if (!ads || ads.length === 0 || isHovered) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev === ads.length - 1 ? 0 : prev + 1));
     }, 6000);
     return () => clearInterval(timer);
-  }, [ads.length, isHovered]);
+  }, [ads?.length, isHovered]);
 
   const goToPrev = () => setCurrentIndex(currentIndex === 0 ? ads.length - 1 : currentIndex - 1);
   const goToNext = () => setCurrentIndex(currentIndex === ads.length - 1 ? 0 : currentIndex + 1);
 
-  if (!ads || ads.length === 0) return null;
+  if (!ads?.length) return null;
 
   return (
-    <div 
-      className="relative w-full h-[50vh] md:h-[70vh] lg:h-[85vh] group overflow-hidden bg-slate-900"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Cinematic Gradient Overlay */}
+    <div className="relative w-full h-[50vh] md:h-[70vh] lg:h-[85vh] group overflow-hidden bg-slate-900" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 z-10 pointer-events-none" />
-      
-      {/* Navigation Controls */}
       <div className="absolute inset-0 z-20 flex items-center justify-between px-4 md:px-8 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
         <button onClick={goToPrev} className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/30 transition-all active:scale-90 shadow-2xl">
           <ChevronLeft className="w-8 h-8 text-white" />
@@ -56,39 +79,21 @@ const InternalBannerSlider = ({ ads }) => {
           <ChevronRight className="w-8 h-8 text-white" />
         </button>
       </div>
-
       {ads.map((ad, index) => (
-        <div
-          key={index}
-          className={`absolute inset-0 transition-all duration-[1500ms] ease-in-out ${
-            index === currentIndex ? "opacity-100 scale-100 visible" : "opacity-0 scale-110 invisible"
-          }`}
-        >
-          <img 
-            src={ad.imageUrl} 
-            className="w-full h-full object-cover object-center"
-            alt={`Promotion ${index + 1}`} 
-          />
+        <div key={index} className={`absolute inset-0 transition-all duration-[1500ms] ease-in-out ${index === currentIndex ? "opacity-100 scale-100 visible" : "opacity-0 scale-110 invisible"}`}>
+          <img src={ad.imageUrl} className="w-full h-full object-cover object-center" alt={`Promotion ${index + 1}`} />
         </div>
       ))}
-      
-      {/* Minimalist Progress Indicators */}
       <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-3 z-20">
         {ads.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrentIndex(i)}
-            className={`transition-all duration-700 rounded-full h-1 ${
-              i === currentIndex ? "w-16 bg-white" : "w-4 bg-white/30 hover:bg-white/60"
-            }`}
-          />
+          <button key={i} onClick={() => setCurrentIndex(i)} className={`transition-all duration-700 rounded-full h-1 ${i === currentIndex ? "w-16 bg-white" : "w-4 bg-white/30 hover:bg-white/60"}`} />
         ))}
       </div>
     </div>
   );
 };
 
-// --- 2. Premium Features Section ---
+// --- 3. Premium Features ---
 const PremiumFeatures = () => {
   const features = [
     { icon: Shield, title: "Secure Payment", desc: "SSL Encrypted" },
@@ -101,44 +106,43 @@ const PremiumFeatures = () => {
 
   return (
     <div className="py-16 bg-white border-b border-slate-50">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-4">
-          {features.map((feature, index) => (
-            <div key={index} className="flex flex-col items-center p-6 rounded-[2rem] bg-slate-50/50 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 border border-transparent hover:border-blue-50">
-              <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center mb-4 shadow-xl">
-                <feature.icon className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">{feature.title}</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 text-center">{feature.desc}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-4">
+        {features.map((feature, index) => (
+          <div key={index} className="flex flex-col items-center p-6 rounded-[2rem] bg-slate-50/50 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 border border-transparent hover:border-blue-50">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center mb-4 shadow-xl">
+              <feature.icon className="w-5 h-5 text-white" />
             </div>
-          ))}
-        </div>
+            <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">{feature.title}</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 text-center">{feature.desc}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
-// --- 3. Main Container ---
+// --- 4. Main Home Container ---
 export default function HomeContainer() {
   const [allProducts, setAllProducts] = useState([]);
   const [adsData, setAdsData] = useState([]);
+  const [categories, setCategories] = useState([]); // Database එකෙන් එන Categories සඳහා
   const [visibleCount, setVisibleCount] = useState(12);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef(null);
 
   const fetchData = async () => {
     try {
-      setLoading(true);
-      const [productRes, adsRes] = await Promise.all([
+      const [productRes, adsRes, categoryRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`),
-        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/ads`)
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/ads`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/categories`) // API Call එක
       ]);
       setAllProducts(productRes.data);
       setAdsData(adsRes.data);
+      setCategories(categoryRes.data);
     } catch (err) {
-      setError("Failed to synchronize with server.");
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -169,26 +173,26 @@ export default function HomeContainer() {
   );
 
   return (
-    <div className="w-full bg-white min-h-screen selection:bg-blue-100 selection:text-blue-900">
-      {/* 1. Promo Ticker (Full Width) */}
-      <div className="bg-slate-950 py-3.5 border-b border-white/5">
+    <div className="w-full bg-white min-h-screen">
+      {/* Promo Ticker */}
+      <div className="bg-slate-950 py-3.5">
         <NewAdsTitles speed={35}>
           <div className="flex text-white font-black text-[10px] uppercase tracking-[0.3em]">
             <span className="mx-12 flex items-center gap-2"><Sparkles size={12} className="text-blue-400"/> New Arrivals Available Now</span>
             <span className="mx-12 flex items-center gap-2"><Star size={12} className="text-blue-400"/> Premium Curation 2026</span>
-            <span className="mx-12 flex items-center gap-2"><Zap size={12} className="text-blue-400"/> Islandwide Fast Tracking</span>
           </div>
         </NewAdsTitles>
       </div>
 
-      {/* 2. Full Width Hero Section */}
       <section className="w-full">
          <InternalBannerSlider ads={adsData} />
       </section>
 
-      {/* 3. Contained Content Sections */}
       <div className="max-w-7xl mx-auto px-4">
         <PremiumFeatures />
+
+        {/* Category Grid - Backend එකෙන් ගත්තු දත්ත මෙතනට යවයි */}
+        <CategoryGrid categories={categories} />
 
         <main className="pb-32">
           <header className="py-24 text-center">
@@ -196,32 +200,18 @@ export default function HomeContainer() {
               Handpicked Styles
             </div>
             <h2 className="text-6xl md:text-8xl font-black text-slate-950 tracking-tighter mb-6">THE EDIT</h2>
-            <p className="text-slate-400 font-bold max-w-lg mx-auto uppercase text-xs tracking-[0.2em] leading-relaxed">
-              Experience the fusion of craftsmanship and modern design
-            </p>
           </header>
 
-          {/* Product Grid */}
+          {/* Products Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
             {allProducts.slice(0, visibleCount).map((product) => (
               <Card key={product._id} {...product} />
             ))}
           </div>
 
-          {/* Infinite Scroll Trigger */}
+          {/* Infinite Scroll Loader */}
           <div ref={observerTarget} className="h-40 w-full flex flex-col items-center justify-center mt-12">
-            {isLoadingMore && (
-              <>
-                <Loader2 className="w-8 h-8 text-slate-300 animate-spin mb-2" />
-                <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Loading More</span>
-              </>
-            )}
-            {!isLoadingMore && visibleCount >= allProducts.length && (
-               <div className="flex flex-col items-center">
-                  <div className="w-12 h-px bg-slate-100 mb-4" />
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">End of Collection</p>
-               </div>
-            )}
+            {isLoadingMore && <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />}
           </div>
         </main>
       </div>

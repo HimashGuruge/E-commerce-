@@ -20,6 +20,8 @@ import ContactPage from "@/components/pages/contactPage.jsx";
 import ForgotPassword from "@/components/pages/ForgotPasswordpage";
 import ResetPassword from "@/components/pages/ResetPasswordPage.jsx";
 import LoginSuccess from "@/components/pages/LoginSuccess";
+import CategoryPage from "@/components/pages/CategoryPage";
+
 
 export default function Homepage() {
   const [user, setUser] = useState("customer");
@@ -46,10 +48,8 @@ export default function Homepage() {
   }, []);
 
   return (
-   
     <div className="w-full h-screen flex flex-col overflow-hidden bg-[#F9FAFB]">
       <Navbar />
-
 
       <div className="flex-1 pt-[80px] overflow-y-auto">
         <Routes>
@@ -72,7 +72,9 @@ export default function Homepage() {
           />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/login-success" element={<LoginSuccess />} />
+          <Route path="/login-success" element={<LoginSuccess />} />
+          <Route path="/category/:slug" element={<CategoryPage/>} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

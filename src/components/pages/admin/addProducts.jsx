@@ -4,13 +4,19 @@ import uploadMediaToSupabase from "../../utils/mediaupload.jsx";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { jwtDecode } from "jwt-decode";
-import { FiUpload, FiImage, FiDollarSign, FiPackage, FiTag, FiShoppingCart } from "react-icons/fi";
+import { FiUpload, FiImage, FiDollarSign, FiPackage, FiTag, FiShoppingCart, FiPlusCircle } from "react-icons/fi";
 
 export default function AddProducts() {
   const navigate = useNavigate();
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
+  
+  // --- NEW STATES FOR FETCHING CATEGORIES ---
+  const [dbCategories, setDbCategories] = useState([]);
+  const [isNewCategory, setIsNewCategory] = useState(false);
+  const [categoryImage, setCategoryImage] = useState(null); // New state for category image
+
   const [formData, setFormData] = useState({
     productId: uuidv4().substring(0, 8).toUpperCase(),
     productName: "",
@@ -23,8 +29,28 @@ export default function AddProducts() {
     brand: "Unbranded",
   });
 
-  const categories = ["General", "Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Beauty", "Toys", "Food"];
+  // Keep your brands list exact
   const brands = ["Unbranded", "Nike", "Samsung", "Apple", "Sony", "Adidas", "Dell", "LG", "Other"];
+
+  // --- FETCH CATEGORIES FROM YOUR BACKEND ---
+  const fetchCats = async () => {
+    try {
+      const res = await axios.get(import.meta.env.VITE_BACKEND_URL + "/api/categories");
+      if (res.data && res.data.length > 0) {
+        setDbCategories(res.data);
+        // default select first category if not in "New Category" mode
+        if (!isNewCategory) {
+          setFormData(prev => ({ ...prev, category: res.data[0].name }));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCats();
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -96,6 +122,16 @@ export default function AddProducts() {
       alert("Please upload at least one image");
       return false;
     }
+    if (isNewCategory) {
+      if (!formData.category.trim()) {
+        alert("Please enter a category name");
+        return false;
+      }
+      if (!categoryImage) {
+        alert("Please upload an image for the new category");
+        return false;
+      }
+    }
     return true;
   };
 
@@ -106,14 +142,42 @@ export default function AddProducts() {
     const token = localStorage.getItem("token");
     
     try {
-      // Upload images to Supabase
+      let finalCategoryName = formData.category;
+
+      // 1. IF NEW CATEGORY, UPLOAD CAT IMAGE AND POST IT FIRST
+      if (isNewCategory) {
+        try {
+          // Upload Category Image to Supabase
+          const catImageUrl = await uploadMediaToSupabase(categoryImage);
+
+          const catRes = await axios.post(
+            import.meta.env.VITE_BACKEND_URL + "/api/categories",
+            { 
+              name: formData.category,
+              image: catImageUrl, // Sending the uploaded image URL
+              slug: formData.category.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') 
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          finalCategoryName = catRes.data.name;
+          // Refresh category list
+          await fetchCats();
+        } catch (catErr) {
+          console.error("Category creation failed", catErr);
+          // If category exists, it might throw error, we try to proceed
+        }
+      }
+
+      // 2. Upload product images to Supabase
       const imgUrls = await Promise.all(
         images.map(file => uploadMediaToSupabase(file))
       );
 
-      // Prepare payload
+      // 3. Prepare payload
       const payload = {
         ...formData,
+        category: finalCategoryName,
         productId: `PROD-${formData.productId}`,
         altNames: formData.altNames ? formData.altNames.split(",").map(n => n.trim()).filter(n => n) : [],
         price: parseFloat(formData.price),
@@ -124,7 +188,7 @@ export default function AddProducts() {
         updatedAt: new Date().toISOString()
       };
 
-      // Send to backend
+      // 4. Send to backend
       const res = await axios.post(
         import.meta.env.VITE_BACKEND_URL + "/api/products",
         payload,
@@ -137,8 +201,6 @@ export default function AddProducts() {
       );
 
       console.log("Product saved:", res.data);
-      
-      // Show success message and reset form
       alert("✅ Product uploaded successfully!");
       
       // Reset form
@@ -150,25 +212,20 @@ export default function AddProducts() {
         lastPrices: "",
         stock: "",
         description: "",
-        category: "General",
+        category: dbCategories.length > 0 ? dbCategories[0].name : "General",
         brand: "Unbranded",
       });
       setImages([]);
       setImagePreviews([]);
-      
-      // Optional: Navigate to products page
-      // navigate("/products");
+      setIsNewCategory(false);
+      setCategoryImage(null);
 
     } catch (err) {
       console.error("Upload failed:", err);
       let errorMessage = "Failed to upload product.";
-      
       if (err.response) {
         errorMessage = err.response.data?.message || err.response.statusText;
-      } else if (err.request) {
-        errorMessage = "No response from server. Check your connection.";
       }
-      
       alert(`❌ ${errorMessage}`);
     } finally {
       setUploading(false);
@@ -230,10 +287,9 @@ export default function AddProducts() {
                     name="altNames"
                     value={formData.altNames}
                     onChange={handleChange}
-                    placeholder="Separate with commas (e.g., iPhone 15, Smartphone)"
+                    placeholder="Separate with commas"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Optional: Other names customers might search for</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -264,8 +320,6 @@ export default function AddProducts() {
                       value={formData.lastPrices}
                       onChange={handleChange}
                       placeholder="0.00"
-                      min="0"
-                      step="0.01"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     />
                   </div>
@@ -281,55 +335,93 @@ export default function AddProducts() {
                     value={formData.stock}
                     onChange={handleChange}
                     placeholder="0"
-                    min="0"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Category
+                {/* --- CATEGORY SECTION --- */}
+                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center">
+                      <FiTag className="mr-2" /> Category *
                     </label>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const newToggleState = !isNewCategory;
+                        setIsNewCategory(newToggleState);
+                        setFormData(prev => ({
+                          ...prev, 
+                          category: newToggleState ? "" : (dbCategories[0]?.name || "General")
+                        }));
+                      }}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      <FiPlusCircle /> {isNewCategory ? "Use List" : "Add New"}
+                    </button>
+                  </div>
+
+                  {isNewCategory ? (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        placeholder="Type new category name..."
+                        className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                        required
+                      />
+                      {/* NEW: Category Image Input */}
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-blue-500 uppercase ml-1">Category Image *</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setCategoryImage(e.target.files[0])}
+                          className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                      </div>
+                    </div>
+                  ) : (
                     <select
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
                     >
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                      {dbCategories.map(cat => (
+                        <option key={cat._id} value={cat.name}>{cat.name}</option>
                       ))}
+                      {dbCategories.length === 0 && <option value="General">General</option>}
                     </select>
-                  </div>
+                  )}
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Brand
-                    </label>
-                    <select
-                      name="brand"
-                      value={formData.brand}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    >
-                      {brands.map(brand => (
-                        <option key={brand} value={brand}>{brand}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Brand
+                  </label>
+                  <select
+                    name="brand"
+                    value={formData.brand}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  >
+                    {brands.map(brand => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               {/* Right Column - Images & Description */}
               <div className="space-y-6">
-                {/* Image Upload */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                     <FiImage className="mr-2" /> Product Images *
                   </label>
                   
-                  {/* Image Previews */}
                   {imagePreviews.length > 0 && (
                     <div className="mb-4">
                       <div className="flex flex-wrap gap-3 mb-3">
@@ -350,11 +442,9 @@ export default function AddProducts() {
                           </div>
                         ))}
                       </div>
-                      <p className="text-sm text-gray-500">{imagePreviews.length} image(s) selected</p>
                     </div>
                   )}
 
-                  {/* Upload Button */}
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition">
                     <FiUpload className="text-3xl text-gray-400 mx-auto mb-3" />
                     <input
@@ -372,7 +462,6 @@ export default function AddProducts() {
                   </div>
                 </div>
 
-                {/* Description */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Product Description
@@ -381,18 +470,17 @@ export default function AddProducts() {
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    placeholder="Describe the product features, specifications, etc."
+                    placeholder="Describe the product details..."
                     rows="5"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
 
-                {/* Submit Button */}
                 <div className="pt-4">
                   <button
                     onClick={handleUpload}
                     disabled={uploading}
-                    className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold py-4 px-6 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold py-4 px-6 rounded-lg transition disabled:opacity-70 flex items-center justify-center"
                   >
                     {uploading ? (
                       <>
@@ -406,10 +494,6 @@ export default function AddProducts() {
                       "Upload Product"
                     )}
                   </button>
-                  
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    * Required fields. All product information will be saved to our database.
-                  </p>
                 </div>
               </div>
             </div>
