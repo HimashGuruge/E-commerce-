@@ -15,13 +15,13 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 
-// --- Constants ---
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// --- Sub-Component: Status Badge ---
 const StatusBadge = ({ status }) => {
   const details = useMemo(() => {
     switch (status?.toLowerCase()) {
+      case "confirmed":
+        return { color: "bg-emerald-50 text-emerald-700 border-emerald-100", icon: <CheckCircle2 size={14} /> };
       case "pending":
         return { color: "bg-amber-50 text-amber-700 border-amber-100", icon: <Clock size={14} /> };
       case "delivered":
@@ -43,7 +43,6 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// --- Main Component ---
 export default function OrderPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,10 +78,7 @@ export default function OrderPage() {
       cancelButtonColor: "#64748b",
       confirmButtonText: "Yes, cancel it!",
       cancelButtonText: "No, keep it",
-      borderRadius: "1.25rem",
-      customClass: {
-        popup: 'rounded-[1.5rem] font-sans'
-      }
+      customClass: { popup: 'rounded-[1.5rem] font-sans' }
     });
 
     if (result.isConfirmed) {
@@ -95,22 +91,11 @@ export default function OrderPage() {
         );
 
         if (data.success) {
-          Swal.fire({
-            title: "Cancelled!",
-            text: "Your order has been successfully cancelled.",
-            icon: "success",
-            confirmButtonColor: "#2563eb",
-            timer: 2000
-          });
+          Swal.fire({ title: "Cancelled!", icon: "success", timer: 2000 });
           fetchOrders();
         }
       } catch (error) {
-        Swal.fire({
-          title: "Failed!",
-          text: error.response?.data?.message || "Could not cancel order.",
-          icon: "error",
-          confirmButtonColor: "#2563eb"
-        });
+        Swal.fire({ title: "Failed!", text: error.response?.data?.message, icon: "error" });
       }
     }
   };
@@ -121,7 +106,7 @@ export default function OrderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans selection:bg-blue-100">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
         <header className="mb-10">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-4">
@@ -167,37 +152,33 @@ export default function OrderPage() {
   );
 }
 
-// --- Order Card Component ---
 function OrderCard({ order, index, onOpen, onCancel }) {
   const firstItemImage = order.items[0]?.image || order.items[0]?.imageUrl;
   const [canCancel, setCanCancel] = useState(false);
 
-  const isCancelled = order.status?.toLowerCase() === "cancelled";
-  const isCardPayment = order.paymentMethod?.toLowerCase() === "card" || 
-                        order.paymentMethod?.toLowerCase() === "payhere";
+  // Status definitions
+  const status = order.status?.toLowerCase();
+  const isCancelled = status === "cancelled";
+  const isConfirmed = status === "confirmed";
+  const isCardPayment = order.paymentMethod?.toLowerCase() === "card" || order.paymentMethod?.toLowerCase() === "payhere";
 
   useEffect(() => {
     const checkCancelEligibility = () => {
-      if (isCardPayment || isCancelled) {
+      // Confirmed orders should not be cancellable manually in this UI logic
+      if (isCardPayment || isCancelled || isConfirmed) {
         setCanCancel(false);
         return;
       }
-
       const orderTime = new Date(order.createdAt).getTime();
       const currentTime = new Date().getTime();
       const diffInMinutes = (currentTime - orderTime) / (1000 * 60);
-
-      if (diffInMinutes < 10 && order.status?.toLowerCase() === "pending") {
-        setCanCancel(true);
-      } else {
-        setCanCancel(false);
-      }
+      setCanCancel(diffInMinutes < 10 && status === "pending");
     };
 
     checkCancelEligibility();
     const timer = setInterval(checkCancelEligibility, 10000);
     return () => clearInterval(timer);
-  }, [order.createdAt, order.status, isCardPayment, isCancelled]);
+  }, [order.createdAt, status, isCardPayment, isCancelled, isConfirmed]);
 
   return (
     <motion.div 
@@ -207,10 +188,11 @@ function OrderCard({ order, index, onOpen, onCancel }) {
       className={`group bg-white p-5 rounded-3xl border transition-all duration-500 relative overflow-hidden
         ${isCancelled 
           ? "opacity-50 grayscale border-slate-200 bg-slate-50/50 shadow-none pointer-events-none" 
-          : "border-slate-200/60 hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-900/5"
+          : isConfirmed
+            ? "border-emerald-200 bg-emerald-50/40 hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-900/5"
+            : "border-slate-200/60 hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-900/5"
         }`}
     >
-      {/* Cancelled Watermark */}
       {isCancelled && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 pointer-events-none opacity-10">
             <h1 className="text-6xl font-black text-rose-600 border-4 border-rose-600 px-4">CANCELLED</h1>
@@ -245,7 +227,7 @@ function OrderCard({ order, index, onOpen, onCancel }) {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</p>
-            <p className={`text-lg font-black ${isCancelled ? 'text-slate-400' : 'text-blue-600'}`}>
+            <p className={`text-lg font-black ${isCancelled ? 'text-slate-400' : isConfirmed ? 'text-emerald-600' : 'text-blue-600'}`}>
               Rs. {order.totalAmount?.toLocaleString()}
             </p>
           </div>
@@ -255,7 +237,7 @@ function OrderCard({ order, index, onOpen, onCancel }) {
           {canCancel && (
             <button
               onClick={() => onCancel(order._id)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 pointer-events-auto"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all pointer-events-auto"
             >
               <X size={14} /> Cancel Order
             </button>
@@ -263,7 +245,7 @@ function OrderCard({ order, index, onOpen, onCancel }) {
           <button 
             onClick={() => onOpen(order)} 
             className={`pointer-events-auto px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 
-              ${isCancelled ? 'bg-slate-400 text-white' : 'bg-slate-900 text-white hover:bg-blue-600'}`}
+              ${isCancelled ? 'bg-slate-400 text-white' : isConfirmed ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-blue-600'}`}
           >
             Details <ArrowRight size={16} />
           </button>
@@ -273,7 +255,6 @@ function OrderCard({ order, index, onOpen, onCancel }) {
   );
 }
 
-// --- Order Details Modal ---
 function OrderDetailsModal({ order, onClose }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
@@ -295,19 +276,18 @@ function OrderDetailsModal({ order, onClose }) {
             </div>
           ))}
         </div>
-        <div className="mt-8 p-6 bg-blue-50 rounded-3xl flex justify-between items-center">
+        <div className={`mt-8 p-6 rounded-3xl flex justify-between items-center ${order.status?.toLowerCase() === 'confirmed' ? 'bg-emerald-50' : 'bg-blue-50'}`}>
           <div className="flex flex-col">
-            <span className="text-blue-600 font-bold uppercase text-[10px]">Grand Total</span>
-            <span className="text-[10px] text-blue-400 font-bold">{order.paymentMethod?.toUpperCase()}</span>
+            <span className={`font-bold uppercase text-[10px] ${order.status?.toLowerCase() === 'confirmed' ? 'text-emerald-600' : 'text-blue-600'}`}>Grand Total</span>
+            <span className={`text-[10px] font-bold ${order.status?.toLowerCase() === 'confirmed' ? 'text-emerald-400' : 'text-blue-400'}`}>{order.paymentMethod?.toUpperCase()}</span>
           </div>
-          <span className="text-3xl font-black text-blue-700">Rs. {order.totalAmount?.toLocaleString()}</span>
+          <span className={`text-3xl font-black ${order.status?.toLowerCase() === 'confirmed' ? 'text-emerald-700' : 'text-blue-700'}`}>Rs. {order.totalAmount?.toLocaleString()}</span>
         </div>
       </motion.div>
     </div>
   );
 }
 
-// --- Empty State ---
 function EmptyState() {
   return (
     <div className="text-center py-20 bg-white rounded-[3rem] border border-slate-100">
@@ -317,3 +297,7 @@ function EmptyState() {
     </div>
   );
 }
+
+
+
+//total length = 262

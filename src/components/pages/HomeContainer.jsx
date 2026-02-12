@@ -17,7 +17,7 @@ import {
 import Card from "@/components/Card";
 import NewAdsTitles from "@/components/newadds";
 
-// --- 1. Category Grid Component (Props හරහා දත්ත ගනී) ---
+// --- 1. Category Grid Component ---
 const CategoryGrid = ({ categories }) => {
   if (!categories || categories.length === 0) return null;
 
@@ -125,7 +125,7 @@ const PremiumFeatures = () => {
 export default function HomeContainer() {
   const [allProducts, setAllProducts] = useState([]);
   const [adsData, setAdsData] = useState([]);
-  const [categories, setCategories] = useState([]); // Database එකෙන් එන Categories සඳහා
+  const [categories, setCategories] = useState([]);
   const [visibleCount, setVisibleCount] = useState(12);
   const [loading, setLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -133,10 +133,13 @@ export default function HomeContainer() {
 
   const fetchData = async () => {
     try {
+      // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      // EXACT URL UPDATE: Adding ?category=home to filter banners
+      // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       const [productRes, adsRes, categoryRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`),
-        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/ads`),
-        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/categories`) // API Call එක
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/ads?category=home`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/categories`)
       ]);
       setAllProducts(productRes.data);
       setAdsData(adsRes.data);
@@ -148,8 +151,6 @@ export default function HomeContainer() {
       setLoading(false);
     }
   };
-
-  console.log(categories)
 
   useEffect(() => { fetchData(); }, []);
 
@@ -194,7 +195,7 @@ export default function HomeContainer() {
       <div className="max-w-7xl mx-auto px-4">
         <PremiumFeatures />
 
-        {/* Category Grid - Backend එකෙන් ගත්තු දත්ත මෙතනට යවයි */}
+        {/* Category Grid */}
         <CategoryGrid categories={categories} />
 
         <main className="pb-32">
